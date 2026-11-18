@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const newSecret = () => Math.floor(Math.random() * 100) + 1;
 
-export default function Game() {
+export default function NumberGuess() {
   const [secret, setSecret] = useState(newSecret);
   const [guess, setGuess] = useState("");
   const [attempts, setAttempts] = useState(0);
@@ -43,6 +44,7 @@ export default function Game() {
 
   return (
     <main className="card">
+      <Link to="/" className="back-link">← Alle Spiele</Link>
       <h2>Zahlenraten</h2>
       <p className="hint" data-testid="hint">{hint}</p>
       <p className="muted">Versuche: {attempts}</p>

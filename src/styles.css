@@ -68,3 +68,25 @@ td.actions { display: flex; gap: 6px; justify-content: flex-end; }
 .success { color: var(--success); }
 .hint { font-size: 1.2em; }
 .center { text-align: center; }
+
+/* ---- Spiele-Übersicht ---- */
+.overview { max-width: 720px; margin: 0 auto; }
+.overview h2 { margin-bottom: 16px; }
+.game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.game-tile {
+  display: flex; flex-direction: column; background: var(--card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden; text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.game-tile:hover, .game-tile:focus-visible { transform: translateY(-3px); box-shadow: 0 8px 20px #0002; }
+.game-tile-art { font-size: 3.5rem; text-align: center; padding: 22px 0; }
+.game-tile-body { padding: 12px 16px 16px; }
+.game-tile-body h3 { margin: 0 0 4px; }
+.game-tile-body p { margin: 0 0 10px; }
+.game-tile-age {
+  font-size: 0.8em; padding: 2px 8px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.back-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 8px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs.small button { padding: 6px 10px; font-size: 0.9em; }

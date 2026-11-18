@@ -1,7 +1,7 @@
 # Game-Test – GitHub + Supabase + Claude Code (Lernbeispiel)
 
-Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, einem
-**Zahlenraten-Spiel** und **Highscores**. User können **nur vom Admin**
+Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, einer
+**Spiele-Übersicht** (Labyrinth für Kinder, Zahlenraten) und **Highscores**. User können **nur vom Admin**
 angelegt werden – es gibt keine Selbstregistrierung.
 
 ## Architektur
@@ -18,6 +18,7 @@ Browser (React, GitHub Pages)
 | Baustein | Datei | Wie angelegt |
 |---|---|---|
 | DB-Schema, RLS, Trigger | `supabase/migrations/20261118000000_init.sql` | Claude via Supabase-MCP `apply_migration` |
+| Labyrinth-Ergebnisse | `supabase/migrations/20261118210000_labyrinth_scores.sql` | Claude via Supabase-MCP `apply_migration` |
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
 | Deployment | `.github/workflows/deploy.yml` | GitHub Actions → GitHub Pages |
@@ -59,6 +60,26 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
 3. Nach dem Merge nach `main` deployt der Workflow automatisch.
    (Pages für private Repos benötigt einen bezahlten GitHub-Plan.)
 
+## Spiele
+
+Nach dem Login erscheint die **Übersicht** (`src/pages/Overview.tsx`). Neue Spiele
+werden dort in der Liste `GAMES` eingetragen und in `src/App.tsx` als Route ergänzt.
+
+### Labyrinth-Abenteuer (ab ca. 5–6 Jahren) – `src/games/labyrinth/`
+- Challenge aus **5 Labyrinthen** hintereinander, jedes Level ein anderes Tier
+  (Maus → Käse, Hase → Karotte, Hund → Knochen, Biene → Blume, Pinguin → Fisch).
+- Drei Stufen: *Leicht* (4×4 bis 6×6), *Mittel* (5×5 bis 8×8), *Knifflig* (7×7 bis 11×11).
+- In jedem Labyrinth liegen 3 ⭐ Sterne – bevorzugt in Sackgassen versteckt.
+- Labyrinthe werden jedes Mal neu erzeugt (`maze.ts`, Recursive Backtracker mit
+  ein paar Extra-Durchgängen, damit es weniger frustrierend ist).
+- **Steuerung:** Pfeiltasten oder WASD (Desktop); auf dem Handy die Figur mit dem
+  Finger durch die Gänge ziehen oder das Steuerkreuz antippen (gedrückt halten = weiterlaufen).
+- Soundeffekte per WebAudio (abschaltbar), Konfetti.
+- Jede abgeschlossene Challenge wird in **`labyrinth_scores`** gespeichert
+  (`supabase/migrations/20261118210000_labyrinth_scores.sql`). Die View
+  **`labyrinth_highscores`** liefert das beste Ergebnis je Spieler und Stufe
+  (meiste Sterne, dann schnellste Zeit), Top 10 je Stufe – zu sehen unter **Highscores**.
+
 ## Lokal starten
 
 ```bash
@@ -70,7 +91,7 @@ npm run dev
 ## Ablauf zum Ausprobieren
 1. Als `admin` einloggen → Tab **Admin** → User `spieler1` anlegen.
 2. Logout, als `spieler1` einloggen → kein Admin-Tab sichtbar.
-3. Zahlenraten spielen → Ergebnis erscheint unter **Highscores**.
+3. Übersicht → Labyrinth oder Zahlenraten spielen → Ergebnisse erscheinen unter **Highscores** (Tabs Labyrinth / Zahlenraten).
 
 ## Was Claude Code hier gemacht hat
 - **Supabase-MCP:** Projekt gefunden, Migration angewendet, Security-Advisors

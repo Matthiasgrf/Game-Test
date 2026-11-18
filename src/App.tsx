@@ -1,7 +1,9 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 import Login from "./pages/Login";
-import Game from "./pages/Game";
+import Overview from "./pages/Overview";
+import NumberGuess from "./pages/NumberGuess";
+import Labyrinth from "./games/labyrinth/Labyrinth";
 import Highscores from "./pages/Highscores";
 import Admin from "./pages/Admin";
 
@@ -19,7 +21,7 @@ export default function App() {
     <HashRouter>
       <header>
         <nav>
-          <NavLink to="/game">Spiel</NavLink>
+          <NavLink to="/" end>Spiele</NavLink>
           <NavLink to="/highscores">Highscores</NavLink>
           {isAdmin && <NavLink to="/admin">Admin</NavLink>}
         </nav>
@@ -32,10 +34,12 @@ export default function App() {
         </div>
       </header>
       <Routes>
-        <Route path="/game" element={<Game />} />
+        <Route path="/" element={<Overview />} />
+        <Route path="/spiele/labyrinth" element={<Labyrinth />} />
+        <Route path="/spiele/zahlenraten" element={<NumberGuess />} />
         <Route path="/highscores" element={<Highscores />} />
-        <Route path="/admin" element={isAdmin ? <Admin /> : <Navigate to="/game" />} />
-        <Route path="*" element={<Navigate to="/game" />} />
+        <Route path="/admin" element={isAdmin ? <Admin /> : <Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </HashRouter>
   );
