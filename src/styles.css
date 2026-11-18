@@ -1,0 +1,70 @@
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1d2330;
+  --muted: #6b7280;
+  --accent: #3b5bdb;
+  --danger: #c92a2a;
+  --success: #2b8a3e;
+  --border: #dde1e7;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --card: #1e2128;
+    --text: #e6e8ec;
+    --muted: #9aa1ad;
+    --accent: #748ffc;
+    --danger: #ff6b6b;
+    --success: #69db7c;
+    --border: #2f3440;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; }
+header {
+  max-width: 720px; margin: 0 auto 16px; display: flex; flex-wrap: wrap;
+  gap: 12px; justify-content: space-between; align-items: center;
+}
+nav { display: flex; gap: 4px; }
+nav a {
+  padding: 8px 12px; border-radius: 6px; color: var(--text); text-decoration: none;
+}
+nav a.active { background: var(--accent); color: #fff; }
+.who { display: flex; gap: 8px; align-items: center; }
+.badge {
+  margin-left: 6px; font-size: 0.75em; padding: 2px 6px; border-radius: 4px;
+  background: var(--accent); color: #fff;
+}
+.card {
+  max-width: 720px; margin: 0 auto; background: var(--card);
+  border: 1px solid var(--border); border-radius: 10px; padding: 24px;
+}
+.card.narrow { max-width: 360px; margin-top: 10vh; }
+h1, h2 { margin-top: 0; }
+form { display: flex; flex-direction: column; gap: 12px; }
+form.row { flex-direction: row; }
+form.wrap { flex-wrap: wrap; }
+form.row input { flex: 1; min-width: 120px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9em; }
+input, select, button {
+  font: inherit; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+}
+button {
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+}
+button:disabled { opacity: 0.6; }
+button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+button.danger { background: var(--danger); }
+table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+td.actions { display: flex; gap: 6px; justify-content: flex-end; }
+.muted { color: var(--muted); }
+.error { color: var(--danger); }
+.success { color: var(--success); }
+.hint { font-size: 1.2em; }
+.center { text-align: center; }
