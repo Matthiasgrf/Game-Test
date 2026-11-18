@@ -24,6 +24,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check Supabase variables
+        run: |
+          if [ -z "${{ vars.VITE_SUPABASE_URL }}" ] || [ -z "${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}" ]; then
+            echo "::error::Repo-Variables VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY fehlen (Settings -> Secrets and variables -> Actions -> Variables)"
+            exit 1
+          fi
       - run: npm run build
         env:
           # Repo -> Settings -> Secrets and variables -> Actions -> Variables
