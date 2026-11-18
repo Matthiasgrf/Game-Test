@@ -24,7 +24,7 @@ export default function Highscores() {
 
   return (
     <main className="card">
-      <h2>Highscores – Top 10</h2>
+      <h2>Highscores Zahlenraten – Top 10</h2>
       {error && <p className="error">{error}</p>}
       {rows.length === 0 && !error ? (
         <p className="muted">Noch keine Ergebnisse.</p>
