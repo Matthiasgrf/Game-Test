@@ -33,6 +33,10 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
 - Die Rolle wird in `app_metadata` gesetzt (vom User nicht änderbar) und vom
   Trigger `handle_new_user` in `profiles.role` übernommen.
 - RLS: `profiles` nur lesbar; `scores` lesbar, einfügen nur für den eigenen User.
+- **GRANTs nicht vergessen** (`20261118000100_grants.sql`): RLS-Policies filtern nur
+  Zeilen. Die Rolle braucht zusätzlich Tabellenrechte (`grant select ...`), sonst
+  kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
+  `TRUNCATE` ist für Client-Rollen entzogen, weil es RLS umgeht.
 
 ## Einmalige Einrichtung
 
