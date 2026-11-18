@@ -1,33 +1,22 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { supabase, type Profile, type Role } from "../lib/supabase";
+import { type Profile, type Role } from "../lib/supabase";
+import { callAdminApi, generatePassword, PASSWORD_MIN } from "../lib/adminApi";
 import { useAuth } from "../auth/AuthProvider";
 
-// Alle Admin-Aktionen laufen ueber die Edge Function "admin-users".
-// supabase.functions.invoke schickt automatisch das JWT des eingeloggten Users mit.
-async function callAdmin<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("admin-users", { body });
-  if (error) {
-    let msg = error.message;
-    try {
-      const ctx = (error as { context?: Response }).context;
-      if (ctx) msg = (await ctx.json()).error ?? msg;
-    } catch { /* ignore */ }
-    throw new Error(msg);
-  }
-  return data as T;
-}
-
+// Alle Admin-Aktionen laufen ueber die Edge Function "admin-users"
+// (prueft serverseitig Rolle 'admin' + MFA und schreibt ein Audit-Log).
+// Start-/Reset-Passwoerter werden zufaellig erzeugt, einmalig angezeigt und
+// muessen vom User beim naechsten Login geaendert werden.
 export default function Admin() {
   const { profile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean; pw?: string } | null>(null);
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("user");
 
   const load = useCallback(async () => {
     try {
-      const { users } = await callAdmin<{ users: Profile[] }>({ action: "list" });
+      const { users } = await callAdminApi<{ users: Profile[] }>({ action: "list" });
       setUsers(users);
     } catch (e) {
       setMsg({ text: (e as Error).message, ok: false });
@@ -36,11 +25,11 @@ export default function Admin() {
 
   useEffect(() => { load(); }, [load]);
 
-  const run = async (fn: () => Promise<unknown>, okText: string) => {
+  const run = async (fn: () => Promise<unknown>, okText: string, pw?: string) => {
     setMsg(null);
     try {
       await fn();
-      setMsg({ text: okText, ok: true });
+      setMsg({ text: okText, ok: true, pw });
       await load();
     } catch (e) {
       setMsg({ text: (e as Error).message, ok: false });
@@ -49,22 +38,28 @@ export default function Admin() {
 
   const onCreate = (e: FormEvent) => {
     e.preventDefault();
+    const pw = generatePassword();
+    const name = username;
     run(async () => {
-      await callAdmin({ action: "create", username, password, role });
+      await callAdminApi({ action: "create", username: name, password: pw, role });
       setUsername("");
-      setPassword("");
       setRole("user");
-    }, `User "${username}" angelegt`);
+    }, `User "${name}" angelegt. Start-Passwort (wird nur jetzt angezeigt):`, pw);
   };
 
   const onReset = (u: Profile) => {
-    const pw = window.prompt(`Neues Passwort für ${u.username} (min. 8 Zeichen):`);
-    if (pw) run(() => callAdmin({ action: "resetPassword", userId: u.id, password: pw }), "Passwort geändert");
+    if (!window.confirm(`Neues Start-Passwort für ${u.username} erzeugen?`)) return;
+    const pw = generatePassword();
+    run(
+      () => callAdminApi({ action: "resetPassword", userId: u.id, password: pw }),
+      `Passwort für "${u.username}" zurückgesetzt. Start-Passwort (wird nur jetzt angezeigt):`,
+      pw,
+    );
   };
 
   const onDelete = (u: Profile) => {
     if (window.confirm(`User "${u.username}" wirklich löschen?`)) {
-      run(() => callAdmin({ action: "delete", userId: u.id }), `User "${u.username}" gelöscht`);
+      run(() => callAdminApi({ action: "delete", userId: u.id }), `User "${u.username}" gelöscht`);
     }
   };
 
@@ -81,23 +76,28 @@ export default function Admin() {
           title="3–20 Zeichen: a-z, 0-9, _"
           required
         />
-        <input
-          placeholder="Passwort (min. 8)"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          autoComplete="new-password"
-          required
-        />
         <select value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label="Rolle">
           <option value="user">user</option>
           <option value="admin">admin</option>
         </select>
         <button>Anlegen</button>
       </form>
+      <p className="muted small">
+        Das Start-Passwort ({PASSWORD_MIN}+ Zeichen) wird automatisch erzeugt. Der User muss es
+        beim ersten Login ändern. Admins müssen zusätzlich eine Authenticator-App einrichten.
+      </p>
 
-      {msg && <p className={msg.ok ? "success" : "error"}>{msg.text}</p>}
+      {msg && (
+        <p className={msg.ok ? "success" : "error"}>
+          {msg.text}
+          {msg.pw && (
+            <>
+              {" "}
+              <code className="temp-pw">{msg.pw}</code>
+            </>
+          )}
+        </p>
+      )}
 
       <table>
         <thead>
@@ -110,9 +110,12 @@ export default function Admin() {
               <td>{u.role}</td>
               <td>{new Date(u.created_at).toLocaleDateString("de-DE")}</td>
               <td className="actions">
-                <button className="secondary" onClick={() => onReset(u)}>Passwort</button>
-                {u.id !== profile?.id && (
-                  <button className="danger" onClick={() => onDelete(u)}>Löschen</button>
+                {/* Aktionen gegen Admins (inkl. sich selbst) sind serverseitig gesperrt */}
+                {u.role !== "admin" && u.id !== profile?.id && (
+                  <>
+                    <button className="secondary" onClick={() => onReset(u)}>Passwort</button>
+                    <button className="danger" onClick={() => onDelete(u)}>Löschen</button>
+                  </>
                 )}
               </td>
             </tr>

@@ -68,3 +68,7 @@ td.actions { display: flex; gap: 6px; justify-content: flex-end; }
 .success { color: var(--success); }
 .hint { font-size: 1.2em; }
 .center { text-align: center; }
+.small { font-size: 0.85em; }
+code { word-break: break-all; }
+.section { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.temp-pw { font-family: ui-monospace, monospace; user-select: all; }

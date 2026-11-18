@@ -13,9 +13,10 @@ export default function Highscores() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // get_highscores(): security-definer-Funktion, liefert nur Top 10
+    // mit Username/Versuchen/Datum – keine weiteren Profildaten.
     supabase
-      .from("highscores")
-      .select("*")
+      .rpc("get_highscores")
       .then(({ data, error }) => {
         if (error) setError(error.message);
         else setRows(data as Row[]);

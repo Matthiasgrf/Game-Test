@@ -27,16 +27,32 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
 `spieler1@game-test.local` um (`src/lib/supabase.ts`). Der User sieht davon nichts.
 
 ### Sicherheitsmodell
+Ausführlicher Befund und Reifegrad: [`docs/security-review.md`](docs/security-review.md).
+
 - **Signups deaktiviert** → niemand kann sich selbst registrieren.
 - Neue User entstehen nur in der Edge Function mit dem `SUPABASE_SERVICE_ROLE_KEY`
   (liegt nur auf dem Supabase-Server, nie im Repo/Frontend).
 - Die Rolle wird in `app_metadata` gesetzt (vom User nicht änderbar) und vom
   Trigger `handle_new_user` in `profiles.role` übernommen.
-- RLS: `profiles` nur lesbar; `scores` lesbar, einfügen nur für den eigenen User.
+- **MFA (TOTP) ist für Admins Pflicht.** Die Edge Function akzeptiert Admin-Aktionen
+  nur mit einer MFA-bestätigten Sitzung (JWT-Claim `aal = aal2`). Normale User können
+  MFA freiwillig unter *Konto* einrichten.
+- **Start-Passwörter** werden zufällig erzeugt (16 Zeichen), einmalig angezeigt und
+  müssen beim ersten Login geändert werden (`app_metadata.must_change_password`).
+  Mindestlänge 12 Zeichen.
+- Admins können andere Admins weder löschen noch deren Passwort setzen
+  (nur im Supabase-Dashboard). Alle Aktionen landen in `admin_audit_log`.
+- **Spiel serverseitig:** Geheimzahl und Versuche liegen in `game_rounds`
+  (für Clients unlesbar). Scores entstehen nur über die RPC `guess()` → nicht fälschbar.
+- RLS: `profiles` und `scores` nur eigene Zeilen lesbar; Highscores über
+  `get_highscores()` (nur Username + Versuche + Datum).
 - **GRANTs nicht vergessen** (`20261118000100_grants.sql`): RLS-Policies filtern nur
   Zeilen. Die Rolle braucht zusätzlich Tabellenrechte (`grant select ...`), sonst
   kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
   `TRUNCATE` ist für Client-Rollen entzogen, weil es RLS umgeht.
+- Frontend: Content-Security-Policy per `<meta>` (im Build, `vite.config.ts`),
+  `no-referrer`, Logout beendet alle Sessions (`scope: global`).
+- CI: Least-Privilege-Permissions pro Job, `npm audit`, Dependabot, CodeQL.
 
 ## Einmalige Einrichtung
 
@@ -50,6 +66,15 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
    ```
 3. **Signups abschalten:** *Authentication → Sign In / Providers →
    „Allow new users to sign up“* **aus**.
+4. **Passwort-Sicherheit:** *Authentication → Sign In / Providers → Email*:
+   „Prevent use of leaked passwords“ **an**, Minimum length **12**,
+   Password requirements mindestens *Letters and digits*.
+5. **MFA:** *Authentication → Multi-Factor* → TOTP **enabled** (Standard).
+6. **Optional, empfohlen:** *Authentication → Attack Protection* → CAPTCHA
+   (Cloudflare Turnstile) aktivieren und Rate-Limits für Sign-in prüfen
+   (CAPTCHA erfordert zusätzlich ein Turnstile-Widget im Login-Formular).
+7. **Edge Function CORS:** Falls die App nicht unter `https://matthiasgrf.github.io`
+   läuft, Secret `ALLOWED_ORIGINS` (kommagetrennt) unter *Edge Functions → Secrets* setzen.
 
 ### 2. GitHub
 1. *Settings → Pages → Source:* **GitHub Actions**.

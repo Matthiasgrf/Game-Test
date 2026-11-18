@@ -1,15 +1,29 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 
-const newSecret = () => Math.floor(Math.random() * 100) + 1;
-
+// Die Geheimzahl liegt ausschliesslich in der Datenbank (Tabelle game_rounds,
+// fuer den Client nicht lesbar). Der Browser ruft nur start_round() und
+// guess() auf; der Score wird serverseitig eingetragen und ist so nicht faelschbar.
 export default function Game() {
-  const [secret, setSecret] = useState(newSecret);
+  const [roundId, setRoundId] = useState<string | null>(null);
   const [guess, setGuess] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [hint, setHint] = useState("Ich denke mir eine Zahl zwischen 1 und 100.");
-  const [won, setWon] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const start = useCallback(async (text: string) => {
+    setError(null);
+    const { data, error } = await supabase.rpc("start_round");
+    if (error) return setError(error.message);
+    setRoundId(data as string);
+    setAttempts(0);
+    setDone(false);
+    setHint(text);
+  }, []);
+
+  useEffect(() => { start("Ich denke mir eine Zahl zwischen 1 und 100."); }, [start]);
 
   const onGuess = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,27 +32,23 @@ export default function Game() {
       setHint("Bitte eine ganze Zahl von 1 bis 100 eingeben.");
       return;
     }
-    const tries = attempts + 1;
-    setAttempts(tries);
+    if (!roundId) return;
+    setBusy(true);
     setGuess("");
-    if (n < secret) setHint(`${n} ist zu klein.`);
-    else if (n > secret) setHint(`${n} ist zu groß.`);
-    else {
-      setHint(`Richtig! ${secret} in ${tries} Versuchen.`);
-      setWon(true);
-      // user_id wird in der DB per default auf auth.uid() gesetzt,
-      // die RLS-Policy erlaubt nur Inserts fuer den eigenen User.
-      const { error } = await supabase.from("scores").insert({ attempts: tries });
-      setSaveMsg(error ? `Fehler beim Speichern: ${error.message}` : "Score gespeichert ✔");
+    const { data, error } = await supabase.rpc("guess", { p_round: roundId, p_guess: n });
+    setBusy(false);
+    if (error) return setError(error.message);
+    const { result, attempts: tries } = (data as { result: string; attempts: number }[])[0];
+    setAttempts(tries);
+    if (result === "low") setHint(`${n} ist zu klein.`);
+    else if (result === "high") setHint(`${n} ist zu groß.`);
+    else if (result === "correct") {
+      setHint(`Richtig! ${n} in ${tries} Versuchen. Score gespeichert ✔`);
+      setDone(true);
+    } else {
+      setHint("Maximale Anzahl Versuche erreicht.");
+      setDone(true);
     }
-  };
-
-  const restart = () => {
-    setSecret(newSecret());
-    setAttempts(0);
-    setWon(false);
-    setSaveMsg(null);
-    setHint("Neue Runde! Zahl zwischen 1 und 100.");
   };
 
   return (
@@ -46,11 +56,9 @@ export default function Game() {
       <h2>Zahlenraten</h2>
       <p className="hint" data-testid="hint">{hint}</p>
       <p className="muted">Versuche: {attempts}</p>
-      {won ? (
-        <>
-          {saveMsg && <p>{saveMsg}</p>}
-          <button onClick={restart}>Nochmal spielen</button>
-        </>
+      {error && <p className="error">{error}</p>}
+      {done ? (
+        <button onClick={() => start("Neue Runde! Zahl zwischen 1 und 100.")}>Nochmal spielen</button>
       ) : (
         <form onSubmit={onGuess} className="row">
           <input
@@ -62,7 +70,7 @@ export default function Game() {
             aria-label="Dein Tipp"
             autoFocus
           />
-          <button>Raten</button>
+          <button disabled={busy || !roundId}>Raten</button>
         </form>
       )}
     </main>
