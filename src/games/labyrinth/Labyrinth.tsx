@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } 
 import { Link } from "react-router-dom";
 import { DX, DY, E, N, S, W, canMove, generateMaze, idx, type Cell, type Dir, type Maze } from "./maze";
 import { isMuted, setMuted, sounds } from "./sound";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
 import "./labyrinth.css";
 
 // ---------- Konfiguration ---------------------------------------------
@@ -60,17 +62,10 @@ function newPlay(size: number): Play {
 type Phase = "menu" | "play" | "levelDone" | "finished";
 
 interface Best { stars: number; seconds: number }
-const loadBest = (mode: string): Best | null => {
-  try {
-    const raw = localStorage.getItem(`labyrinth-best-${mode}`);
-    return raw ? (JSON.parse(raw) as Best) : null;
-  } catch {
-    return null;
-  }
-};
-const saveBest = (mode: string, b: Best) => {
-  try { localStorage.setItem(`labyrinth-best-${mode}`, JSON.stringify(b)); } catch { /* egal */ }
-};
+const better = (a: Best, b: Best | undefined) =>
+  !b || a.stars > b.stars || (a.stars === b.stars && a.seconds < b.seconds);
+
+type SaveState = "saving" | "saved" | "error";
 
 const KEYS: Record<string, Dir> = {
   ArrowUp: N, ArrowRight: E, ArrowDown: S, ArrowLeft: W,
@@ -89,6 +84,25 @@ export default function Labyrinth() {
   const [result, setResult] = useState<{ stars: number; maxStars: number; seconds: number; record: boolean } | null>(null);
   const [muted, setMutedState] = useState(isMuted);
   const [praise, setPraise] = useState(PRAISE[0]);
+  const [best, setBest] = useState<Record<string, Best>>({});
+  const [saveState, setSaveState] = useState<SaveState | null>(null);
+  const { profile } = useAuth();
+
+  // Eigene Bestleistungen je Stufe aus Supabase laden
+  const userId = profile?.id;
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("labyrinth_scores")
+      .select("mode, stars, seconds")
+      .eq("user_id", userId)
+      .then(({ data }) => {
+        const b: Record<string, Best> = {};
+        for (const r of (data ?? []) as (Best & { mode: string })[])
+          if (better(r, b[r.mode])) b[r.mode] = { stars: r.stars, seconds: r.seconds };
+        setBest(b);
+      });
+  }, [userId]);
 
   // Ref spiegelt den aktuellen Zustand, damit Tastatur-/Touch-Handler
   // mehrere Schritte direkt hintereinander ausfuehren koennen.
@@ -127,10 +141,17 @@ export default function Labyrinth() {
       setPraise(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
       if (level + 1 >= mode.sizes.length) {
         const seconds = Math.round((Date.now() - startedAt) / 1000);
-        const best = loadBest(mode.id);
-        const record = !best || total > best.stars || (total === best.stars && seconds < best.seconds);
-        if (record) saveBest(mode.id, { stars: total, seconds });
-        setResult({ stars: total, maxStars: maxStarsSoFar.current, seconds, record });
+        const maxStars = maxStarsSoFar.current;
+        const mine = { stars: total, seconds };
+        const record = better(mine, best[mode.id]);
+        if (record) setBest((b) => ({ ...b, [mode.id]: mine }));
+        setResult({ stars: total, maxStars, seconds, record });
+        // Ergebnis speichern – user_id setzt die DB per default auf auth.uid()
+        setSaveState("saving");
+        void supabase
+          .from("labyrinth_scores")
+          .insert({ mode: mode.id, stars: total, max_stars: maxStars, seconds })
+          .then(({ error }) => setSaveState(error ? "error" : "saved"));
         sounds.trophy();
         setPhase("finished");
       } else {
@@ -138,7 +159,7 @@ export default function Labyrinth() {
         setPhase("levelDone");
       }
     },
-    [level, mode, starsTotal, startedAt],
+    [level, mode, starsTotal, startedAt, best],
   );
 
   /** Einen Schritt gehen. Gibt true zurueck, wenn sich die Figur bewegt hat. */
@@ -267,12 +288,12 @@ export default function Labyrinth() {
           <p className="muted">Sammle unterwegs die ⭐ Sterne ein.</p>
           <div className="lab-modes">
             {MODES.map((m) => {
-              const best = loadBest(m.id);
+              const b = best[m.id];
               return (
                 <button key={m.id} className="lab-mode" onClick={() => startChallenge(m)}>
                   <span className="lab-mode-emoji">{m.emoji}</span>
                   <span className="lab-mode-label">{m.label}</span>
-                  {best && <span className="lab-mode-best">Rekord: ⭐ {best.stars}</span>}
+                  {b && <span className="lab-mode-best">Rekord: ⭐ {b.stars}</span>}
                 </button>
               );
             })}
@@ -297,12 +318,17 @@ export default function Labyrinth() {
           </p>
           <p className="muted">Zeit: {formatTime(result.seconds)}</p>
           {result.record && <p className="lab-record">🎖️ Neuer Rekord!</p>}
+          <p className="muted lab-save">
+            {saveState === "saving" && "Speichere…"}
+            {saveState === "saved" && "✔ Ergebnis gespeichert"}
+            {saveState === "error" && "⚠️ Speichern hat nicht geklappt"}
+          </p>
           <div className="lab-heroes">{THEMES.map((t) => <span key={t.hero}>{t.hero}</span>)}</div>
           <div className="lab-actions">
             <button className="lab-btn" onClick={() => startChallenge(mode)}>🔁 Nochmal</button>
             <button className="lab-btn secondary" onClick={() => setPhase("menu")}>Andere Stufe</button>
           </div>
-          <BackLink />
+          <p><Link to="/highscores" className="lab-back">🏅 Bestenliste</Link> &nbsp; <BackLink /></p>
         </div>
       </main>
     );

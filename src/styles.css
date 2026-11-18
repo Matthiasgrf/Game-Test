@@ -88,3 +88,5 @@ td.actions { display: flex; gap: 6px; justify-content: flex-end; }
   background: var(--bg); border: 1px solid var(--border);
 }
 .back-link { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 8px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs.small button { padding: 6px 10px; font-size: 0.9em; }

@@ -18,6 +18,7 @@ Browser (React, GitHub Pages)
 | Baustein | Datei | Wie angelegt |
 |---|---|---|
 | DB-Schema, RLS, Trigger | `supabase/migrations/20261118000000_init.sql` | Claude via Supabase-MCP `apply_migration` |
+| Labyrinth-Ergebnisse | `supabase/migrations/20261118210000_labyrinth_scores.sql` | Claude via Supabase-MCP `apply_migration` |
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
 | Deployment | `.github/workflows/deploy.yml` | GitHub Actions → GitHub Pages |
@@ -73,7 +74,11 @@ werden dort in der Liste `GAMES` eingetragen und in `src/App.tsx` als Route erg�
   ein paar Extra-Durchgängen, damit es weniger frustrierend ist).
 - **Steuerung:** Pfeiltasten oder WASD (Desktop); auf dem Handy die Figur mit dem
   Finger durch die Gänge ziehen oder das Steuerkreuz antippen (gedrückt halten = weiterlaufen).
-- Soundeffekte per WebAudio (abschaltbar), Konfetti, Rekord je Stufe im Browser (`localStorage`).
+- Soundeffekte per WebAudio (abschaltbar), Konfetti.
+- Jede abgeschlossene Challenge wird in **`labyrinth_scores`** gespeichert
+  (`supabase/migrations/20261118210000_labyrinth_scores.sql`). Die View
+  **`labyrinth_highscores`** liefert das beste Ergebnis je Spieler und Stufe
+  (meiste Sterne, dann schnellste Zeit), Top 10 je Stufe – zu sehen unter **Highscores**.
 
 ## Lokal starten
 
@@ -86,7 +91,7 @@ npm run dev
 ## Ablauf zum Ausprobieren
 1. Als `admin` einloggen → Tab **Admin** → User `spieler1` anlegen.
 2. Logout, als `spieler1` einloggen → kein Admin-Tab sichtbar.
-3. Übersicht → Labyrinth oder Zahlenraten spielen → Zahlenraten-Ergebnisse erscheinen unter **Highscores**.
+3. Übersicht → Labyrinth oder Zahlenraten spielen → Ergebnisse erscheinen unter **Highscores** (Tabs Labyrinth / Zahlenraten).
 
 ## Was Claude Code hier gemacht hat
 - **Supabase-MCP:** Projekt gefunden, Migration angewendet, Security-Advisors
