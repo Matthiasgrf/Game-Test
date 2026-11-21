@@ -1,0 +1,46 @@
+name: Spiele prüfen
+
+# Läuft bei jedem Push und Pull Request: TypeScript, Regel-Prüfung, dann öffnet ein Browser
+# Übersicht, Highscores und jedes Spiel (Login wird nachgestellt, keine echte Datenbank).
+# Spiele mit einer Datei in tools/spieltests/ werden danach automatisch durchgespielt.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruefen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: TypeScript prüfen
+        run: npx tsc -b
+      - name: Regeln prüfen (games.json, Dateien, Migrationen)
+        run: node tools/check.js
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+      - name: Übersicht und Spiele im Browser öffnen
+        run: node tools/smoke.js
+      - name: Spiele durchspielen
+        run: node tools/spieltest.js
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test-ergebnisse/
+          if-no-files-found: ignore
+          retention-days: 14

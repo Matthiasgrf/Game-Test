@@ -21,6 +21,7 @@ Browser (React, GitHub Pages)
 | Labyrinth-Ergebnisse | `supabase/migrations/20261118210000_labyrinth_scores.sql` | Claude via Supabase-MCP `apply_migration` |
 | Highscores für alle Spiele | `supabase/migrations/20261121140000_game_scores.sql` | Claude via Supabase-MCP `apply_migration` |
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
+| Spiele, Werkzeuge, Tests | `src/games/games.json`, `public/games/`, `tools/`, `CLAUDE.md` | `node tools/neues-spiel.js`, `npm test` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
 | Deployment | `.github/workflows/deploy.yml` | GitHub Actions → GitHub Pages |
 
@@ -47,7 +48,7 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
   Admins sehen alle Spiele. Verwaltet wird alles im Tab **Admin**.
 - Nur Admins dürfen Zuordnungen ändern (RLS über `public.is_admin()`).
   Ergebnisse werden nur gespeichert, wenn `public.can_play('<spiel>')` stimmt.
-- Spiele stehen in `src/games/catalog.ts` (`key` = `game_groups.game_key`).
+- Spiele stehen in `src/games/games.json` (`key` = `game_groups.game_key` = `games.key`).
 - Highscores (`20261121120000_group_highscores.sql`): Spieler sehen nur Ergebnisse
   von Mitspielern aus ihren Gruppen und nur für Spiele dieser Gruppen
   (RLS über `public.can_see_score()`). Die Bestenlisten werden je Gruppe berechnet.
@@ -77,17 +78,23 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
 
 Nach dem Login erscheint die **Übersicht** (`src/pages/Overview.tsx`) mit allen
 Spielen, die für eine Gruppe des Spielers freigegeben sind. Alle Spiele stehen in
-`src/games/catalog.ts` (`GAMES`); Übersicht, Routen, Highscores und Admin bauen sich daraus auf.
+**`src/games/games.json`**; Übersicht, Routen, Highscores, Admin und die Werkzeuge in `tools/`
+lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readme.md`
+(Beschreibung, Steuerung, Highscore) und `thumbnail.jpg` (Kachelbild, 900×600).
+
+| Spiel | Art | Gruppe | Beschreibung |
+|---|---|---|---|
+| Labyrinth-Abenteuer | React, `src/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
+| Zahlenraten | React, `src/games/zahlenraten/` | Kindergarten | `public/games/zahlenraten/readme.md` |
+| Elisabeth von Thüringen | HTML, `public/games/elisabeth/` | Klasse-3c | `public/games/elisabeth/readme.md` |
 
 Es gibt zwei Arten von Spielen:
 
-| Art | Wo | Beispiel |
-|---|---|---|
-| React-Komponente | `src/games/<key>/`, in `REACT_GAMES` in `src/App.tsx` eintragen | Labyrinth, Zahlenraten |
-| Eigenständige HTML-Datei | `public/games/<key>/index.html`, im Katalog `html: "games/<key>/index.html"` | Elisabeth |
-
-HTML-Spiele zeigt `src/games/HtmlGame.tsx` bildschirmfüllend in einem iframe. Der Link
-„🏠 Alle Spiele“ im Spiel zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
+- **React-Spiel** (`"type": "react"`): `src/games/<key>/index.tsx` mit `export default`. Die App lädt es
+  automatisch als Route `#/spiele/<key>`, erst wenn es geöffnet wird.
+- **HTML-Spiel** (`"type": "html"`): eine eigenständige Datei `public/games/<key>/index.html`, ohne Build.
+  `src/games/HtmlGame.tsx` zeigt sie bildschirmfüllend in einem iframe. Der Link „🏠 Alle Spiele“
+  zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
 
 ### Highscores (für alle Spiele)
 Alle Spiele speichern in **eine** Tabelle, `game_scores`
@@ -105,8 +112,9 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
   `low` (weniger sind besser, z. B. Versuche oder Fehler) oder **`none` (Spiel ohne Highscores)**.
   Für `none` lehnt die Datenbank das Speichern ab.
 - View **`game_highscores`**: bestes Ergebnis je Spieler, Top 10 je Gruppe, Spiel und Variante.
-- Im Katalog beschreibt `highscore: { better, pointsLabel, pointsIcon?, showTime?, variants?, rule }`
+- In `src/games/games.json` beschreibt `highscore: { better, pointsLabel, pointsIcon?, showTime?, variants?, rule }`
   die Anzeige. `highscore: null` heißt: kein Highscore, das Spiel erscheint dann nicht unter **Highscores**.
+  `tools/check.js` prüft, dass games.json und die Tabelle `games` (Migrationen) zusammenpassen.
 - Speichern aus React: `saveScore(key, { points, maxPoints?, seconds?, variant? })` (`src/games/scores.ts`).
 - Speichern aus HTML-Spielen: `public/games/shared/game-test.js` einbinden und am Ende
   `GameTest.reportScore({ points, maxPoints?, seconds?, variant? })` aufrufen. Das Spiel schickt das
@@ -115,35 +123,29 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
 - Die alten Tabellen `scores` / `labyrinth_scores` (und ihre Views) werden nicht mehr benutzt.
   Ihre Daten wurden nach `game_scores` kopiert; entfernen in einer späteren Migration.
 
-### Neues Spiel hinzufügen – Checkliste
-1. Spiel anlegen (React-Komponente oder `public/games/<key>/index.html`).
-2. Eintrag in `src/games/catalog.ts` mit `highscore: {...}` oder `highscore: null`.
-3. Neue Migration: `insert into public.games (key, highscore) values ('<key>', 'high'|'low'|'none');`
-   und bei Bedarf eine Freigabe in `game_groups` (oder später im Tab **Admin**).
-4. `npm run build`, im Browser durchspielen.
+### Neues Spiel hinzufügen
 
-### Elisabeth von Thüringen (3. Klasse, Gruppe Klasse-3c) – `public/games/elisabeth/`
-- Übernommen aus dem Repository `3c-Lernspiele` (`games/elisabeth/`), Inhalt unverändert,
-  siehe `public/games/elisabeth/readme.md`.
-- Angepasst für Game-Test: Links „🏠 Alle Spiele“ führen zur App-Übersicht, Zoom-Schutz liegt
-  unter `public/games/shared/`, und das Spiel zählt jetzt Fehlversuche und die Zeit.
-  Am Ende zeigt es beides an und meldet es per `GameTest.reportScore` an die App.
-- Bestenliste: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit.
-- Die HTML-Datei ist öffentlich abrufbar (wie alles auf GitHub Pages). Ohne App und Login
-  läuft sie normal weiter, speichert dann aber nichts.
+```bash
+node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c
+```
 
-### Labyrinth-Abenteuer (ab ca. 5–6 Jahren) – `src/games/labyrinth/`
-- Challenge aus **5 Labyrinthen** hintereinander, jedes Level ein anderes Tier
-  (Maus → Käse, Hase → Karotte, Hund → Knochen, Biene → Blume, Pinguin → Fisch).
-- Drei Stufen: *Leicht* (4×4 bis 6×6), *Mittel* (5×5 bis 8×8), *Knifflig* (7×7 bis 11×11).
-- In jedem Labyrinth liegen 3 ⭐ Sterne – bevorzugt in Sackgassen versteckt.
-- Labyrinthe werden jedes Mal neu erzeugt (`maze.ts`, Recursive Backtracker mit
-  ein paar Extra-Durchgängen, damit es weniger frustrierend ist).
-- **Steuerung:** Pfeiltasten oder WASD (Desktop); auf dem Handy die Figur mit dem
-  Finger durch die Gänge ziehen oder das Steuerkreuz antippen (gedrückt halten = weiterlaufen).
-- Soundeffekte per WebAudio (abschaltbar), Konfetti.
-- Jede abgeschlossene Challenge wird in **`game_scores`** gespeichert (Variante = Stufe,
-  Punkte = Sterne). Bestenliste je Stufe: meiste Sterne, dann schnellste Zeit, zu sehen unter **Highscores**.
+Das legt aus `tools/vorlage/` ein lauffähiges Quiz an (HTML, mit `--react` als React-Spiel),
+dazu readme.md, den Eintrag in games.json, die Migration für die Tabelle `games` und einen
+Durchspiel-Test. `--ohne-highscore` legt ein Spiel ohne Bestenliste an. Die vollständige
+Checkliste und die Regeln für Spiele stehen in **`CLAUDE.md`**.
+
+## Tests
+
+| Befehl | Zweck |
+|---|---|
+| `npm run check` | Regeln ohne Browser: games.json, Dateien, Vorschaubilder, Links, fremde Server, Highscore ↔ Datenbank |
+| `npm run smoke` | Übersicht, Highscores und jedes Spiel im Browser öffnen (Computer + Handy), Screenshots in `test-ergebnisse/` |
+| `npm run spieltest` | Spiele mit Test in `tools/spieltests/` automatisch durchspielen, inkl. gespeichertem Ergebnis |
+| `npm test` | alles zusammen, wie der Workflow **„Spiele prüfen“** bei jedem Push |
+
+Die Browser-Tests bauen die App mit Test-Zugangsdaten und stellen Supabase im Browser nach
+(`tools/lib.js`, `mockSupabase`). Sie brauchen weder Passwort noch Datenbank und speichern nichts.
+Einmalig nötig: `npx playwright install chromium`.
 
 ## Lokal starten
 
@@ -156,7 +158,7 @@ npm run dev
 ## Ablauf zum Ausprobieren
 1. Als `admin` einloggen → Tab **Admin** → User `spieler1` anlegen.
 2. Logout, als `spieler1` einloggen → kein Admin-Tab sichtbar.
-3. Übersicht → Labyrinth oder Zahlenraten spielen → Ergebnisse erscheinen unter **Highscores** (Tabs Labyrinth / Zahlenraten).
+3. Übersicht → ein freigegebenes Spiel spielen → das Ergebnis erscheint unter **Highscores**.
 
 ## Was Claude Code hier gemacht hat
 - **Supabase-MCP:** Projekt gefunden, Migration angewendet, Security-Advisors
@@ -165,4 +167,4 @@ npm run dev
   auf einen Feature-Branch gepusht; Pull Request nach `main` auf Wunsch.
 
 Ideen zum Weiterlernen: Supabase CLI lokal (`supabase start`), Migrationen
-per GitHub Action automatisch deployen, Tests mit Playwright.
+per GitHub Action automatisch deployen.

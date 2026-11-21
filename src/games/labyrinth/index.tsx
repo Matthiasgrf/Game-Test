@@ -430,7 +430,7 @@ export default function Labyrinth() {
 // ---------- Hilfskomponenten -----------------------------------------------
 
 function BackLink() {
-  return <Link to="/" className="lab-back">← Alle Spiele</Link>;
+  return <Link to="/" className="lab-back">🏠 Alle Spiele</Link>;
 }
 
 function Walls({ maze, color }: { maze: Maze; color: string }) {

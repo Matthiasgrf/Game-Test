@@ -1,21 +1,28 @@
-import type { ReactNode } from "react";
+import { Suspense, createElement, lazy, type ComponentType } from "react";
 import { HashRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
-import NumberGuess from "./pages/NumberGuess";
-import Labyrinth from "./games/labyrinth/Labyrinth";
 import Highscores from "./pages/Highscores";
 import Admin from "./pages/Admin";
 import GameGate from "./games/GameGate";
 import HtmlGame from "./games/HtmlGame";
 import { GAMES } from "./games/catalog";
 
-// Spiele als React-Komponente; Spiele mit `html` im Katalog laufen im iframe.
-const REACT_GAMES: Record<string, ReactNode> = {
-  labyrinth: <Labyrinth />,
-  zahlenraten: <NumberGuess />,
-};
+// React-Spiele: src/games/<key>/index.tsx, werden erst beim Öffnen geladen.
+// HTML-Spiele (type "html" in games.json) laufen im iframe (HtmlGame).
+const REACT_GAMES = Object.fromEntries(
+  Object.entries(import.meta.glob<{ default: ComponentType }>("./games/*/index.tsx")).map(
+    ([file, load]) => [file.split("/")[2], lazy(load)],
+  ),
+);
+
+function GameView({ game }: { game: (typeof GAMES)[number] }) {
+  if (game.html) return <HtmlGame game={game} />;
+  const component = REACT_GAMES[game.key];
+  if (!component) return <p className="center error">Spiel „{game.key}“ fehlt (src/games/{game.key}/index.tsx).</p>;
+  return <Suspense fallback={<p className="center muted">Lade…</p>}>{createElement(component)}</Suspense>;
+}
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -49,7 +56,7 @@ export default function App() {
           <Route
             key={g.key}
             path={g.path}
-            element={<GameGate gameKey={g.key}>{g.html ? <HtmlGame game={g} /> : REACT_GAMES[g.key]}</GameGate>}
+            element={<GameGate gameKey={g.key}><GameView game={g} /></GameGate>}
           />
         ))}
         <Route path="/highscores" element={<Highscores />} />

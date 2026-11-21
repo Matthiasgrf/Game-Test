@@ -16,11 +16,12 @@ Manche Stationen haben mehrere Fragen nacheinander („Frage 2 / 6“, Knopf „
 
 Steuerung: Pfeiltasten / WASD, Klick bzw. Tippen auf die Wiese oder Steuerkreuz auf dem Handy.
 
-Durchspiel-Test: `node tools/spieltest.js elisabeth`
 
 ## In Game-Test
 
 Übernommen aus dem Repository 3c-Lernspiele. Läuft in der App im iframe (`src/games/HtmlGame.tsx`).
 Zusätzlich zählt das Spiel Fehlversuche und Zeit und meldet sie am Ende mit `GameTest.reportScore`
 (`../shared/game-test.js`) für die Bestenliste. Die Links „🏠 Alle Spiele“ führen zur App-Übersicht.
-Der Hinweis oben auf `node tools/spieltest.js` bezieht sich auf das Repository 3c-Lernspiele.
+Highscore: Punkte = Fehlversuche (weniger ist besser), bei Gleichstand die kürzere Zeit.
+
+Durchspiel-Test: `node tools/spieltest.js elisabeth`

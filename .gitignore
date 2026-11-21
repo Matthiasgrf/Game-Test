@@ -1,5 +1,7 @@
 node_modules
 dist
+.test-build
+test-ergebnisse
 .env
 .env.local
 *.log
