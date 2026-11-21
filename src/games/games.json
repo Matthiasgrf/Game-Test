@@ -40,7 +40,8 @@
     "highscore": {
       "better": "low",
       "pointsLabel": "Versuche",
-      "rule": "Bestes Ergebnis je Spieler: wenigste Versuche."
+      "rule": "Bestes Ergebnis je Spieler: wenigste Versuche.",
+      "serverScored": true
     }
   },
   {
