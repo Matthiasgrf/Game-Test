@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Liftschlange</title>
 <style>
 /* LIFTSCHLANGE – Snake in der Warteschlange vor dem Sessellift.
@@ -34,10 +35,15 @@ button{font:inherit;color:inherit}
 #suspWrap.alarm{background:#ffe3e3;animation:blink .3s infinite alternate}
 @keyframes blink{to{background:#ff8787}}
 #effects{position:fixed;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:4px;pointer-events:none}
+/* Knöpfe des Kits in der Kopfzeile (Spiel für Erwachsene: etwas kleiner, damit die Zeile einzeilig bleibt) */
+.kitbar{display:flex;gap:6px;align-items:center;margin-left:4px}
+#hud .gt-icon{width:42px;height:42px;font-size:19px;border-width:2px}
 #effects .pill{padding:4px 9px;min-height:30px;font-size:14px;background:#fff3bf}
 @media (max-width:640px){
   #hud{gap:4px;padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) 4px calc(4px + env(safe-area-inset-left))}
   #hud .txt{display:none}
+  #hud .gt-icon{width:38px;height:38px;font-size:17px}
+  .kitbar{gap:4px;margin-left:0}
   .pill{font-size:14px;padding:4px 8px;min-height:36px}
   .pill.icon{min-width:36px;font-size:15px}
   #suspBar{width:40px}
@@ -109,13 +115,11 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   <div id="banner" aria-live="polite"></div>
 </div>
 <div id="hud">
-  <a class="pill" href="../../#/" target="_top" aria-label="Alle Spiele">🏠<span class="txt"> Alle Spiele</span></a>
   <span class="pill" title="Punkte">⭐ <span id="hudPoints">0</span></span>
   <span class="pill" title="Länge der Schlange">🐍 <span id="hudLength">3</span></span>
   <span class="pill" title="Level">📶<span class="txt"> Lvl</span> <span id="hudLevel">1</span></span>
   <span class="pill" id="suspWrap" title="Verdacht des Liftwarts">👮 <span id="suspBar"><span id="suspFill" style="display:block"></span></span></span>
-  <button class="pill icon" id="pauseBtn" title="Pause (P)" aria-label="Pause">⏸</button>
-  <button class="pill icon" id="muteBtn" title="Ton an/aus (M)" aria-label="Ton an/aus">🔊</button>
+  <span id="kitbar" class="kitbar"></span>
 </div>
 <div id="effects"></div>
 <div id="pad" hidden>
@@ -318,7 +322,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 
   /* Speicher im Browser – nur eigene Schlüssel, die mit liftschlange_ beginnen */
   var KEY_SPIELER = 'liftschlange_spieler_v1';
-  var KEY_TON = 'liftschlange_ton_v1';
   var KEY_TUTORIAL = 'liftschlange_tutorial_v1';
   var KEY_FOTO = 'liftschlange_foto_v1_';   // + Name
 
@@ -379,7 +382,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   /* =====================================================================
      TON – alles synthetisch mit der Web Audio API
      ===================================================================== */
-  var muted = store.get(KEY_TON) === 'aus';
+  var muted = false;   /* Ton an/aus: Leiste des Kits (gemeinsame Einstellung aller Spiele) */
   var actx = null;
   function audio() {
     if (muted) return null;
@@ -435,8 +438,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   };
   function setMuted(m) {
     muted = m;
-    store.set(KEY_TON, m ? 'aus' : 'an');
-    $('muteBtn').textContent = m ? '🔇' : '🔊';
     $('startMuteBtn').textContent = m ? '🔇 Ton aus' : '🔊 Ton an';
     if (!m) audio();
   }
@@ -578,11 +579,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var k = e.key;
     var map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
     if (map[k]) { e.preventDefault(); lenke(map[k]); return; }
-    if (k === 'p' || k === 'P' || k === 'Escape' || k === ' ') {
-      if (S && S.phase === 'play') { e.preventDefault(); pause(true); }
-      else if (S && S.phase === 'pause') { e.preventDefault(); pause(false); }
+    if (k === ' ' && kit && S && (S.phase === 'play' || S.phase === 'pause')) {   /* P, Esc und M: Kit */
+      e.preventDefault();
+      if (S.phase === 'play') kit.pause(); else kit.resume();
     }
-    if (k === 'm' || k === 'M') setMuted(!muted);
   });
   /* Wischen auf dem Spielfeld */
   var swipe = null;
@@ -604,6 +604,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
      ===================================================================== */
   function zeige(id) {
     ['start', 'tutorial', 'pause', 'over'].forEach(function (o) { $(o).hidden = o !== id; });
+    if (kit && id !== 'pause') kit.setState(id === 'over' ? 'end' : id ? 'menu' : 'play');
   }
 
   function starte() {
@@ -636,7 +637,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       last = performance.now();
     }
   }
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(true); });
 
   function step() {
     while (S.queue.length) {
@@ -833,6 +833,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     if (S.phase === 'over') return;
     var aufgegeben = cause === 'aufgegeben';
     S.phase = 'over';
+    if (kit) kit.setState('end');
     S.cause = cause;
     if (cause === 'liftwart') { S.susp = 1; SOUND.pfeife(); }
     else if (cause === 'kid') SOUND.kid();
@@ -962,11 +963,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   $('tutorialOk').addEventListener('click', los);
   $('againBtn').addEventListener('click', starte);
   $('whoBtn').addEventListener('click', function () { S = neuerZustand(); neuesEssen(); updateHud(); zeige('start'); });
-  $('pauseBtn').addEventListener('click', function () { if (S.phase === 'play') pause(true); else pause(false); });
-  $('resumeBtn').addEventListener('click', function () { pause(false); });
+  $('resumeBtn').addEventListener('click', function () { if (kit) kit.resume(); else pause(false); });
   $('quitBtn').addEventListener('click', function () { S.phase = 'play'; ende('aufgegeben'); });
-  $('muteBtn').addEventListener('click', function () { setMuted(!muted); });
-  $('startMuteBtn').addEventListener('click', function () { setMuted(!muted); });
+  $('startMuteBtn').addEventListener('click', function () { if (kit) kit.sound.toggle(); else setMuted(!muted); });
   setMuted(muted);
 
   /* =====================================================================
@@ -988,7 +987,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     if (e.williams > 0) fx += '<span class="pill" title="Williams: Turbo">🥃 ' + Math.ceil(e.williams) + 's</span>';
     if (e.furz > 0) fx += '<span class="pill" title="Liftwart betäubt">💨 ' + Math.ceil(e.furz) + 's</span>';
     $('effects').innerHTML = fx;
-    $('pauseBtn').textContent = S.phase === 'pause' ? '▶' : '⏸';
   }
 
   /* =====================================================================
@@ -1348,8 +1346,13 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   }
 
   /* Hauptschleife */
-  var last = performance.now();
+  var last = performance.now(), raf = 0, lastDraw = 0, angehalten = false;
   function frame(now) {
+    raf = 0;
+    if (angehalten) return;                                   /* Pause: nichts zeichnen */
+    raf = requestAnimationFrame(frame);
+    if ((!S || S.phase !== 'play') && now - lastDraw < 50) return;   /* Menü, Ende: 20 Bilder/s */
+    lastDraw = now;
     var dt = Math.min(0.05, (now - last) / 1000) * SPIEL.timeScale;
     last = now;
     if (S && S.phase === 'play' && dt > 0) update(dt);
@@ -1361,8 +1364,22 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       wob.style.transform = 'scale(1.06) rotate(' + (Math.sin(tt * 2.1) * 1.6).toFixed(2) + 'deg) translate(' + (Math.sin(tt * 3.3) * 4).toFixed(1) + 'px,' + (Math.cos(tt * 2.6) * 3).toFixed(1) + 'px)';
     } else if (wob.style.transform) wob.style.transform = '';
     draw(now);
-    requestAnimationFrame(frame);
   }
+
+  /* =====================================================================
+     GAME-TEST-KIT (public/games/shared/kit/): Pause, Ton, Vollbild und „Alle Spiele“ in der Kopfzeile,
+     automatische Pause im Hintergrund, Tasten P/Esc und M. Die Pinkelpause bleibt das Pause-Fenster.
+     ===================================================================== */
+  var kit = null;
+  import('../shared/kit/kit.js').then(function (m) {
+    kit = m.startKit({
+      key: 'liftschlange', orientation: 'any', bar: $('kitbar'), pauseScreen: false,
+      pause: function () { pause(true); angehalten = true; },
+      resume: function () { angehalten = false; pause(false); last = performance.now(); if (!raf) raf = requestAnimationFrame(frame); },
+      sound: { setMuted: setMuted }
+    });
+    kit.setState(!S || $('start').hidden === false || $('tutorial').hidden === false ? 'menu' : S.phase === 'over' ? 'end' : 'play');
+  }).catch(function () {});
 
   /* Zugang für den Durchspiel-Test (tools/spieltests/liftschlange.js) */
   window.SPIEL = {
@@ -1410,7 +1427,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   neuesEssen();
   resize();
   updateHud();
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
 })();
 </script>
 </body>

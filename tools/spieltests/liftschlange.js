@@ -83,7 +83,7 @@ export default async function (t) {
     await game.evaluate(() => { SPIEL.timeScale = 0; });
     let s = await st();
     t.check(`${size}: Spiel läuft, Länge 3`, s.phase === 'play' && s.length === 3 && s.points === 0, JSON.stringify(s));
-    t.check(`${size}: während des Spiels „🏠 Alle Spiele“`, await game.locator('#hud a[href="../../#/"]').isVisible());
+    t.check(`${size}: während des Spiels „🏠 Alle Spiele“ (Kit in der Kopfzeile)`, await game.locator('#hud a[href="../../#/"]').isVisible());
     const view = await game.evaluate(() => SPIEL.view());
     t.check(`${size}: Spielfeld passt auf den Bildschirm`, view.left >= 0 && view.top >= 0 && view.right <= view.screen[0] && view.bottom <= view.screen[1] && view.canvas[0] > 200, JSON.stringify(view));
     t.check(`${size}: Spielszene füllt den ganzen Bildschirm`, view.cover > 0.98, String(view.cover));
@@ -214,7 +214,7 @@ export default async function (t) {
 
     /* Pause */
     await game.click('#againBtn');
-    await game.click('#pauseBtn');
+    await game.click('#hud [aria-label="Pause"]');
     t.check(`${size}: Pause-Bildschirm`, await game.locator('#pause').isVisible() && (await st()).phase === 'pause');
     await game.click('#resumeBtn');
     t.check(`${size}: weiter nach der Pause`, (await st()).phase === 'play');
