@@ -16,7 +16,8 @@
      t.frame(page)               Inhalt des iframes eines HTML-Spiels
      t.check(text, ok, detail)   eine Prüfung melden
      t.shot(page, name)          Screenshot nach test-ergebnisse/<key>-<name>.png
-     t.DESK, t.PHONE             übliche Größen für Computer und Handy */
+     t.DESK, t.TABLET, t.PHONE   übliche Größen für Computer, Tablet (iPad quer) und Handy (iPhone),
+                                 Tablet und Handy mit hoher Pixeldichte wie die echten Geräte */
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -49,7 +50,8 @@ for (const key of keys) {
     game: games.find((g) => g.key === key),
     url: `${url}#/spiele/${key}`,
     DESK: { viewport: { width: 1280, height: 800 } },
-    PHONE: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+    TABLET: { viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    PHONE: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
     check,
     async newPage(options, login) {
       const context = await browser.newContext(options || {});

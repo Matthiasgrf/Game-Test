@@ -49,7 +49,7 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 | `node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "…"] [--gruppe "…"] [--emoji "…"]` | Spiel aus der Vorlage anlegen: Dateien, games.json, Migration, Durchspiel-Test. Überschreibt nichts. |
 | `node tools/thumbnail.js <key> [--klick "<css>"] [--tippen "<css>" "<text>"] [--verstecken "<css>"] [--warten <ms>]` | `thumbnail.jpg` 900×600 als Screenshot |
 | `node tools/check.js` | Regeln prüfen ohne Browser – muss ohne Fehler durchlaufen |
-| `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer + Handy), Screenshots in `test-ergebnisse/` |
+| `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy – mit hoher Pixeldichte wie iPad/iPhone), Screenshots in `test-ergebnisse/` |
 | `node tools/spieltest.js [key]` | Spiele mit Testdatei in `tools/spieltests/` automatisch durchspielen |
 | `npm test` | alles zusammen (tsc, check, smoke, spieltest) |
 
@@ -69,8 +69,9 @@ Neue Regeln, die sich automatisch prüfen lassen, in `tools/check.js` ergänzen 
      Links „🏠 Alle Spiele“ (Start, während des Spiels, Ende) auf `../../#/` mit `target="_top"`,
      am Ende `GameTest.reportScore(...)`, Dateien von CDNs lokal ablegen.
    - Ergebnis für die Bestenliste ermitteln (z. B. Fehlversuche und Zeit zählen) und am Ende anzeigen.
-3. **Regeln für jedes Spiel**: keine fremden Server (Skripte, Schriften, Bilder lokal), nur relative Pfade,
-   bedienbar mit Maus/Tastatur **und** Touch (große Knöpfe, kein Hover-Zwang), Fortschritt sichtbar,
+3. **Regeln für jedes Spiel**: Spielfläche (`<canvas>`) per CSS auf Bildschirmgröße festlegen – sonst zeigen
+   iPad/iPhone (devicePixelRatio 2–3) nur einen vergrößerten Ausschnitt (prüft `smoke.js`); keine fremden
+   Server (Skripte, Schriften, Bilder lokal), nur relative Pfade, bedienbar mit Maus/Tastatur **und** Touch (große Knöpfe, kein Hover-Zwang), Fortschritt sichtbar,
    bei falscher Antwort freundliches Feedback und neuer Versuch, Gewinn-Bildschirm mit „Nochmal spielen“,
    keine Werbung, keine Tracker, keine Eingabe persönlicher Daten. Eigener `localStorage`-Schlüssel, nie
    `localStorage.clear()` (löscht den Login).
@@ -79,7 +80,7 @@ Neue Regeln, die sich automatisch prüfen lassen, in `tools/check.js` ergänzen 
 6. **Vorschaubild**: `node tools/thumbnail.js <key> …` – typische Spielszene ohne Bedienelemente. Ansehen.
 7. **Durchspiel-Test** `tools/spieltests/<key>.js` anpassen (die Vorlage passt zum Vorlagen-Quiz).
    Er muss Gewinn-Bildschirm und gespeichertes Ergebnis prüfen (`page.scores`).
-8. **Testen**: `npm test` ohne Fehler; Screenshots in `test-ergebnisse/` (Computer und Handy) ansehen,
+8. **Testen**: `npm test` ohne Fehler; Screenshots in `test-ergebnisse/` (Computer, Tablet und Handy) ansehen,
    auch die Übersicht (`uebersicht-*.png`) mit der neuen Kachel.
 9. **Datenbank**: Migration aus Schritt 1 prüfen (Highscore-Art, Freigabe für Gruppen) und mit dem
    Supabase-MCP `apply_migration` einspielen (Projekt „Game-test“). Sie legt nur neue Zeilen an und kann vor
