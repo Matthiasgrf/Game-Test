@@ -19,10 +19,10 @@ mit Namen) bringen 25 statt 10 Punkte.
 
 Steuerung: Pfeiltasten oder WASD, P/Leertaste/Esc = Pause, M = Ton · Tablet/Handy: Steuerkreuz oder Wischen.
 
-Highscore: Punkte (mehr ist besser), gemeldet an die Bestenliste der App. Zusätzlich lokale Bestenliste
-(Rekord pro Freund mit Länge und Datum, Letzter „Zahlt die erste Runde 🍻“) und „Score teilen“ (Text in die
-Zwischenablage für die WhatsApp-Gruppe). Die lokale Bestenliste steckt im Objekt `Bestenliste`
-(`laden`/`speichern`, Promises) – für ein eigenes Online-Leaderboard nur diese ersetzen.
+Highscore: Punkte (mehr ist besser, bei Gleichstand die kürzere Zeit). Jedes Ergebnis geht per
+`GameTest.reportScore` auf die gemeinsame Seite „Highscores“ der App – das Spiel hat keine eigene Bestenliste.
+Start- und Game-Over-Bildschirm verlinken dorthin. „Score teilen“ kopiert einen Text in die Zwischenablage
+(für die WhatsApp-Gruppe).
 
 Anpassen: alle Einstellungen stehen oben im Skript unter „EINSTELLUNGEN“ – Urlaubsdatum `URLAUB_START`,
 Freunde und Farben, Spieltempo, Liftwart (Tempo, Sichtweite, Verdacht), Power-ups, Rang-Titel und alle
@@ -31,7 +31,7 @@ Sprüche (`SPRUECHE`).
 Hinweise:
 - Eigenes Gesichtsfoto als Kopf: wird im Browser auf 128×128 verkleinert und nur im `localStorage`
   gespeichert (`liftschlange_foto_v1_<Name>`), nie hochgeladen.
-- `localStorage`: `liftschlange_bestenliste_v1`, `liftschlange_spieler_v1`, `liftschlange_ton_v1`,
+- `localStorage`: `liftschlange_spieler_v1`, `liftschlange_ton_v1`,
   `liftschlange_tutorial_v1`, `liftschlange_foto_v1_<Name>`.
 - Töne synthetisch per Web Audio API (Plopp, Rülpser, Trillerpfeife, Furz …), keine Dateien.
 - Für Tests: `window.SPIEL` (`timeScale`, `state()`, `step()`, `advance()`, `place()`, `kid()`, `holdWarden()`).

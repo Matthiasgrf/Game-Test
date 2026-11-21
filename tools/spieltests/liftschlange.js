@@ -4,8 +4,8 @@
    Schritt für Schritt – so ist jeder Lauf gleich.
    Geprüft auf Computer, Tablet (iPad quer) und Handy (iPhone): Startbildschirm (Countdown, Spielerauswahl,
    Foto), Tutorial beim ersten Start, Steuerung (Pfeiltasten bzw. Steuerkreuz), Einsammeln, alle Power-ups,
-   Snowboard-Kid, Liftwart-Sichtkegel → „ERWISCHT“, Game-Over-Bildschirm, gespeichertes Ergebnis (App und lokal),
-   Score teilen, Bestenliste mit „Zahlt die erste Runde“, „Nochmal spielen“ und ein echter Lauf gegen das Gitter. */
+   Snowboard-Kid, Liftwart-Sichtkegel → „ERWISCHT“, Game-Over-Bildschirm, gespeichertes Ergebnis (Highscores der App,
+   keine eigene Bestenliste), Score teilen, Link zu den Highscores, „Nochmal spielen“ und ein echter Lauf gegen das Gitter. */
 import zlib from 'node:zlib';
 
 /* kleines PNG (32×32, einfarbig) als Test-Foto */
@@ -46,6 +46,7 @@ export default async function (t) {
     t.check(`${size}: Start mit „Wer drängelt?“ und allen vier Freunden`, ['Wer drängelt?', 'Matze', 'Dani', 'Alex', 'Gabor'].every((w) => startText.includes(w)));
     t.check(`${size}: Countdown zum Skiurlaub`, /Skiurlaub/.test(await game.textContent('#countdown')));
     t.check(`${size}: Start-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('#start a[href="../../#/"]').isVisible());
+    t.check(`${size}: Start-Bildschirm mit Link zu den Highscores der App`, await game.locator('#start a[href="../../#/highscores"]').isVisible());
     await t.shot(page, `start-${size}`);
     await game.click('#p-Dani');
     t.check(`${size}: Dani ausgewählt`, (await st()).player === 'Dani' && (await game.getAttribute('#p-Dani', 'aria-pressed')) === 'true');
@@ -160,13 +161,9 @@ export default async function (t) {
     t.check(`${size}: Teilen-Text`, (await game.textContent('#shareText')).includes(`${s.points} Plätze vorgedrängelt`) && (await game.textContent('#shareText')).includes('ihr Pfeifen'));
     t.check(`${size}: Teilen-Knopf meldet sich`, (await game.textContent('#shareInfo')).length > 5, await game.textContent('#shareInfo'));
 
-    /* Lokale Bestenliste */
-    await game.click('#overBoardBtn');
-    const board = await game.textContent('#boardBody');
-    t.check(`${size}: Bestenliste zeigt Danis Rekord`, board.includes('Dani') && board.includes(String(s.points)), board);
-    t.check(`${size}: Letzter zahlt die erste Runde`, (await game.textContent('#boardBody tr.last')).includes('Zahlt die erste Runde'));
-    await t.shot(page, `bestenliste-${size}`);
-    await game.click('#boardClose');
+    /* Highscores nur in der App: Link statt eigener Bestenliste */
+    t.check(`${size}: Link „🏅 Highscores“ zur Highscore-Seite der App`, await game.locator('#over a[href="../../#/highscores"]').isVisible());
+    t.check(`${size}: keine eigene Bestenliste im Spiel`, await game.evaluate(() => !document.getElementById('board') && !Object.keys(localStorage).some((k) => k.includes('bestenliste'))));
 
     /* Nochmal spielen: ohne Tutorial, echter Lauf ohne Lenken bis ans Gitter */
     await game.evaluate(() => { SPIEL.timeScale = 1; });
