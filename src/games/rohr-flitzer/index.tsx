@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveScore } from "../scores";
-import { DELTA, OPPOSITE, ROWS, edgeAt, generateMaze, openDirs, type Dir, type Maze } from "./maze";
+import { DELTA, OPPOSITE, ROWS, edgeAt, generateMaze, type Dir, type Maze } from "./maze";
 import {
   H, W, drawFrame, edgeMid, freshSim, renderStatic, splash, stepParticles, wurstPos,
   type Phase, type Sim,
@@ -9,8 +9,8 @@ import {
 import "./rohr-flitzer.css";
 
 // Rohr-Flitzer – ein Spiel der Fisser-Flitzer.
-// Die Kackwurst flitzt nach einem Wisch von selbst durch das Rohr, auch um Kurven,
-// und hält an jeder Abzweigung. Dort entscheidet das Kind, wie es weitergeht.
+// Die Kackwurst bewegt sich nur, solange das Kind eine Richtung drückt:
+// kurz drücken = ein Feld, gedrückt halten = weiterflitzen. Von selbst läuft sie nicht.
 
 const SPEED: Record<Dir, number> = { down: 5.5, up: 3.5, left: 4.2, right: 4.2 }; // Zellen pro Sekunde
 
@@ -38,6 +38,8 @@ export default function RohrFlitzer() {
   const [scale, setScale] = useState(0.8);
   const scaleRef = useRef(scale);
   const staticRef = useRef<{ k: number; maze: Maze; cv: HTMLCanvasElement } | null>(null);
+  /** gerade gedrückte Richtungen, zuletzt gedrückte hinten */
+  const held = useRef<Dir[]>([]);
 
   // Für den Durchspiel-Test (tools/spieltests/rohr-flitzer.js): Rohrplan und Position lesbar machen
   useEffect(() => {
@@ -95,8 +97,9 @@ export default function RohrFlitzer() {
     return false;
   };
 
-  /** Eingabe vom Kind: Richtung wählen */
-  const steer = useCallback((d: Dir) => {
+  /** Richtung gedrückt (Taste, Knopf, Finger) */
+  const press = useCallback((d: Dir) => {
+    held.current = held.current.filter((x) => x !== d).concat(d);
     if (phaseRef.current !== "playing") return;
     const s = sim.current;
     const m = mazeRef.current;
@@ -116,6 +119,17 @@ export default function RohrFlitzer() {
     go(s, m, d, now);
   }, []);
 
+  /** Richtung losgelassen */
+  const release = useCallback((d: Dir) => {
+    held.current = held.current.filter((x) => x !== d);
+  }, []);
+
+  /** kurzer Druck: genau ein Feld */
+  const tap = useCallback((d: Dir) => {
+    press(d);
+    release(d);
+  }, [press, release]);
+
   const start = useCallback(() => {
     if (phaseRef.current === "playing") return;
     if (phaseRef.current === "won") mazeRef.current = generateMaze();
@@ -125,6 +139,7 @@ export default function RohrFlitzer() {
     s.t = 0;
     s.moving = "down";
     sim.current = s;
+    held.current = [];
     setSaveMsg("");
     setElapsed(0);
     setShowWin(false);
@@ -150,16 +165,28 @@ export default function RohrFlitzer() {
       const d = KEYS[e.key];
       if (!d) return;
       e.preventDefault();
-      steer(d);
+      if (!e.repeat) press(d);
     };
+    const up = (e: KeyboardEvent) => {
+      const d = KEYS[e.key];
+      if (d) release(d);
+    };
+    const blur = () => (held.current = []);
     window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
-  }, [start, steer]);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, [start, press, release]);
 
   // ---------- Wischen und Tippen -------------------------------------
-  const touch = useRef<{ x: number; y: number; swiped: boolean } | null>(null);
+  // Wischen und den Finger liegen lassen = weiterflitzen; Finger weg = anhalten.
+  const touch = useRef<{ x: number; y: number; dir: Dir | null } | null>(null);
   const onPointerDown = (e: React.PointerEvent) => {
-    touch.current = { x: e.clientX, y: e.clientY, swiped: false };
+    touch.current = { x: e.clientX, y: e.clientY, dir: null };
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -168,15 +195,20 @@ export default function RohrFlitzer() {
     const dx = e.clientX - t.x;
     const dy = e.clientY - t.y;
     if (Math.hypot(dx, dy) < 22) return;
-    steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
+    const d: Dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
+    if (d !== t.dir) {
+      if (t.dir) release(t.dir);
+      press(d);
+      t.dir = d;
+    }
     t.x = e.clientX;
     t.y = e.clientY;
-    t.swiped = true;
   };
   const onPointerUp = (e: React.PointerEvent) => {
     const t = touch.current;
     touch.current = null;
-    if (!t || t.swiped || phaseRef.current !== "playing") return;
+    if (t?.dir) release(t.dir);
+    if (!t || t.dir || phaseRef.current !== "playing") return;
     // Tippen: in Richtung des getippten Punkts flitzen
     const rect = canvasRef.current!.getBoundingClientRect();
     const k = rect.width / W;
@@ -185,7 +217,11 @@ export default function RohrFlitzer() {
     const p = wurstPos(sim.current);
     const dx = px - p.x, dy = py - p.y;
     if (Math.hypot(dx, dy) < 18) return;
-    steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
+    tap(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
+  };
+  const onPointerCancel = () => {
+    if (touch.current?.dir) release(touch.current.dir);
+    touch.current = null;
   };
 
   // ---------- Spielschleife -----------------------------------------
@@ -197,7 +233,6 @@ export default function RohrFlitzer() {
     let lastUi = 0;
 
     const arrive = (s: Sim, m: Maze, now: number) => {
-      const came = s.moving!;
       if (s.fr >= 0) {
         const v = s.fr !== s.r;
         s.trail.add(`${Math.min(s.fr, s.r)},${Math.min(s.fc, s.c)},${v ? "v" : "h"}`);
@@ -218,19 +253,20 @@ export default function RohrFlitzer() {
         );
         return;
       }
-      // 1. gewünschte Richtung, sobald es geht
+      // 1. während der Bewegung gedrückte Richtung (auch wenn schon losgelassen)
       if (s.queued && go(s, m, s.queued, now, true)) {
         s.queued = null;
         return;
       }
-      // 2. von selbst weiter, solange es nur einen Weg gibt (gerade oder Kurve)
-      const ways = openDirs(m, s.r, s.c).filter((d) => d !== OPPOSITE[came]);
-      if (ways.length === 1) {
-        go(s, m, ways[0], now, true);
+      // 2. weiter, solange eine Richtung gedrückt ist – zuletzt gedrückte zuerst
+      const keys = held.current;
+      for (let i = keys.length - 1; i >= 0; i--) if (go(s, m, keys[i], now, true)) {
+        s.queued = null;
         return;
       }
-      // 3. Abzweigung oder Sackgasse: anhalten und auf das Kind warten
-      if (s.queued) go(s, m, s.queued, now); // zeigt „Verstopft!“, falls dort ein Pfropfen ist
+      // 3. sonst anhalten; zeigt „Verstopft!“, wenn das Kind gegen einen Pfropfen drückt
+      const want = s.queued ?? keys[keys.length - 1];
+      if (want) go(s, m, want, now);
       s.queued = null;
     };
 
@@ -272,8 +308,11 @@ export default function RohrFlitzer() {
       aria-label={{ up: "hoch", down: "runter", left: "links", right: "rechts" }[d]}
       onPointerDown={(e) => {
         e.preventDefault();
-        steer(d);
+        press(d);
       }}
+      onPointerUp={() => release(d)}
+      onPointerLeave={() => release(d)}
+      onPointerCancel={() => release(d)}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}
@@ -294,7 +333,7 @@ export default function RohrFlitzer() {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerCancel={() => (touch.current = null)}
+            onPointerCancel={onPointerCancel}
           />
           {phase === "ready" && (
             <div className="rohr-overlay">
@@ -303,7 +342,8 @@ export default function RohrFlitzer() {
                 <h2>💩 Rohr-Flitzer</h2>
                 <p>Hilf der Kackwurst durch die Rohre von <b>Haus Buchhammer</b> bis in die Kanalisation!</p>
                 <ul>
-                  <li>👆 <b>Wischen</b> oder <b>tippen</b> – oder Pfeiltasten</li>
+                  <li>⬅️ <b>Pfeiltaste</b> oder <b>Pfeil-Knopf gedrückt halten</b> – dann flitzt die Wurst</li>
+                  <li>👆 Am Handy auch: wischen und den Finger liegen lassen</li>
                   <li>🚫 Verstopfte Rohre musst du umgehen</li>
                   <li>⏱ Sei so schnell wie möglich!</li>
                 </ul>
