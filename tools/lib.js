@@ -4,8 +4,12 @@
    - buildTestApp()   baut die App mit Test-Zugangsdaten nach .test-build/
    - startServer()    kleiner Webserver für .test-build/ (wie GitHub Pages)
    - mockSupabase()   ersetzt Supabase im Browser: eingeloggt ohne echtes Konto,
-                      gespeicherte Ergebnisse landen in einer Liste statt in der Datenbank */
+                      gespeicherte Ergebnisse landen in einer Liste statt in der Datenbank
+   - parseArgs(), pool(), PARALLEL   Spiele und Optionen von der Kommandozeile, mehrere Seiten gleichzeitig
+   - launchBrowser()  Chromium oder WebKit starten
+   - ohne3dZeichnen(), zeichnenAn()  3D-Zeichenbefehle in Tests aussetzen (CI hat keine Grafikkarte) */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
@@ -169,4 +173,83 @@ export async function gameFrame(page) {
   const frame = await (await page.waitForSelector('iframe.html-game')).contentFrame();
   await frame.waitForFunction(() => !!window.GameTest);
   return frame;
+}
+
+/* ---------- Kommandozeile und Parallelität (smoke.js, spieltest.js) ---------- */
+
+/* Wie viele Browser-Seiten gleichzeitig: ein Kern bleibt frei (Server, Node). */
+export const PARALLEL = Math.max(1, Math.min(4, (os.availableParallelism?.() ?? os.cpus().length) - 1));
+
+/* Spiel-keys und Optionen von der Kommandozeile. Spiele dürfen auch mit Komma getrennt kommen
+   (so übergibt sie der Workflow). flags = Optionen ohne Wert, z. B. ['zeichnen'].
+   Beispiel: ['elisabeth,weltflug', '--parallel', '2', '--zeichnen'] → { keys: ['elisabeth','weltflug'], opts: { parallel: '2', zeichnen: true } } */
+export function parseArgs(argv, flags = []) {
+  const keys = [];
+  const opts = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--')) { keys.push(...a.split(',').map((k) => k.trim()).filter(Boolean)); continue; }
+    const name = a.slice(2);
+    if (flags.includes(name)) opts[name] = true;
+    else if (i + 1 < argv.length) opts[name] = argv[++i];
+    else throw new Error(`Option --${name} braucht einen Wert.`);
+  }
+  return { keys, opts };
+}
+
+/* fn für alle Einträge, höchstens n gleichzeitig. Ergebnisse in der Reihenfolge der Einträge. */
+export async function pool(items, n, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(n, items.length)) }, worker));
+  return results;
+}
+
+/* Browser starten: 'chromium' (Standard) oder 'webkit' (Safari-Engine, für iPhone/iPad-Prüfungen). */
+export async function launchBrowser(name = 'chromium') {
+  const pw = await import('playwright');
+  if (!['chromium', 'webkit'].includes(name)) throw new Error(`Unbekannter Browser "${name}" (chromium oder webkit).`);
+  return pw[name].launch();
+}
+
+/* ---------- 3D in Tests ---------- */
+
+/* Im CI gibt es keine Grafikkarte: Die CPU rechnet jedes 3D-Bild (Ski-Flitzer ~240 000 Dreiecke) und schafft
+   nur 5–6 Bilder/s. Weil die Spielzeit an den Bildern hängt, dauern Durchspiel-Tests dann Minuten.
+   ohne3dZeichnen() überspringt nur die eigentlichen WebGL-Zeichenbefehle: Spiellogik, Szene, Shader und
+   Kamera laufen unverändert weiter, das Spiel läuft mit 60 Bildern/s. Für Screenshots schaltet
+   zeichnenAn(page, true) das Zeichnen wieder ein (t.shot macht das automatisch). Vor page.goto() aufrufen. */
+export async function ohne3dZeichnen(context) {
+  await context.addInitScript(() => {
+    window.__gtZeichnen = false;
+    const skip = (proto, names) => {
+      if (!proto) return;
+      for (const name of names) {
+        const orig = proto[name];
+        if (typeof orig !== 'function') continue;
+        proto[name] = function (...args) { if (window.__gtZeichnen) return orig.apply(this, args); return undefined; };
+      }
+    };
+    skip(window.WebGLRenderingContext && WebGLRenderingContext.prototype, ['drawArrays', 'drawElements']);
+    skip(window.WebGL2RenderingContext && WebGL2RenderingContext.prototype,
+      ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced', 'drawRangeElements']);
+  });
+}
+
+/* Zeichnen in allen Frames der Seite ein- oder ausschalten; beim Einschalten zwei Bilder abwarten,
+   damit die Szene vollständig gezeichnet ist. */
+export async function zeichnenAn(page, an) {
+  for (const frame of page.frames()) {
+    await frame.evaluate((on) => {
+      if (!('__gtZeichnen' in window)) return null;
+      window.__gtZeichnen = on;
+      return on ? new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null)))) : null;
+    }, an).catch(() => {});
+  }
 }

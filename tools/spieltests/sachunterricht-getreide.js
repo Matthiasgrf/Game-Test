@@ -1,10 +1,13 @@
 /* Durchspiel-Test für „Getreide-Abenteuer“. Aufruf: node tools/spieltest.js sachunterricht-getreide
    Das Spiel hat keinen eigenen Test-Zugang; seine Funktionen und Konstanten sind global
    (stations, openQuiz). Geprüft wird: alle 10 Stationen (die erste zuerst mit falscher Antwort),
-   Gewinn-Bildschirm mit Fehlversuchen und Zeit, gespeichertes Ergebnis, Link zurück zur Übersicht. */
+   Gewinn-Bildschirm mit Fehlversuchen und Zeit, gespeichertes Ergebnis, Link zurück zur Übersicht.
+   Nach jeder gelösten Station schließt das Spiel das Fenster erst nach 1,6 s; die Test-Uhr (page.clock)
+   springt darüber. */
 export default async function (t) {
   for (const [size, options] of [['computer', t.DESK], ['handy', t.PHONE]]) {
     const page = await t.newPage(options);
+    await page.clock.install();
     await page.goto(t.url, { waitUntil: 'load' });
     const game = await t.frame(page);
     await game.waitForFunction(() => typeof stations !== 'undefined' && stations.length === 10);
@@ -21,6 +24,7 @@ export default async function (t) {
       }));
       await game.click('#check-btn');
       t.check(`${size}: Station ${i + 1} gelöst`, /Alles richtig/.test(await game.textContent('#feedback')));
+      await page.clock.fastForward(1600);
       await game.waitForFunction(() => document.getElementById('quiz-modal').style.display === 'none', null, { timeout: 5000 });
     }
 
