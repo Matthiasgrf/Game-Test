@@ -155,6 +155,12 @@ export async function mockSupabase(context, options = {}) {
         return json(games.map((k, i) => ({ game_key: k, category_id: TEST_CATEGORIES[i % TEST_CATEGORIES.length].id })));
       case 'game_highscores':
         return json(highscores);
+      case 'game_scores': {
+        /* eigene Ergebnisse (loadMyScores) = die in diesem Test gespeicherten */
+        const key = (url.searchParams.get('game_key') || '').replace(/^eq\./, '');
+        return json(scores.filter((s) => !key || s.game_key === key)
+          .map((s) => ({ variant: s.variant ?? '', points: s.points, max_points: s.max_points ?? null, seconds: s.seconds ?? null })));
+      }
       case 'game_states': {
         const key = (url.searchParams.get('game_key') || '').replace(/^eq\./, '');
         const rows = key in saved ? [{ data: saved[key] }] : [];
