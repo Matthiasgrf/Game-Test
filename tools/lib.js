@@ -21,7 +21,8 @@ export const OUT = path.join(ROOT, 'test-ergebnisse');
 
 export const loadGames = () => JSON.parse(fs.readFileSync(GAMES_JSON, 'utf8'));
 
-/* Highscore-Art jedes Spiels laut Migrationen (in Reihenfolge der Dateinamen). */
+/* Highscore-Art jedes Spiels laut Migrationen (in Reihenfolge der Dateinamen),
+   dazu serverScored (games.server_scored). */
 export function dbModes() {
   const modes = {};
   if (!fs.existsSync(MIGRATIONS)) return modes;
@@ -34,6 +35,8 @@ export function dbModes() {
       }
       let m = /^update public\.games set highscore = '(\w+)' where key = '([^']+)'/i.exec(s);
       if (m) modes[m[2]] = { mode: m[1], file };
+      m = /^update public\.games set server_scored = (true|false) where key = '([^']+)'/i.exec(s);
+      if (m && modes[m[2]]) modes[m[2]].serverScored = m[1].toLowerCase() === 'true';
       m = /^delete from public\.games where key = '([^']+)'/i.exec(s);
       if (m) delete modes[m[1]];
     }
@@ -99,7 +102,8 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
      highscores  Zeilen für die View game_highscores
      states      gespeicherte Spielstände je Spiel, z. B. { 'mathe-robi': { bank: 500 } } (Tabelle game_states)
    Rückgabe: { scores, states }
-     scores  jedes gespeicherte Ergebnis (Inhalt des Inserts in game_scores)
+     scores  jedes gespeicherte Ergebnis (Inhalt des Inserts in game_scores; bei Zahlenraten
+             trägt es – wie in der echten DB – zahlenraten_raten ein)
      states  jeder gespeicherte Spielstand (Inhalt des Upserts in game_states, mit game_key und data) */
 export async function mockSupabase(context, options = {}) {
   const { role = 'user', username = 'testkind', highscores = [] } = options;
@@ -114,6 +118,7 @@ export async function mockSupabase(context, options = {}) {
   const scores = [];
   const states = [];
   const saved = { ...(options.states || {}) };
+  let zr = { id: 0, secret: 0, attempts: 0, open: false };
   await context.addInitScript(([key, value]) => {
     try { localStorage.setItem(key, value); } catch { /* z. B. about:blank */ }
   }, [STORAGE_KEY, JSON.stringify(session)]);
@@ -126,6 +131,22 @@ export async function mockSupabase(context, options = {}) {
       const body = req.postDataJSON();
       scores.push(...(Array.isArray(body) ? body : [body]));
       return route.fulfill({ status: 201, body: '' });
+    }
+    // Zahlenraten läuft in der Datenbank (zahlenraten_start / zahlenraten_raten) – hier nachgestellt
+    if (req.method() === 'POST' && table === 'zahlenraten_start') {
+      if (!zr.open) zr = { id: zr.id + 1, secret: 1 + Math.floor(Math.random() * 100), attempts: 0, open: true };
+      return json({ runde: zr.id, versuche: zr.attempts });
+    }
+    if (req.method() === 'POST' && table === 'zahlenraten_raten') {
+      const { p_runde, p_tipp } = req.postDataJSON();
+      if (!zr.open || p_runde !== zr.id) return json({ message: 'Diese Runde ist schon vorbei.' }, 400);
+      zr.attempts++;
+      const ergebnis = p_tipp < zr.secret ? 'zu_klein' : p_tipp > zr.secret ? 'zu_gross' : 'richtig';
+      if (ergebnis === 'richtig') {
+        zr.open = false;
+        scores.push({ game_key: 'zahlenraten', variant: '', points: zr.attempts, max_points: null, seconds: null });
+      }
+      return json({ ergebnis, versuche: zr.attempts });
     }
     if (req.method() === 'POST' && table === 'game_states') {
       const body = req.postDataJSON();

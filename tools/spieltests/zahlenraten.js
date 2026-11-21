@@ -1,5 +1,6 @@
 /* Durchspiel-Test für „Zahlenraten“. Aufruf: node tools/spieltest.js zahlenraten
-   Rät mit Intervallhalbierung (höchstens 7 Versuche), prüft Hinweise, Speichern und „Nochmal spielen“. */
+   Rät mit Intervallhalbierung (höchstens 7 Versuche), prüft Hinweise, Speichern und „Nochmal spielen“.
+   Die Geheimzahl liegt in der Datenbank; mockSupabase stellt zahlenraten_start/_raten nach. */
 export default async function (t) {
   const page = await t.newPage(t.PHONE);
   await page.goto(t.url, { waitUntil: 'load' });
@@ -16,6 +17,7 @@ export default async function (t) {
     await page.fill('input[type="number"]', String(guess));
     await page.click('main button');
     tries++;
+    await page.waitForFunction((n) => document.body.textContent.includes(`Versuche: ${n}`), tries);
     hint = await page.textContent('[data-testid="hint"]');
     if (hint.includes('zu klein')) lo = guess + 1;
     else if (hint.includes('zu groß')) hi = guess - 1;
@@ -28,5 +30,6 @@ export default async function (t) {
   await t.shot(page, 'gewonnen');
 
   await page.click('text=Nochmal spielen');
+  await page.waitForSelector('input[type="number"]');
   t.check('„Nochmal spielen“ startet neu', (await page.textContent('main')).includes('Versuche: 0'));
 }

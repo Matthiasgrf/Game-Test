@@ -134,12 +134,14 @@ function checkReactGame(g) {
   if (!/export\s+default\s+/.test(main)) err(where, 'braucht "export default" mit der Spiel-Komponente.');
   if (!/to=["']\/["']/.test(code) || !/Alle Spiele/.test(code)) err(where, 'Link zurück zur Übersicht fehlt: <Link to="/">🏠 Alle Spiele</Link>.');
   const saves = /saveScore\s*\(/.test(code);
-  if (g.highscore && !saves) err(where, 'Spiel hat Highscore, ruft aber saveScore(...) nicht auf.');
+  const serverScored = !!g.highscore?.serverScored;
+  if (serverScored && saves) err(where, 'ruft saveScore auf, obwohl serverScored: true – die Datenbank speichert das Ergebnis selbst und lehnt saveScore ab.');
+  if (g.highscore && !serverScored && !saves) err(where, 'Spiel hat Highscore, ruft aber saveScore(...) nicht auf.');
   if (!g.highscore && saves) err(where, 'ruft saveScore auf, obwohl highscore: null – die Datenbank lehnt das ab.');
   for (const m of code.matchAll(/(?:saveScore|loadMyScores)\s*\(\s*["']([^"']+)["']/g)) {
     if (m[1] !== g.key) err(where, `benutzt den Schlüssel "${m[1]}" statt "${g.key}".`);
   }
-  if (/from\s+["'][./]*lib\/supabase["']/.test(code)) warn(where, 'greift direkt auf Supabase zu – für Ergebnisse saveScore/loadMyScores aus src/games/scores.ts nutzen.');
+  if (!serverScored && /from\s+["'][./]*lib\/supabase["']/.test(code)) warn(where, 'greift direkt auf Supabase zu – für Ergebnisse saveScore/loadMyScores aus src/games/scores.ts nutzen.');
   if (/https?:\/\/(?!localhost)/.test(code.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, ''))) warn(where, 'enthält eine Internet-Adresse – keine fremden Server benutzen.');
   return code;
 }
@@ -165,6 +167,9 @@ function main() {
     const want = g.highscore ? g.highscore.better : 'none';
     if (!db[g.key]) err(where, `fehlt in der Tabelle games – Migration anlegen: insert into public.games (key, highscore) values ('${g.key}', '${want}');`);
     else if (db[g.key].mode !== want) err(where, `Highscore-Art in games.json ist "${want}", in der Datenbank "${db[g.key].mode}" (${db[g.key].file}).`);
+    else if (!!g.highscore?.serverScored !== !!db[g.key].serverScored) err(where, g.highscore?.serverScored
+      ? `serverScored: true, aber in der Datenbank fehlt: update public.games set server_scored = true where key = '${g.key}';`
+      : `Datenbank speichert Ergebnisse selbst (server_scored), games.json hat aber kein "serverScored": true.`);
 
     /* Ordner public/games/<key>/: readme.md und thumbnail.jpg für jedes Spiel */
     const dir = path.join(PUBLIC_GAMES, g.key);

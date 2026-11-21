@@ -48,6 +48,14 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 - Gleichstand entscheidet immer die kürzere Zeit (`seconds`). Pro Spieler zählt nur das beste Ergebnis.
 - Quiz-Spiele: Punkte = Fehlversuche (`low`), dazu die Zeit – „richtige Antworten“ taugen nicht, weil
   Kinder so lange probieren, bis es stimmt.
+- **Plausibilitätsprüfung** (Trigger `game_scores_check`, Migration `20261122000000_highscores_absichern.sql`):
+  Ein Ergebnis vom Browser wird nur gespeichert, wenn es einen passenden Spielstart in `game_plays` gibt
+  (meldet `GameGate` automatisch; die gemeldete Zeit `seconds` muss danach liegen), höchstens eins je Spiel
+  alle 3 Sekunden und höchstens 300 je Spieler und Tag. Spiele immer über `GameGate` einbinden.
+- `"serverScored": true` (nur React-Spiele): Die Spiellogik läuft in der Datenbank und die speichert das
+  Ergebnis selbst (Beispiel Zahlenraten: `zahlenraten_start` / `zahlenraten_raten`). Dann kein `saveScore`,
+  dafür in einer Migration `update public.games set server_scored = true where key = '<key>';` –
+  erst nach dem Deploy einspielen. `tools/check.js` prüft beides; im Test stellt `mockSupabase` die RPCs nach.
 
 ## Spielstand pro Spieler
 
