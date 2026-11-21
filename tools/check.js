@@ -32,7 +32,7 @@ const MAX_BYTES = 3 * 1024 * 1024; // Ladegröße je Spiel (3D-Spiele dürfen be
    nie auf diese Liste. */
 const ALTBESTAND = [
   'labyrinth', 'rohr-flitzer',
-  'mathe-formen', 'deutsch-wortmonster',
+  'deutsch-wortmonster',
 ];
 
 /* Breite und Höhe aus einer JPEG-Datei lesen (SOF-Abschnitt). */

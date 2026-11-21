@@ -5,20 +5,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Die Formen-Werkstatt</title>
 <style>
 /* Die Formen-Werkstatt – Geometrie für die 3. Klasse (Bildungsplan BW 2016, Mathe 3.2.2 Raum und Form).
    Füchsin Tilda baut eine Rakete. Für jeden gelösten Auftrag gibt es ein Bauteil. */
 :root{--ink:#1d2b4f;--accent:#ff7a2f;--ok:#3fae5a;--bad:#e2604f;--paper:#fffaf2;--line:#e8d9c2}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%}
-body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+html,body{margin:0;height:100%}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;height:var(--gt-vh,100dvh);
   background:radial-gradient(circle,rgba(120,82,40,.13) 2px,transparent 2.5px) 0 0/26px 26px,linear-gradient(#f6d7a7,#fbe9cc 60%,#f3d3a2)}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 6px}
+.bar{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:calc(var(--gt-top) + 54px);
+  padding:var(--gt-top) calc(var(--gt-bar-space) + 4px) 6px 12px}
 .pill{background:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;font-size:16px;color:inherit;
   text-decoration:none;box-shadow:0 3px 10px rgba(80,50,20,.22);display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
 .pill svg{width:22px;height:30px}
-main{flex:1;display:flex;padding:8px 12px calc(16px + env(safe-area-inset-bottom))}
+main{flex:1;min-height:0;display:flex;padding:calc(var(--gt-top) + 54px) 12px calc(16px + env(safe-area-inset-bottom));
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+body.im-spiel main{padding-top:8px}   /* im Spiel hält die Kopfzeile oben den Platz für die Leiste des Kits frei */
 .card{margin:auto;background:var(--paper);border-radius:24px;padding:20px;width:100%;box-shadow:0 8px 26px rgba(80,50,20,.28);border:3px solid #fff}
 h1{margin:4px 0 8px;font-size:clamp(26px,5vw,38px);text-align:center}
 p{font-size:18px;line-height:1.4;margin:8px 0}
@@ -39,7 +43,7 @@ button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset
 .topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .topic{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;min-height:64px;font:inherit;color:inherit;background:#fff;
   border:3px solid var(--line);border-radius:16px;cursor:pointer}
-.topic:hover{border-color:var(--accent)}
+@media (hover:hover) and (pointer:fine){.topic:hover{border-color:var(--accent)}}
 .topic .ti{font-size:30px;flex:none;width:38px;text-align:center}
 .topic b{display:block;font-size:18px}
 .topic small{display:block;font-size:14px;opacity:.75}
@@ -65,7 +69,7 @@ button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset
 #opts.one{grid-template-columns:minmax(0,1fr)}
 .opt{min-height:62px;font:inherit;font-size:20px;font-weight:700;color:var(--ink);background:#fff;border:3px solid var(--line);border-radius:16px;
   cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 6px;line-height:1.15}
-.opt:hover:not(:disabled){border-color:var(--accent)}
+@media (hover:hover) and (pointer:fine){.opt:hover:not(:disabled){border-color:var(--accent)}}
 .opt .num{font-size:28px}
 .opt .let{font:700 44px/1 Arial,Helvetica,sans-serif}
 .opt .oi{width:40px;height:40px}
@@ -100,7 +104,7 @@ button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset
 svg.grid rect{stroke:#c9d3e2;stroke-width:.35}
 svg.grid rect.off{fill:#eef1f6}
 svg.grid rect.tap{fill:#fff;cursor:pointer}
-svg.grid rect.tap:hover{fill:#fff1e2}
+@media (hover:hover) and (pointer:fine){svg.grid rect.tap:hover{fill:#fff1e2}}
 svg.grid rect.giv{fill:#ff9f55}
 svg.grid rect.tap.on{fill:#4aa3df}
 svg.grid rect.miss{stroke:#e2604f;stroke-width:1.1;stroke-dasharray:1.6 1}
@@ -122,9 +126,7 @@ svg.grid rect.extra{fill:#f3a79b}
 </head>
 <body>
 <div class="bar" id="bar" hidden>
-  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
   <span class="pill" id="progBox"><span id="mini"></span><span id="progress"></span></span>
-  <button class="pill" id="soundBtn" aria-label="Ton an oder aus">🔊</button>
 </div>
 <main>
   <section class="card start" id="start">
@@ -1250,13 +1252,28 @@ svg.grid rect.extra{fill:#f3a79b}
      Spielablauf
      ===================================================================== */
   var G = { screen: 'start', topic: null, n: 0, first: 0, task: null, tries: 0, solved: false, recent: [], lvl: {} };
+
+  /* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und „Alle Spiele“,
+     Pause-Fenster, automatische Pause im Hintergrund. Ton an/aus ist die gemeinsame Einstellung aller Spiele. */
+  var kit = null, pausiertSeit = 0;
+  import('../shared/kit/kit.js').then(function (m) {
+    kit = m.startKit({
+      key: 'mathe-formen', orientation: 'any',
+      pause: function () { pausiertSeit = Date.now(); },
+      resume: function () { if (G.screen === 'game') G.start += Date.now() - pausiertSeit; },   /* Pause zählt nicht zur Zeit */
+      sound: { setMuted: function (m) { store.mute = m; } }
+    });
+    kit.setState(G.screen === 'game' ? 'play' : G.screen === 'win' ? 'end' : 'menu');
+  }).catch(function () {});
   function stage(t) { return Math.max(1, Math.min(3, Math.floor(G.lvl[t] || 1))); }
   function show(screen) {
     G.screen = screen;
     ['start', 'game', 'win'].forEach(function (id) { $(id).hidden = id !== screen; });
     $('bar').hidden = screen !== 'game';
+    document.body.classList.toggle('im-spiel', screen === 'game');
     if (screen !== 'game') stop3D();
-    window.scrollTo(0, 0);
+    document.querySelector('main').scrollTop = 0;
+    if (kit) kit.setState(screen === 'game' ? 'play' : screen === 'win' ? 'end' : 'menu');
   }
   function starsText(n) { return n ? '⭐'.repeat(n) + '☆'.repeat(3 - n) : ''; }
   function renderTopics() {
@@ -1402,8 +1419,7 @@ svg.grid rect.extra{fill:#f3a79b}
   $('nextBtn').addEventListener('click', function () { G.n++; nextTask(); });
   $('againBtn').addEventListener('click', function () { startGame(G.topic); });
   $('menuBtn').addEventListener('click', function () { renderTopics(); show('start'); });
-  function soundLabel() { $('soundBtn').textContent = store.mute ? '🔇' : '🔊'; }
-  $('soundBtn').addEventListener('click', function () { store.mute = !store.mute; save(); soundLabel(); });
+
   document.addEventListener('keydown', function (e) {
     if (G.screen !== 'game' || e.altKey || e.ctrlKey || e.metaKey) return;
     var n = parseInt(e.key, 10);
@@ -1411,7 +1427,6 @@ svg.grid rect.extra{fill:#f3a79b}
   });
 
   init3D();
-  soundLabel();
   $('heroRocket').innerHTML = rocketSVG(TASKS);
   renderTopics();
   show('start');
