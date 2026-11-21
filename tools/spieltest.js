@@ -12,7 +12,8 @@
      t.newPage(optionen, login)  neue Browser-Seite, eingeloggt (Login nachgestellt, siehe mockSupabase in lib.js).
                                  optionen wie bei Playwright (viewport, isMobile, hasTouch),
                                  login z. B. { highscores: [...] }. JavaScript-Fehler zählen automatisch als Fehler.
-                                 Rückgabe: page; page.scores = Liste der gespeicherten Ergebnisse
+                                 Rückgabe: page; page.scores = Liste der gespeicherten Ergebnisse,
+                                 page.states = Liste der gespeicherten Spielstände (game_states)
      t.frame(page)               Inhalt des iframes eines HTML-Spiels
      t.check(text, ok, detail)   eine Prüfung melden
      t.shot(page, name)          Screenshot nach test-ergebnisse/<key>-<name>.png
@@ -56,9 +57,10 @@ for (const key of keys) {
     async newPage(options, login) {
       const context = await browser.newContext(options || {});
       contexts.push(context);
-      const { scores } = await mockSupabase(context, login);
+      const { scores, states } = await mockSupabase(context, login);
       const page = await context.newPage();
       page.scores = scores;
+      page.states = states;
       page.on('pageerror', (e) => errors.push(e.message));
       page.on('console', (m) => { if (m.type() === 'error') errors.push(`Konsole: ${m.text()}`); });
       return page;

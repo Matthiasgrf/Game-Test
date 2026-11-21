@@ -62,6 +62,9 @@ Hinweise:
 Übernommen aus dem Repository 3c-Lernspiele (Ordner `games/mathe-robi/`). Läuft in der App im iframe (`src/games/HtmlGame.tsx`).
 Angepasst: Zoom-Schutz und `game-test.js` aus `../shared/`, die Links „🏠 Alle Spiele“ führen zur App-Übersicht (`../../#/`, `target="_top"`).
 Zusätzlich zählt das Spiel Fehlversuche (Sprung gegen einen falschen Block) und Zeit und meldet sie am Ende mit `GameTest.reportScore` für die Bestenliste.
+Spielstand pro Spieler: `persist()` meldet den Stand zusätzlich mit `GameTest.saveState(store)`. Die App speichert ihn in
+der Tabelle `game_states` und legt ihn vor dem nächsten Start wieder unter `mathe_robi_v1` ab (`"saveKey"` in games.json).
+So hat jedes Kind seine eigenen Zahnräder, Werkstatt-Teile, Stufen und Wiederholungs-Aufgaben – auf jedem Gerät.
 Highscore: Punkte = Fehlversuche (weniger ist besser), bei Gleichstand die kürzere Zeit. Fehlversuche und Zeit stehen auf dem Gewinn-Bildschirm.
 
 Durchspiel-Test: `node tools/spieltest.js mathe-robi`

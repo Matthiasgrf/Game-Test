@@ -11,6 +11,7 @@ Sprache aller Texte: Deutsch, kindgerecht, kurze Sätze.
 src/games/games.json          Liste aller Spiele – steuert Übersicht, Routen, Highscores, Admin und die Werkzeuge
 src/games/catalog.ts          Typen und abgeleitete Felder (path, image, html) zu games.json
 src/games/scores.ts           saveScore / loadMyScores – Ergebnisse speichern (Tabelle game_scores)
+src/games/states.ts           loadState / saveState – Spielstand pro Spieler (Tabelle game_states)
 src/games/HtmlGame.tsx        zeigt HTML-Spiele im iframe, nimmt deren Ergebnisse an
 src/games/<key>/index.tsx     React-Spiel (export default), wird automatisch als Route #/spiele/<key> geladen
 public/games/<key>/           pro Spiel: readme.md, thumbnail.jpg (900×600), bei HTML-Spielen index.html
@@ -32,6 +33,7 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 | Code | `public/games/<key>/index.html`, eine Datei, ohne Build | `src/games/<key>/index.tsx` (+ weitere Dateien im Ordner) |
 | Wann | hochgeladene Spiele, Canvas/3D, Spiele aus anderen Repos | Spiele, die Teile der App nutzen |
 | Highscore melden | `GameTest.reportScore({ points, maxPoints?, seconds?, variant? })` | `saveScore("<key>", { points, maxPoints?, seconds?, variant? })` |
+| Spielstand pro Spieler | `"saveKey"` in games.json + `GameTest.saveState(store)` beim Speichern | `loadState` / `saveState` aus `states.ts` |
 | Zurück zur Übersicht | `<a href="../../#/" target="_top">🏠 Alle Spiele</a>` | `<Link to="/">🏠 Alle Spiele</Link>` |
 
 ## Highscores
@@ -44,6 +46,17 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 - Gleichstand entscheidet immer die kürzere Zeit (`seconds`). Pro Spieler zählt nur das beste Ergebnis.
 - Quiz-Spiele: Punkte = Fehlversuche (`low`), dazu die Zeit – „richtige Antworten“ taugen nicht, weil
   Kinder so lange probieren, bis es stimmt.
+
+## Spielstand pro Spieler
+
+- Fortschritt, der bleiben soll (Münzen/Zahnräder, gekaufte Teile, Stufen), gehört in die Tabelle `game_states`
+  (eine Zeile je Spieler und Spiel, `data` als JSON-Objekt, höchstens 100 000 Zeichen), nicht nur in `localStorage`.
+- HTML-Spiel: in games.json `"saveKey": "<localStorage-Schlüssel>"` eintragen und überall, wo das Spiel in diesen
+  Schlüssel schreibt, zusätzlich `GameTest.saveState(store)` aufrufen. Die App lädt den Stand vor dem Start aus
+  Supabase und legt ihn unter `saveKey` ab – das Spiel liest ihn wie bisher synchron aus `localStorage`.
+  Andere Kinder am selben Gerät bekommen ihn nicht (`game-test-owner:<key>`). `tools/check.js` prüft beides.
+- Im Durchspiel-Test: `page.states` (gespeicherte Stände), Startwerte mit `t.newPage(…, { states: { '<key>': {…} } })`.
+- Einstellungen wie Ton an/aus dürfen im Spielstand stehen, Highscores nicht (die gehören nach `game_scores`).
 
 ## Werkzeuge
 

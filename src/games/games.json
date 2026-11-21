@@ -151,6 +151,7 @@
   {
     "key": "mathe-robi",
     "type": "html",
+    "saveKey": "mathe_robi_v1",
     "title": "Robi in der Zahlenfabrik",
     "description": "Hüpfe mit Roboter Robi durch die Fabrik und löse Aufgaben zum Rechnen, zu Zahlen und zu Größen.",
     "age": "3. Klasse",

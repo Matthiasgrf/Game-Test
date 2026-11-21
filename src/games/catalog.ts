@@ -12,6 +12,8 @@ import gamesJson from "./games.json";
  *   type         "react" → src/games/<key>/index.tsx · "html" → public/games/<key>/index.html (im iframe)
  *   title, description (1 Satz), age (z. B. "3. Klasse"), emoji (Tabs/Admin), color (Hintergrund)
  *   highscore    HighscoreConfig oder null (= Spiel ohne Highscores, in games: 'none')
+ *   saveKey      optional, nur HTML-Spiele: localStorage-Schlüssel des Spielstands. Die App lädt ihn
+ *                pro Spieler aus Supabase (Tabelle game_states), das Spiel meldet Änderungen mit GameTest.saveState.
  * Abgeleitet, nicht eintragen: path (#/spiele/<key>), image (games/<key>/thumbnail.jpg), html.
  */
 
@@ -40,6 +42,8 @@ export interface GameEntry {
   emoji: string;
   color: string;
   highscore: HighscoreConfig | null;
+  /** localStorage-Schlüssel des Spielstands, der pro Spieler in game_states gespeichert wird */
+  saveKey?: string;
 }
 
 export interface GameInfo extends GameEntry {

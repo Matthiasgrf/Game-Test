@@ -59,6 +59,10 @@ function checkEntry(g, where) {
   if (g.type && !['react', 'html'].includes(g.type)) err(where, 'type muss "react" oder "html" sein.');
   if (/TODO/.test(`${g.title} ${g.description}`)) err(where, 'enthält noch „TODO“.');
   if (g.description && g.description.length > 140) warn(where, `Beschreibung ist lang (${g.description.length} Zeichen) – ein kurzer Satz passt besser auf die Kachel.`);
+  if ('saveKey' in g) {
+    if (g.type !== 'html') err(where, 'saveKey gibt es nur bei HTML-Spielen (React-Spiele speichern direkt).');
+    if (typeof g.saveKey !== 'string' || !/^[A-Za-z0-9_-]{1,60}$/.test(g.saveKey) || g.saveKey.startsWith('sb-')) err(where, 'saveKey muss ein localStorage-Schlüssel aus A-Z a-z 0-9 - _ sein (nicht sb-…).');
+  }
   for (const f of ['path', 'image', 'html', 'thumbnail']) if (f in g) err(where, `Feld "${f}" wird aus dem key abgeleitet und nicht eingetragen.`);
 
   if (!('highscore' in g)) { err(where, 'Feld "highscore" fehlt (Einstellungen oder null für „ohne Highscore“).'); return; }
@@ -198,6 +202,10 @@ function main() {
     if (/TODO/.test(code)) err(g.key, 'Spielcode enthält noch „TODO“ (Texte oder Fragen aus der Vorlage).');
 
     const s = storageKeys(code);
+    if (typeof g.saveKey === 'string') {
+      if (!s.keys.includes(g.saveKey)) err(g.key, `saveKey "${g.saveKey}" wird im Spiel nicht als localStorage-Schlüssel benutzt.`);
+      if (!/GameTest\.saveState\s*\(/.test(code)) err(g.key, 'Spiel hat saveKey, ruft aber GameTest.saveState(...) nicht auf.');
+    } else if (/GameTest\.saveState\s*\(/.test(code)) warn(g.key, 'ruft GameTest.saveState auf, hat aber keinen saveKey in games.json – die App ignoriert das.');
     if (s.unknown) warn(g.key, 'localStorage-Schlüssel nicht erkennbar – bitte prüfen, dass er nur zu diesem Spiel gehört.');
     s.keys.forEach((k) => {
       if (k === '*clear*') { err(g.key, 'localStorage.clear() löscht auch die Daten der App und der anderen Spiele.'); return; }
