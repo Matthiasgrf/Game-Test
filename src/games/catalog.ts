@@ -31,7 +31,7 @@ export interface HighscoreConfig {
   variants?: { id: string; label: string }[];
   /** Erklärung über der Bestenliste */
   rule: string;
-  /** Ergebnis speichert die Datenbank selbst (Spiellogik dort, z. B. Zahlenraten), nie saveScore.
+  /** Ergebnis speichert die Datenbank selbst (Spiellogik läuft dort), nie saveScore.
    *  Muss zu games.server_scored passen (prüft tools/check.js). */
   serverScored?: boolean;
 }

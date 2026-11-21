@@ -53,9 +53,10 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
   (meldet `GameGate` automatisch; die gemeldete Zeit `seconds` muss danach liegen), höchstens eins je Spiel
   alle 3 Sekunden und höchstens 300 je Spieler und Tag. Spiele immer über `GameGate` einbinden.
 - `"serverScored": true` (nur React-Spiele): Die Spiellogik läuft in der Datenbank und die speichert das
-  Ergebnis selbst (Beispiel Zahlenraten: `zahlenraten_start` / `zahlenraten_raten`). Dann kein `saveScore`,
+  Ergebnis selbst (eigene RPC-Funktionen als `security definer`). Dann kein `saveScore`,
   dafür in einer Migration `update public.games set server_scored = true where key = '<key>';` –
-  erst nach dem Deploy einspielen. `tools/check.js` prüft beides; im Test stellt `mockSupabase` die RPCs nach.
+  erst nach dem Deploy einspielen. `tools/check.js` prüft beides; die RPCs in `mockSupabase` nachstellen.
+  Derzeit nutzt kein Spiel diesen Weg.
 
 ## Spielstand pro Spieler
 

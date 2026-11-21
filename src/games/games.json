@@ -30,21 +30,6 @@
     }
   },
   {
-    "key": "zahlenraten",
-    "type": "react",
-    "title": "Zahlenraten",
-    "description": "Errate die geheime Zahl zwischen 1 und 100.",
-    "age": "ab 8 Jahren",
-    "emoji": "🔢",
-    "color": "linear-gradient(135deg, #74c0fc, #5c7cfa)",
-    "highscore": {
-      "better": "low",
-      "pointsLabel": "Versuche",
-      "rule": "Bestes Ergebnis je Spieler: wenigste Versuche.",
-      "serverScored": true
-    }
-  },
-  {
     "key": "elisabeth",
     "type": "html",
     "title": "Elisabeth von Thüringen",
