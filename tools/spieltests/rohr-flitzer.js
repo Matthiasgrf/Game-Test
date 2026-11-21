@@ -1,6 +1,7 @@
 /* Durchspiel-Test für „Rohr-Flitzer“. Aufruf: node tools/spieltest.js rohr-flitzer
    Liest den Rohrplan über window.__rohrFlitzer, sucht den kürzesten Weg (Breitensuche)
-   und lenkt die Wurst an jeder Abzweigung – am Computer mit Pfeiltasten, am Handy mit den Knöpfen. */
+   und lenkt die Wurst Feld für Feld – am Computer mit Pfeiltasten, am Handy mit den Knöpfen.
+   Prüft auch, dass die Wurst ohne Eingabe stehen bleibt (sie läuft nie von selbst). */
 const KEYS = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
 const BUTTONS = { up: 'hoch', down: 'runter', left: 'links', right: 'rechts' };
 
@@ -53,6 +54,11 @@ export default async function (t) {
     if (size === 'handy') t.check('handy: Steuerknöpfe sichtbar', await page.locator('.rohr-pad button[aria-label="runter"]').isVisible());
 
     await page.click('text=Spülen!');
+    // Ohne Eingabe: die Wurst plumpst ins erste Rohr und bleibt dort stehen
+    await page.waitForTimeout(1500);
+    const still = await page.evaluate(() => { const s = window.__rohrFlitzer.sim(); return { r: s.r, moving: s.moving }; });
+    t.check(`${size}: Wurst läuft nicht von selbst`, still.r === 0 && !still.moving, JSON.stringify(still));
+
     let first = null, turns = 0;
     for (let i = 0; i < 2000; i++) {
       const st = await page.evaluate(nextStep);
@@ -61,11 +67,23 @@ export default async function (t) {
       if (!st.dir) throw new Error('kein Weg in die Kanalisation');
       first ??= st;
       turns++;
-      if (size === 'handy') await page.locator(`.rohr-pad button[aria-label="${BUTTONS[st.dir]}"]`).dispatchEvent('pointerdown');
-      else await page.keyboard.press(KEYS[st.dir]);
-      await page.waitForTimeout(30);
+      const before = await page.evaluate(() => { const s = window.__rohrFlitzer.sim(); return s.r * 100 + s.c; });
+      if (size === 'handy') {
+        const btn = page.locator(`.rohr-pad button[aria-label="${BUTTONS[st.dir]}"]`);
+        await btn.dispatchEvent('pointerdown');
+        await btn.dispatchEvent('pointerup');
+      } else await page.keyboard.press(KEYS[st.dir]);
+      if (turns === 1) {
+        // kurzer Druck = genau ein Feld
+        await page.waitForFunction(() => !window.__rohrFlitzer.sim().moving);
+        await page.waitForTimeout(300);
+        const after = await page.evaluate(() => { const s = window.__rohrFlitzer.sim(); return { pos: s.r * 100 + s.c, moving: s.moving }; });
+        const moved = Math.abs(after.pos - before);
+        t.check(`${size}: kurzer Druck bewegt genau ein Feld`, (moved === 1 || moved === 100) && !after.moving, JSON.stringify({ before, after }));
+      }
+      await page.waitForTimeout(20);
     }
-    t.check(`${size}: Rohrsystem hat Verstopfungen`, first && first.clogs > 0, `${first?.clogs} Verstopfungen, ${turns} Entscheidungen`);
+    t.check(`${size}: Rohrsystem hat Verstopfungen`, first && first.clogs > 0, `${first?.clogs} Verstopfungen, ${turns} Schritte`);
 
     await page.waitForSelector('text=Platsch!');
     await page.waitForSelector('text=Zeit gespeichert');

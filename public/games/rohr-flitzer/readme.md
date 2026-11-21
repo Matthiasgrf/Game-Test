@@ -9,15 +9,16 @@ dann heißt es: Umweg suchen!
 - Das ganze Rohrsystem ist von Anfang an zu sehen: 6 × 9 Knoten über 3 Stockwerke
   (Badezimmer, Küche, Keller). Jede Runde gibt es ein neues (`maze.ts`).
 - 5 Verstopfungen, bevorzugt auf dem kürzesten Weg – es gibt aber immer einen Weg.
-- Die Wurst flitzt nach einem Wisch von selbst weiter, auch um Kurven, und hält an jeder
-  Abzweigung. Eine Richtung kann man schon vorher wählen, sie gilt an der nächsten passenden Stelle.
+- Die Wurst bewegt sich nur, solange eine Richtung gedrückt ist: kurz drücken = ein Feld,
+  gedrückt halten = weiterflitzen. Von selbst läuft sie nie, auch nicht um Kurven.
 - Das Spielfeld passt sich an den Bildschirm an (Handy, Tablet, Computer).
 - Grafik (`draw.ts`): Haus mit Ziegeldach, Zimmer mit Einrichtung, Metallrohre, Wolken, Rauch,
   Kanalisation mit Wasser und Ratte, Spritzer beim Platsch.
 - Eine Runde dauert für Kinder etwa 20–30 Sekunden (perfekt gespielt etwa 8 Sekunden).
 
-Steuerung: Computer: Pfeiltasten oder WASD, Leertaste startet · Tablet/Handy: auf dem Spielfeld wischen,
-in die gewünschte Richtung tippen oder die Pfeil-Knöpfe unter dem Spielfeld.
+Steuerung: Computer: Pfeiltasten oder WASD gedrückt halten, Leertaste startet · Tablet/Handy: Pfeil-Knöpfe
+unter dem Spielfeld gedrückt halten, auf dem Spielfeld wischen und den Finger liegen lassen, oder in die
+gewünschte Richtung tippen (ein Feld).
 
 Highscore: Punkte = Sekunden bis in die Kanalisation (weniger ist besser).
 
