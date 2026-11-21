@@ -216,5 +216,20 @@
       ],
       "rule": "Zählt die Aufgaben, die gleich beim ersten Versuch richtig waren. Bestes Ergebnis je Spieler, bei Gleichstand die schnellste Zeit."
     }
+  },
+  {
+    "key": "liftschlange",
+    "type": "html",
+    "title": "Liftschlange",
+    "description": "Drängel dich als Skifahrer durch die Liftschlange, sammel deine Kumpels ein und lass dich nicht vom Liftwart erwischen!",
+    "age": "ab 18 Jahren",
+    "emoji": "🚡🐍",
+    "color": "linear-gradient(135deg, #a5d8ff, #ff8787)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte, bei Gleichstand die kürzere Zeit."
+    }
   }
 ]

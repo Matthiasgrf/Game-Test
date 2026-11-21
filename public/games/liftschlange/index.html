@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<title>Liftschlange</title>
+<style>
+/* LIFTSCHLANGE – Snake in der Warteschlange vor dem Sessellift.
+   Aufbau: Kopfzeile (HUD) · Spielfeld (<canvas>, per CSS genau auf die freie Fläche gesetzt) · Steuerkreuz
+   (nur auf Touch-Geräten) · Overlays für Start, Tutorial, Pause, Game Over und Bestenliste. */
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#13243a;
+  background:linear-gradient(#2b5d8c,#9cc9ea);display:flex;flex-direction:column;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+/* Kopfzeile */
+#hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;
+  padding:calc(6px + env(safe-area-inset-top)) 8px 6px}
+.pill{display:inline-flex;align-items:center;gap:4px;background:#fff;border:0;border-radius:999px;
+  padding:6px 12px;min-height:38px;font-weight:700;font-size:15px;color:#13243a;text-decoration:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap}
+.pill.icon{min-width:42px;justify-content:center;font-size:18px}
+#suspWrap{display:inline-flex;align-items:center;gap:6px}
+#suspBar{width:70px;height:12px;border-radius:6px;background:#e9ecef;overflow:hidden;border:1px solid #adb5bd}
+#suspFill{height:100%;width:0;background:linear-gradient(90deg,#ffd43b,#e03131)}
+#suspWrap.alarm{background:#ffe3e3;animation:blink .3s infinite alternate}
+@keyframes blink{to{background:#ff8787}}
+#effects{display:inline-flex;gap:4px}
+#effects .pill{padding:6px 9px}
+@media (max-width:560px){
+  #hud{gap:4px;padding:calc(4px + env(safe-area-inset-top)) 4px 4px}
+  .pill{font-size:13px;padding:4px 8px;min-height:32px}
+  .pill.icon{min-width:34px;font-size:15px}
+  #suspBar{width:44px}
+}
+
+/* Spielfeld */
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+#stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;
+  touch-action:none}
+#wobble{line-height:0;will-change:transform}
+#cv{display:block;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);touch-action:none}
+#banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;
+  background:rgba(19,36,58,.88);color:#fff;font-weight:800;font-size:clamp(18px,4vw,30px);text-align:center;
+  padding:12px 20px;border-radius:16px;max-width:90%;opacity:0;transition:opacity .25s}
+#banner.show{opacity:1}
+
+/* Steuerkreuz für Touch */
+#pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,58px);gap:6px;
+  justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom))}
+#pad button{border:0;border-radius:16px;background:rgba(255,255,255,.92);font-size:28px;font-weight:800;
+  box-shadow:0 3px 8px rgba(0,0,0,.3);touch-action:none;cursor:pointer}
+#pad button:active{background:#ffd43b}
+#padUp{grid-column:2;grid-row:1}#padLeft{grid-column:1;grid-row:2}#padDown{grid-column:2;grid-row:2}#padRight{grid-column:3;grid-row:2}
+body.landscape #main{flex-direction:row}
+body.landscape #pad{grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);align-content:center;
+  padding:8px calc(10px + env(safe-area-inset-right)) 8px 4px}
+body.landscape #padUp{grid-column:2;grid-row:1}body.landscape #padLeft{grid-column:1;grid-row:2}
+body.landscape #padRight{grid-column:3;grid-row:2}body.landscape #padDown{grid-column:2;grid-row:3}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+  padding:calc(14px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));
+  background:rgba(10,25,45,.55);-webkit-overflow-scrolling:touch}
+.card{background:#fff;border-radius:22px;padding:20px;max-width:540px;width:100%;margin:auto;text-align:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.4)}
+h1{margin:0 0 6px;font-size:clamp(30px,8vw,46px);letter-spacing:2px;color:#c92a2a;text-shadow:2px 2px 0 #ffd43b}
+h2{margin:6px 0;font-size:clamp(22px,5vw,30px)}
+p{font-size:17px;line-height:1.4;margin:8px 0}
+.small{font-size:14px;color:#495057}
+.btn{display:block;width:100%;margin:8px 0 0;padding:12px 16px;min-height:52px;font-size:19px;font-weight:700;
+  color:#13243a;background:#e7f5ff;border:3px solid #a5d8ff;border-radius:16px;cursor:pointer;text-decoration:none}
+.btn.main{background:#e8590c;border-color:#e8590c;color:#fff}
+.btn:focus-visible,.pill:focus-visible,.who:focus-visible{outline:4px solid #13243a;outline-offset:2px}
+.row{display:flex;gap:8px}.row .btn{flex:1}
+#countdown{background:linear-gradient(135deg,#1864ab,#4dabf7);color:#fff;border-radius:14px;padding:8px 10px;margin:8px 0 12px;font-weight:700}
+#countdown b{font-size:22px;display:block}
+#who{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.who{display:flex;align-items:center;gap:10px;padding:10px;min-height:60px;border:3px solid #dee2e6;border-radius:16px;
+  background:#f8f9fa;font-size:19px;font-weight:800;cursor:pointer;text-align:left}
+.who.on{border-color:#e8590c;background:#fff4e6}
+.dot{width:38px;height:38px;border-radius:50%;flex:none;position:relative;border:3px solid}
+.dot::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px;border-radius:50%;background:var(--cap)}
+#fotoBox{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+#fotoVorschau{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid #e8590c}
+.fileBtn{display:inline-flex;align-items:center;min-height:46px;padding:8px 14px;border-radius:14px;border:3px dashed #adb5bd;
+  background:#f8f9fa;font-weight:700;cursor:pointer;font-size:16px}
+.fileBtn input{position:absolute;width:1px;height:1px;opacity:0}
+.big{font-size:60px;line-height:1.1}
+#overStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+#overStats div{background:#f1f3f5;border-radius:12px;padding:8px 4px;font-size:14px}
+#overStats b{display:block;font-size:24px}
+#overRank{font-size:20px;font-weight:800;color:#e8590c}
+#shareText{font-size:14px;background:#f1f3f5;border-radius:10px;padding:8px;margin:8px 0 0}
+#shareInfo{min-height:20px;font-weight:700;color:#2b8a3e;font-size:15px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:16px}
+th,td{padding:8px 6px;border-bottom:1px solid #dee2e6;text-align:left}
+th{font-size:13px;color:#495057}
+td.num{text-align:right;font-weight:800}
+tr.last td{background:#fff3bf}
+.tag{display:inline-block;font-size:12px;font-weight:800;background:#e8590c;color:#fff;border-radius:999px;padding:2px 8px;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="hud">
+  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  <span class="pill" title="Punkte">⭐ <span id="hudPoints">0</span></span>
+  <span class="pill" title="Länge der Schlange">🐍 <span id="hudLength">3</span></span>
+  <span class="pill" title="Level">📶 Lvl <span id="hudLevel">1</span></span>
+  <span class="pill" id="suspWrap" title="Verdacht des Liftwarts">👮 <span id="suspBar"><span id="suspFill" style="display:block"></span></span></span>
+  <span id="effects"></span>
+  <button class="pill icon" id="pauseBtn" title="Pause (P)" aria-label="Pause">⏸</button>
+  <button class="pill icon" id="muteBtn" title="Ton an/aus (M)" aria-label="Ton an/aus">🔊</button>
+</div>
+<div id="main">
+  <div id="stage">
+    <div id="wobble"><canvas id="cv" aria-label="Spielfeld: Warteschlange vor dem Sessellift"></canvas></div>
+    <div id="banner" aria-live="polite"></div>
+  </div>
+  <div id="pad" hidden>
+    <button id="padUp" aria-label="hoch">▲</button>
+    <button id="padLeft" aria-label="links">◀</button>
+    <button id="padDown" aria-label="runter">▼</button>
+    <button id="padRight" aria-label="rechts">▶</button>
+  </div>
+</div>
+
+<!-- Startbildschirm -->
+<section class="overlay" id="start">
+  <div class="card">
+    <h1>LIFTSCHLANGE</h1>
+    <div id="countdown"></div>
+    <h2>Wer drängelt?</h2>
+    <div id="who"></div>
+    <div id="fotoBox">
+      <img id="fotoVorschau" alt="Dein Gesicht" hidden>
+      <label class="fileBtn">📸 <span id="fotoLabel">Eigenes Gesicht als Kopf</span>
+        <input type="file" id="fotoInput" accept="image/*"></label>
+      <button class="fileBtn" id="fotoWeg" hidden>🗑 Foto weg</button>
+    </div>
+    <p class="small">Das Foto bleibt nur hier im Browser und wird nirgendwo hochgeladen.</p>
+    <button class="btn main" id="startBtn">🎿 Los, vordrängeln!</button>
+    <div class="row">
+      <button class="btn" id="startBoardBtn">🏆 Bestenliste</button>
+      <button class="btn" id="startMuteBtn">🔊 Ton an</button>
+    </div>
+    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </div>
+</section>
+
+<!-- Tutorial (nur beim ersten Start) -->
+<section class="overlay" id="tutorial" hidden>
+  <div class="card">
+    <div class="big">🚡</div>
+    <h2>Kurz zuhören, Drängler!</h2>
+    <p>Lenk dich mit Pfeiltasten, WASD oder Wischen durch die Schlange und sammel jeden ein, der nicht bei drei auf der Piste ist.</p>
+    <p>Lass dich bloß nicht im roten Blick vom Liftwart erwischen – und knutsch keine Absperrgitter.</p>
+    <p>Jagertee gibt doppelte Punkte, macht aber auch doppelt dumm.</p>
+    <p class="small">🍺 doppelte Punkte · 🥃 Turbo · 🥞 Kaiserschmarrn = Bonus · 💨 Gondel-Furz betäubt den Liftwart · 🏂 Snowboard-Kids klauen dir 3 Leute</p>
+    <button class="btn main" id="tutorialOk">Verstanden, Chef! 🍻</button>
+  </div>
+</section>
+
+<!-- Pause -->
+<section class="overlay" id="pause" hidden>
+  <div class="card">
+    <div class="big">🚽</div>
+    <h2>Pinkelpause</h2>
+    <p id="pauseText">Die Schlange wartet. Der Liftwart auch.</p>
+    <button class="btn main" id="resumeBtn">▶ Weiterdrängeln</button>
+    <button class="btn" id="quitBtn">🏳 Aufgeben</button>
+    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </div>
+</section>
+
+<!-- Game Over -->
+<section class="overlay" id="over" hidden>
+  <div class="card">
+    <div class="big" id="overIcon">🚨</div>
+    <h2 id="overTitle"></h2>
+    <p id="overText"></p>
+    <div id="overStats">
+      <div>Punkte<b id="finalPoints">0</b></div>
+      <div>Länge<b id="finalLength">0</b></div>
+      <div>Level<b id="finalLevel">1</b></div>
+    </div>
+    <p>Rang: <span id="overRank"></span></p>
+    <p id="overRecord"></p>
+    <p id="shareText"></p>
+    <button class="btn" id="shareBtn">📲 Score teilen</button>
+    <div id="shareInfo" aria-live="polite"></div>
+    <button class="btn main" id="againBtn">🔄 Nochmal spielen</button>
+    <div class="row">
+      <button class="btn" id="overBoardBtn">🏆 Bestenliste</button>
+      <button class="btn" id="whoBtn">👥 Anderer Drängler</button>
+    </div>
+    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </div>
+</section>
+
+<!-- Bestenliste -->
+<section class="overlay" id="board" hidden>
+  <div class="card">
+    <div class="big">🏆</div>
+    <h2>Bestenliste der Drängler</h2>
+    <table>
+      <thead><tr><th>#</th><th>Wer</th><th style="text-align:right">Punkte</th><th style="text-align:right">Länge</th><th>Datum</th></tr></thead>
+      <tbody id="boardBody"></tbody>
+    </table>
+    <p class="small">Rekord pro Person, gespeichert auf diesem Gerät. Die Bestenliste der App (🏅) zählt alle Geräte.</p>
+    <button class="btn main" id="boardClose">Zurück</button>
+  </div>
+</section>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =====================================================================
+     EINSTELLUNGEN – hier lässt sich das Spiel leicht anpassen
+     ===================================================================== */
+
+  /* Beginn des Skiurlaubs (für den Countdown auf dem Startbildschirm). Format: JJJJ-MM-TTTHH:MM:SS (Ortszeit). */
+  var URLAUB_START = '2026-12-11T16:00:00';
+  var URLAUB_NAME = 'Skiurlaub';
+
+  /* Die vier Drängler: Name, Mützenfarbe (cap), Jackenfarbe (jacket). */
+  var FREUNDE = [
+    { name: 'Matze', cap: '#e03131', jacket: '#1c7ed6' },
+    { name: 'Dani', cap: '#ffd43b', jacket: '#d6336c' },
+    { name: 'Alex', cap: '#2f9e44', jacket: '#343a40' },
+    { name: 'Gabor', cap: '#f76707', jacket: '#7048e8' }
+  ];
+
+  /* Spieltempo: Millisekunden pro Schritt der Schlange (kleiner = schneller). */
+  var TEMPO_START = 165;          // Level 1
+  var TEMPO_PRO_LEVEL = 11;       // so viel schneller pro Level
+  var TEMPO_MIN = 75;             // schneller wird es nie
+  var LEUTE_PRO_LEVEL = 5;        // eingesammelte Leute bis zum nächsten Level
+  var START_LAENGE = 3;
+
+  /* Liftwart */
+  var LIFTWART_TEMPO = 1.4;            // Felder pro Sekunde in Level 1
+  var LIFTWART_TEMPO_PRO_LEVEL = 0.3;  // schneller pro Level
+  var LIFTWART_TEMPO_MAX = 4.2;
+  var LIFTWART_SICHTWEITE = 5;         // Felder
+  var LIFTWART_SICHTWINKEL = 40;       // Grad nach links und rechts (Kegel ist doppelt so breit)
+  var VERDACHT_SEKUNDEN = 1.3;         // so lange im Blick, bis der Balken voll ist (Level 1, mittlerer Abstand)
+  var VERDACHT_ABBAU = 0.35;           // pro Sekunde außerhalb des Blicks
+  var UMDREHEN_AB_LEVEL = 3;           // ab hier dreht er sich zufällig um
+  var ZWEITER_LIFTWART_AB_LEVEL = 4;   // ab hier patrouilliert ein zweiter
+
+  /* Items und Power-ups (Sekunden) */
+  var JAGERTEE_DAUER = 8;        // doppelte Punkte + besoffene Steuerung
+  var BESOFFEN_VERZOEGERUNG = 230; // ms Eingabeverzögerung …
+  var BESOFFEN_CHANCE = 0.4;       // … bei diesem Anteil der Eingaben
+  var WILLIAMS_DAUER = 3;        // Speed-Boost
+  var WILLIAMS_TEMPO = 0.6;      // Schrittzeit × diesen Faktor
+  var FURZ_DAUER = 4;            // Liftwart betäubt
+  var SCHMARRN_PUNKTE = 50;
+  var PUNKTE_SKIFAHRER = 10;     // + 2 pro Level
+  var PUNKTE_KUMPEL = 25;        // einer der anderen drei Freunde
+  var KUMPEL_CHANCE = 0.25;
+  var KID_AB_LEVEL = 2;          // Snowboarder-Kids ab diesem Level
+  var KID_TEMPO = 4;             // Felder pro Sekunde
+  var KID_KOSTET = 3;            // Glieder
+  var POWERUP_PAUSE = [6, 11];   // Sekunden zwischen zwei Power-ups (von–bis)
+  var POWERUP_LEBEN = 9;         // so lange liegt ein Power-up herum
+  var POWERUPS = [               // Häufigkeit (weight) – der Gondel-Furz ist selten
+    { type: 'jager', emoji: '🍺', weight: 30 },
+    { type: 'williams', emoji: '🥃', weight: 30 },
+    { type: 'schmarrn', emoji: '🥞', weight: 30 },
+    { type: 'furz', emoji: '💨', weight: 9 }
+  ];
+
+  /* Rang-Titel nach Punkten */
+  var RAENGE = [
+    { ab: 0, titel: 'Pistenpraktikant' },
+    { ab: 80, titel: 'Schlepplift-Rowdy' },
+    { ab: 180, titel: 'Hüttenschreck' },
+    { ab: 320, titel: 'Jagertee-Junkie' },
+    { ab: 500, titel: 'Après-Ski-Legende' },
+    { ab: 800, titel: 'Liftwart-Albtraum' }
+  ];
+
+  /* SPRÜCHE – einfach ergänzen. {name} = gewählter Drängler. */
+  var SPRUECHE = {
+    einsammeln: ['Hey, ich halt euch den Platz frei!', 'Die gehören zu mir!', 'Komm rein, wir sind eine Gruppe!',
+      'Psst, einfach mitlaufen!', 'Familienticket, ehrlich!', 'Schnell, bevor’s einer merkt!', 'Wir sind ein Skikurs!',
+      'Der hat mein Lunchpaket!', 'Ich kenn den vom Après-Ski!', 'Reihenfolge ist eh nur eine Empfehlung.'],
+    kumpel: {
+      Matze: ['Matze drängelt mit – Bierbauch voraus!', 'Matze: „Ich hab nur kurz die Bindung zugemacht!“', 'Matze ist dabei. Die Hüttenwirte zittern.'],
+      Dani: ['Vorgedrängelt wie Dani an der Bar.', 'Dani: „Ich kenn den Liftwart, der ist cool!“', 'Dani ist an Bord. Der Jagertee-Vorrat sinkt.'],
+      Alex: ['Alex: „Ist das hier die Schlange zur Hütte?“', 'Alex ist dabei – Sonnenbrille bei Nebel.', 'Alex: „Ich bin nur zum Fotografieren hier.“'],
+      Gabor: ['Gabor wäre stolz. Oder besoffen. Wahrscheinlich beides.', 'Gabor: „Ich hab noch einen Williams im Rucksack!“', 'Gabor hat sich angehängt. Und sein Flachmann auch.']
+    },
+    wartende: ['Ey, hinten anstellen!', 'Typisch Deutsche!', 'Ich ruf den Liftwart!', 'Hallo?! Wir warten seit 20 Minuten!',
+      'Unverschämtheit!', 'Schleich di!', 'Geht’s no?!', 'Die Schlange endet da hinten, Freundchen!', 'Mei, so a Depp!',
+      'Liftwaaaart!', 'Hat dir das dein Skilehrer beigebracht?', 'Ich hab Kinder dabei!', 'Sowas gab’s früher nicht!',
+      'Ich film das für Instagram!', 'Und tschüss, Anstand!', 'Du riechst nach Jagertee!', 'Deine Skier sind auf meinen!',
+      'Holländer sind ja schon schlimm, aber DU …', 'Ich zahl 70 Euro für die Karte und DU …!'],
+    liftwart: ['Hey! Du da!', 'Moment mal, Freundchen …', '*knister* Zentrale, ich hab da einen …', 'Bleib stehen!',
+      'Ich kenn dich doch!', 'Hinten anstellen, Burschi!'],
+    jager: ['Jagertee! Doppelte Punkte, halbes Hirn.', 'Prost! Die Absperrgitter fangen an zu tanzen.', 'Hicks! Wer hat die Piste schief gebaut?'],
+    williams: ['Williams-Shot! Brennt wie Hölle, fährt wie Sau!', 'Birnenschnaps-Turbo aktiviert!', 'Zack, Williams – und weg!'],
+    schmarrn: ['Kaiserschmarrn! Kalorien zählen erst nach dem Urlaub.', 'Kaiserschmarrn! Mit extra Puderzucker im Bart.', 'Schmarrn gefressen. Hose spannt.'],
+    furz: ['GONDEL-FURZ! Der Liftwart kämpft mit den Tränen.', 'Biologische Waffe gezündet. Liftwart k. o.', 'Pfffrrrt! Der Liftwart sieht nur noch grün.'],
+    kid: ['Snowboard-Kid! 3 Leute weg. Hat nicht mal „Sorry“ gesagt.', 'Umgenietet von einem 9-Jährigen. Peinlich.', 'Das Kid hat 3 Leute mitgenommen. Und deinen Stolz.'],
+    level: ['Der Liftwart hat Kaffee getrunken.', 'Die Schlange wird nervöser.', 'Der Liftwart hat jetzt Verstärkung angefordert.',
+      'Jetzt wird’s ernst – die Hütte schließt bald.', 'Die Wartenden spitzen schon die Skistöcke.', 'Profi-Drängler-Modus!'],
+    zweiterLiftwart: 'Verstärkung! Ein zweiter Liftwart ist da.',
+    ende: {
+      liftwart: { icon: '🚨', titel: 'ERWISCHT! Ab ans Ende der Schlange!', texte: [
+        'Der Liftwart hat dich gesehen. Er hat auch gesehen, was du gestern auf der Hütte gemacht hast.',
+        'Liftwart 1, du 0. Und er hat nicht mal den Schnauzer verzogen.',
+        'Er hat dein Gesicht gespeichert. Ab jetzt nur noch Zauberteppich für dich.',
+        'Funkspruch an alle Lifte: Dieser Mensch fährt heute nur noch Tellerlift.',
+        'Der Liftwart pfeift. Die ganze Schlange klatscht. Du nicht.'] },
+      wand: { icon: '🚧', titel: 'BÄMM! Absperrgitter geknutscht!', texte: [
+        'Das Gitter war schon nüchtern da. Du nicht.', 'Zahnarzt-Termin nach dem Urlaub: check.',
+        'Das Gitter hat gewonnen. Wie jedes Jahr.', 'Vorgedrängelt wie Dani an der Bar – nur ohne Bar.'] },
+      selbst: { icon: '🥨', titel: 'Über die eigene Truppe gestolpert!', texte: [
+        'Gabor wäre stolz. Oder besoffen. Wahrscheinlich beides.', 'Du bist in deine eigenen Leute gerannt. Die Gruppendynamik ist im Eimer.',
+        'Selbst im Weg stehen – das kannst du sogar ohne Jagertee.', 'Knoten in der Schlange. Wie Matzes Skischuhe nach der Hütte.'] },
+      kid: { icon: '🏂', titel: 'Vom Snowboard-Kid zerlegt!', texte: [
+        'Ein 9-Jähriger hat dich abgeräumt. Er hat dabei ein TikTok gedreht.', 'Zu kurz für ein Kid. Iss mehr Kaiserschmarrn.'] },
+      aufgegeben: { icon: '🏳', titel: 'Aufgegeben!', texte: [
+        'Freiwillig hinten anstellen? Wer bist du, ein Schweizer?', 'Ab in die Hütte. Da ist die Schlange eh kürzer.'] }
+    },
+    rekord: ['NEUER REKORD! Der Liftwart lässt dein Foto am Kassenhäuschen aufhängen.', 'NEUER REKORD! Die erste Runde zahlt heute wer anders.'],
+    teilen: 'Ich hab mich in der Liftschlange {punkte} Plätze vorgedrängelt 🎿🍺 ({laenge} Leute im Schlepptau, Rang „{rang}“) – schlag das, ihr Pfeifen!',
+    zahltRunde: 'Zahlt die erste Runde 🍻',
+    pause: ['Die Schlange wartet. Der Liftwart auch.', 'Kurz Glühwein nachfüllen?', 'Die Wartenden nutzen die Pause zum Lästern.']
+  };
+
+  /* Speicher im Browser – nur eigene Schlüssel, die mit liftschlange_ beginnen */
+  var KEY_BESTENLISTE = 'liftschlange_bestenliste_v1';
+  var KEY_SPIELER = 'liftschlange_spieler_v1';
+  var KEY_TON = 'liftschlange_ton_v1';
+  var KEY_TUTORIAL = 'liftschlange_tutorial_v1';
+  var KEY_FOTO = 'liftschlange_foto_v1_';   // + Name
+
+  /* =====================================================================
+     Spielfeld: 20 × 26 Felder. Zeile 0–1 = Lift-Einstieg, Rand = Zaun,
+     Zeilen 7, 13, 19 = Absperrgitter mit Lücke (Gänge wie beim Anstehen).
+     ===================================================================== */
+  var COLS = 20, ROWS = 26;
+  var BARRIERS = [ { y: 7, x0: 1, x1: 14 }, { y: 13, x0: 5, x1: 18 }, { y: 19, x0: 1, x1: 14 } ];
+  /* Patrouille des Liftwarts: Schlangenlinie durch alle Gänge (Mitte jedes Gangs) */
+  var ROUTE = [[2, 4], [17, 4], [17, 10], [2, 10], [2, 16], [17, 16], [17, 22], [2, 22]];
+
+  function isWall(x, y) {
+    if (x <= 0 || x >= COLS - 1 || y <= 1 || y >= ROWS - 1) return true;
+    for (var i = 0; i < BARRIERS.length; i++) {
+      var b = BARRIERS[i];
+      if (y === b.y && x >= b.x0 && x <= b.x1) return true;
+    }
+    return false;
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* voll oder gesperrt */ } },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) { /* egal */ } }
+  };
+  var pick = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+  var rand = function (a, b) { return a + Math.random() * (b - a); };
+
+  /* =====================================================================
+     BESTENLISTE – lokal im Browser. Für ein Online-Leaderboard (Supabase, Firebase …)
+     nur laden() und speichern() ersetzen; beide liefern Promises, der Rest bleibt gleich.
+     In Game-Test wird jedes Ergebnis zusätzlich per GameTest.reportScore in der
+     Supabase-Bestenliste der App gespeichert (siehe ende()).
+     ===================================================================== */
+  var Bestenliste = {
+    laden: function () {
+      var list = [];
+      try { list = JSON.parse(store.get(KEY_BESTENLISTE) || '[]'); } catch (e) { list = []; }
+      return Promise.resolve(Array.isArray(list) ? list : []);
+    },
+    speichern: function (eintrag) {
+      return Bestenliste.laden().then(function (list) {
+        list.push(eintrag);
+        list.sort(function (a, b) { return b.punkte - a.punkte; });
+        store.set(KEY_BESTENLISTE, JSON.stringify(list.slice(0, 100)));
+      });
+    },
+    /* Rekord pro Freund (auch Freunde ohne Ergebnis), sortiert */
+    rekorde: function () {
+      return Bestenliste.laden().then(function (list) {
+        return FREUNDE.map(function (f) {
+          var best = null;
+          list.forEach(function (e) { if (e.name === f.name && (!best || e.punkte > best.punkte)) best = e; });
+          return { name: f.name, freund: f, best: best };
+        }).sort(function (a, b) { return (b.best ? b.best.punkte : -1) - (a.best ? a.best.punkte : -1); });
+      });
+    }
+  };
+
+  /* =====================================================================
+     TON – alles synthetisch mit der Web Audio API
+     ===================================================================== */
+  var muted = store.get(KEY_TON) === 'aus';
+  var actx = null;
+  function audio() {
+    if (muted) return null;
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function osc(type, f0, f1, dur, vol, opts) {
+    var a = audio(); if (!a) return;
+    opts = opts || {};
+    var t = a.currentTime + (opts.delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    var out = g;
+    if (opts.lowpass) { var fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = opts.lowpass; g.connect(fl); out = fl; }
+    if (opts.lfo) { // Vibrato / Triller
+      var l = a.createOscillator(), lg = a.createGain();
+      l.frequency.value = opts.lfo[0]; lg.gain.value = opts.lfo[1];
+      l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + 0.05);
+    }
+    o.connect(g); out.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function noise(dur, vol, lowpass, delay) {
+    var a = audio(); if (!a) return;
+    var t = a.currentTime + (delay || 0);
+    var buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = lowpass;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+  }
+  var SOUND = {
+    plopp: function () { osc('sine', 700, 160, 0.13, 0.35); },
+    kumpel: function () { osc('sine', 500, 900, 0.1, 0.3); osc('sine', 700, 1300, 0.12, 0.3, { delay: 0.1 }); },
+    ruelpser: function () { osc('sawtooth', 120, 65, 0.6, 0.4, { lowpass: 380, lfo: [11, 22] }); noise(0.4, 0.15, 500); },
+    williams: function () { osc('square', 300, 1400, 0.35, 0.12); },
+    schmarrn: function () { osc('triangle', 520, 520, 0.1, 0.3); osc('triangle', 660, 660, 0.1, 0.3, { delay: 0.1 }); osc('triangle', 880, 880, 0.18, 0.3, { delay: 0.2 }); },
+    furz: function () { osc('sawtooth', 85, 55, 0.9, 0.45, { lowpass: 260, lfo: [17, 25] }); noise(0.7, 0.2, 300); },
+    pfeife: function () { // Trillerpfeife: hoher Ton mit schnellem Triller, zweimal
+      osc('sine', 2900, 2800, 0.5, 0.3, { lfo: [32, 260] }); osc('sine', 2900, 2700, 0.8, 0.3, { lfo: [32, 260], delay: 0.6 });
+    },
+    kid: function () { noise(0.25, 0.3, 2500); osc('square', 500, 200, 0.3, 0.12, { delay: 0.1 }); },
+    level: function () { [523, 659, 784, 1046].forEach(function (f, i) { osc('triangle', f, f, 0.14, 0.25, { delay: i * 0.09 }); }); },
+    bumm: function () { osc('sine', 140, 40, 0.5, 0.6); noise(0.3, 0.3, 800); },
+    warnung: function () { osc('square', 880, 880, 0.06, 0.06); }
+  };
+  function setMuted(m) {
+    muted = m;
+    store.set(KEY_TON, m ? 'aus' : 'an');
+    $('muteBtn').textContent = m ? '🔇' : '🔊';
+    $('startMuteBtn').textContent = m ? '🔇 Ton aus' : '🔊 Ton an';
+    if (!m) audio();
+  }
+
+  /* =====================================================================
+     SPIELZUSTAND
+     ===================================================================== */
+  var spieler = FREUNDE[0];
+  var fotoImg = null;
+  var S = null;
+
+  function neuerZustand() {
+    var snake = [], colors = [];
+    for (var i = 0; i < START_LAENGE; i++) {
+      snake.push({ x: 5 - i, y: 22 });
+      colors.push(i === 0 ? { cap: spieler.cap, jacket: spieler.jacket } : zufallsFarben());
+    }
+    return {
+      phase: 'ready', snake: snake, prev: snake.map(copy), colors: colors, pendingColors: [],
+      dir: { x: 1, y: 0 }, queue: [], grow: 0, acc: 0,
+      points: 0, people: 0, level: 1, time: 0, susp: 0, cause: null,
+      food: null, power: null, powerTimer: rand(POWERUP_PAUSE[0], POWERUP_PAUSE[1]),
+      kid: null, kidTimer: rand(6, 10),
+      wardens: [neuerLiftwart(0, 1)],
+      effects: { jager: 0, williams: 0, furz: 0 },
+      bubbles: [], bubbleTimer: rand(3, 6), wardenTalk: 0, chairs: 0, alarmBeep: 0
+    };
+  }
+  function copy(p) { return { x: p.x, y: p.y }; }
+  function zufallsFarben() {
+    var caps = ['#f03e3e', '#ae3ec9', '#1098ad', '#f59f00', '#74b816', '#fd7e14', '#e64980', '#4263eb', '#fff'];
+    var jackets = ['#228be6', '#fa5252', '#12b886', '#495057', '#fab005', '#be4bdb', '#15aabf', '#82c91e', '#e8590c'];
+    return { cap: pick(caps), jacket: pick(jackets) };
+  }
+
+  /* Route als Polylinie: Position und Blickrichtung bei Strecke s */
+  var ROUTE_LEN = 0;
+  for (var ri = 1; ri < ROUTE.length; ri++) ROUTE_LEN += Math.abs(ROUTE[ri][0] - ROUTE[ri - 1][0]) + Math.abs(ROUTE[ri][1] - ROUTE[ri - 1][1]);
+  function routeAt(s) {
+    s = Math.max(0, Math.min(ROUTE_LEN, s));
+    for (var i = 1; i < ROUTE.length; i++) {
+      var a = ROUTE[i - 1], b = ROUTE[i];
+      var len = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+      if (s <= len || i === ROUTE.length - 1) {
+        var dx = Math.sign(b[0] - a[0]), dy = Math.sign(b[1] - a[1]);
+        return { x: a[0] + dx * s, y: a[1] + dy * s, dx: dx, dy: dy };
+      }
+      s -= len;
+    }
+  }
+  function neuerLiftwart(s, sign) {
+    var w = { s: s, sign: sign, x: 0, y: 0, fx: 1, fy: 0, turnTimer: rand(3, 7), stun: 0, hold: null, cone: [] };
+    platziereLiftwart(w);
+    return w;
+  }
+  function platziereLiftwart(w) {
+    if (w.hold) { w.x = w.hold.x; w.y = w.hold.y; w.fx = w.hold.fx; w.fy = w.hold.fy; return; }
+    var p = routeAt(w.s);
+    w.x = p.x; w.y = p.y; w.fx = p.dx * w.sign; w.fy = p.dy * w.sign;
+  }
+
+  function tickMs() {
+    var t = Math.max(TEMPO_MIN, TEMPO_START - (S.level - 1) * TEMPO_PRO_LEVEL);
+    if (S.effects.williams > 0) t *= WILLIAMS_TEMPO;
+    return t;
+  }
+  function liftwartTempo() { return Math.min(LIFTWART_TEMPO_MAX, LIFTWART_TEMPO + (S.level - 1) * LIFTWART_TEMPO_PRO_LEVEL); }
+
+  function besetzt(x, y) {
+    var i;
+    for (i = 0; i < S.snake.length; i++) if (S.snake[i].x === x && S.snake[i].y === y) return true;
+    if (S.food && S.food.x === x && S.food.y === y) return true;
+    if (S.power && S.power.x === x && S.power.y === y) return true;
+    for (i = 0; i < S.wardens.length; i++) if (Math.round(S.wardens[i].x) === x && Math.round(S.wardens[i].y) === y) return true;
+    return false;
+  }
+  function freiesFeld() {
+    var h = S.snake[0];
+    for (var n = 0; n < 500; n++) {
+      var x = 1 + Math.floor(Math.random() * (COLS - 2)), y = 2 + Math.floor(Math.random() * (ROWS - 3));
+      if (isWall(x, y) || besetzt(x, y)) continue;
+      if (Math.abs(x - h.x) + Math.abs(y - h.y) < 4) continue;
+      return { x: x, y: y };
+    }
+    return null;
+  }
+  function neuesEssen() {
+    var p = freiesFeld(); if (!p) return;
+    var kumpel = null;
+    if (Math.random() < KUMPEL_CHANCE) {
+      var andere = FREUNDE.filter(function (f) { return f.name !== spieler.name; });
+      kumpel = pick(andere);
+    }
+    S.food = { x: p.x, y: p.y, kumpel: kumpel, colors: kumpel ? { cap: kumpel.cap, jacket: kumpel.jacket } : zufallsFarben() };
+  }
+  function neuesPowerup(type) {
+    var p = freiesFeld(); if (!p) return;
+    var item;
+    if (type) item = POWERUPS.filter(function (u) { return u.type === type; })[0];
+    else {
+      var sum = POWERUPS.reduce(function (s, u) { return s + u.weight; }, 0), r = Math.random() * sum;
+      for (var i = 0; i < POWERUPS.length; i++) { r -= POWERUPS[i].weight; if (r <= 0) { item = POWERUPS[i]; break; } }
+      item = item || POWERUPS[0];
+    }
+    S.power = { x: p.x, y: p.y, type: item.type, emoji: item.emoji, life: POWERUP_LEBEN };
+  }
+
+  /* Sprechblasen */
+  function blase(text, x, y, farbe) {
+    S.bubbles = [];   // immer nur eine Sprechblase, damit nichts überlappt
+    S.bubbles.push({ text: text, x: x, y: y, life: 2.6, color: farbe || '#fff' });
+  }
+  var banTimer = null;
+  function banner(text) {
+    var b = $('banner');
+    b.textContent = text; b.classList.add('show');
+    clearTimeout(banTimer);
+    banTimer = setTimeout(function () { b.classList.remove('show'); }, 1700);
+  }
+  /* Wartende in der Nachbarschlange (am linken/rechten Zaun) – Quelle für Schimpf-Sprechblasen */
+  var WARTENDE = [];
+  for (var wy = 3; wy < ROWS - 1; wy += 2) { WARTENDE.push({ x: 0, y: wy, c: null }); WARTENDE.push({ x: COLS - 1, y: wy + 1, c: null }); }
+  WARTENDE = WARTENDE.filter(function (w) { return w.y < ROWS - 1; });
+
+  /* =====================================================================
+     STEUERUNG
+     ===================================================================== */
+  var DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+  function lenke(name) {
+    if (!S || S.phase !== 'play') return;
+    var d = DIRS[name];
+    var apply = function () {
+      if (!S || S.phase !== 'play') return;
+      var last = S.queue.length ? S.queue[S.queue.length - 1] : S.dir;
+      if ((d.x === last.x && d.y === last.y) || (d.x === -last.x && d.y === -last.y)) return;
+      if (S.queue.length < 3) S.queue.push(d);
+    };
+    /* Besoffen: manche Eingaben kommen verspätet an */
+    if (S.effects.jager > 0 && Math.random() < BESOFFEN_CHANCE) setTimeout(apply, BESOFFEN_VERZOEGERUNG);
+    else apply();
+  }
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    var map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
+    if (map[k]) { e.preventDefault(); lenke(map[k]); return; }
+    if (k === 'p' || k === 'P' || k === 'Escape' || k === ' ') {
+      if (S && S.phase === 'play') { e.preventDefault(); pause(true); }
+      else if (S && S.phase === 'pause') { e.preventDefault(); pause(false); }
+    }
+    if (k === 'm' || k === 'M') setMuted(!muted);
+  });
+  /* Wischen auf dem Spielfeld */
+  var swipe = null;
+  $('stage').addEventListener('pointerdown', function (e) { swipe = { x: e.clientX, y: e.clientY }; });
+  $('stage').addEventListener('pointermove', function (e) {
+    if (!swipe) return;
+    var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+    lenke(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    swipe = { x: e.clientX, y: e.clientY };
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { $('stage').addEventListener(t, function () { swipe = null; }); });
+  [['padUp', 'up'], ['padDown', 'down'], ['padLeft', 'left'], ['padRight', 'right']].forEach(function (p) {
+    $(p[0]).addEventListener('pointerdown', function (e) { e.preventDefault(); lenke(p[1]); });
+  });
+
+  /* =====================================================================
+     SPIELABLAUF
+     ===================================================================== */
+  function zeige(id) {
+    ['start', 'tutorial', 'pause', 'over', 'board'].forEach(function (o) { $(o).hidden = o !== id; });
+  }
+
+  function starte() {
+    audio();
+    S = neuerZustand();
+    neuesEssen();
+    updateHud();
+    if (store.get(KEY_TUTORIAL) !== 'gesehen') { zeige('tutorial'); $('tutorialOk').focus(); return; }
+    los();
+  }
+  function los() {
+    store.set(KEY_TUTORIAL, 'gesehen');
+    zeige(null);
+    resize();
+    S.phase = 'play';
+    banner('Los! Drängel dich vor, ' + spieler.name + '!');
+    last = performance.now();
+  }
+
+  function pause(an) {
+    if (!S) return;
+    if (an && S.phase === 'play') {
+      S.phase = 'pause';
+      $('pauseText').textContent = pick(SPRUECHE.pause);
+      zeige('pause');
+      $('resumeBtn').focus();
+    } else if (!an && S.phase === 'pause') {
+      S.phase = 'play';
+      zeige(null);
+      last = performance.now();
+    }
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(true); });
+
+  function step() {
+    while (S.queue.length) {
+      var d = S.queue.shift();
+      if (!(d.x === -S.dir.x && d.y === -S.dir.y) && !(d.x === S.dir.x && d.y === S.dir.y)) { S.dir = d; break; }
+    }
+    var h = S.snake[0], nx = h.x + S.dir.x, ny = h.y + S.dir.y;
+    var old = S.snake.map(copy);
+    if (isWall(nx, ny)) return ende('wand');
+    var tailMoves = S.grow === 0;
+    for (var i = 0; i < S.snake.length - (tailMoves ? 1 : 0); i++) {
+      if (S.snake[i].x === nx && S.snake[i].y === ny) return ende('selbst');
+    }
+    for (i = 0; i < S.wardens.length; i++) {
+      var w = S.wardens[i];
+      if (w.stun <= 0 && Math.round(w.x) === nx && Math.round(w.y) === ny) return ende('liftwart');
+    }
+    S.snake.unshift({ x: nx, y: ny });
+    if (S.grow > 0) { S.grow--; S.colors.push(S.pendingColors.shift() || zufallsFarben()); } else S.snake.pop();
+    S.prev = S.snake.map(function (_, j) { return copy(old[Math.min(j, old.length - 1)]); });
+
+    /* Einsammeln */
+    var mult = S.effects.jager > 0 ? 2 : 1;
+    if (S.food && S.food.x === nx && S.food.y === ny) {
+      var f = S.food, pts = (f.kumpel ? PUNKTE_KUMPEL : PUNKTE_SKIFAHRER) + (S.level - 1) * 2;
+      S.points += pts * mult;
+      S.people++;
+      S.grow++;
+      S.pendingColors.push(f.colors);
+      if (f.kumpel) { SOUND.kumpel(); blase(pick(SPRUECHE.kumpel[f.kumpel.name]), nx, ny, '#fff3bf'); }
+      else { SOUND.plopp(); if (Math.random() < 0.45) blase(pick(SPRUECHE.einsammeln), nx, ny, '#e7f5ff'); }
+      S.food = null;
+      neuesEssen();
+      var lvl = 1 + Math.floor(S.people / LEUTE_PRO_LEVEL);
+      if (lvl > S.level) levelUp(lvl);
+    }
+    if (S.power && S.power.x === nx && S.power.y === ny) {
+      var p = S.power;
+      S.power = null;
+      S.powerTimer = rand(POWERUP_PAUSE[0], POWERUP_PAUSE[1]);
+      if (p.type === 'jager') { S.effects.jager = JAGERTEE_DAUER; SOUND.ruelpser(); banner('🍺 ' + pick(SPRUECHE.jager)); }
+      if (p.type === 'williams') { S.effects.williams = WILLIAMS_DAUER; SOUND.williams(); banner('🥃 ' + pick(SPRUECHE.williams)); }
+      if (p.type === 'schmarrn') { S.points += SCHMARRN_PUNKTE * mult; SOUND.schmarrn(); banner('🥞 +' + SCHMARRN_PUNKTE * mult + ' · ' + pick(SPRUECHE.schmarrn)); }
+      if (p.type === 'furz') {
+        S.effects.furz = FURZ_DAUER; S.susp = 0;
+        S.wardens.forEach(function (w) { w.stun = FURZ_DAUER; });
+        SOUND.furz(); banner('💨 ' + pick(SPRUECHE.furz));
+      }
+    }
+    updateHud();
+  }
+
+  function levelUp(lvl) {
+    S.level = lvl;
+    SOUND.level();
+    var text = 'LEVEL ' + lvl + ' – ' + SPRUECHE.level[(lvl - 2) % SPRUECHE.level.length];
+    if (lvl >= ZWEITER_LIFTWART_AB_LEVEL && S.wardens.length < 2) {
+      /* zweiter Liftwart kommt vom Routen-Ende, das weiter weg vom Kopf ist; kurz benommen, damit es fair bleibt */
+      var h = S.snake[0], a = routeAt(0), b = routeAt(ROUTE_LEN);
+      var startEnd = Math.abs(a.x - h.x) + Math.abs(a.y - h.y) > Math.abs(b.x - h.x) + Math.abs(b.y - h.y);
+      var w2 = neuerLiftwart(startEnd ? 0 : ROUTE_LEN, startEnd ? 1 : -1);
+      w2.stun = 1.5;
+      S.wardens.push(w2);
+      text = 'LEVEL ' + lvl + ' – ' + SPRUECHE.zweiterLiftwart;
+    }
+    banner(text);
+  }
+
+  /* Was der Liftwart sieht: Felder im Kegel mit freier Sicht (Gitter verdecken) */
+  function sichtkegel(w) {
+    var cells = [], R = LIFTWART_SICHTWEITE, half = LIFTWART_SICHTWINKEL * Math.PI / 180;
+    var fl = Math.hypot(w.fx, w.fy) || 1, fx = w.fx / fl, fy = w.fy / fl;
+    var x0 = Math.floor(w.x - R), x1 = Math.ceil(w.x + R), y0 = Math.floor(w.y - R), y1 = Math.ceil(w.y + R);
+    for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+      if (isWall(x, y)) continue;
+      var dx = x - w.x, dy = y - w.y, dist = Math.hypot(dx, dy);
+      if (dist < 0.5 || dist > R + 0.3) continue;
+      var cos = (dx * fx + dy * fy) / dist;
+      if (cos < Math.cos(half)) continue;
+      var blocked = false;
+      for (var t = 0.15; t < 1; t += 0.12) {
+        if (isWall(Math.round(w.x + dx * t), Math.round(w.y + dy * t))) { blocked = true; break; }
+      }
+      if (!blocked) cells.push({ x: x, y: y, d: dist });
+    }
+    return cells;
+  }
+
+  function update(dt) {
+    S.time += dt;
+    S.chairs += dt;
+    var e = S.effects;
+    e.jager = Math.max(0, e.jager - dt); e.williams = Math.max(0, e.williams - dt); e.furz = Math.max(0, e.furz - dt);
+
+    /* Schlange */
+    S.acc += dt * 1000;
+    var tm = tickMs();
+    while (S.acc >= tm && S.phase === 'play') { S.acc -= tm; step(); tm = tickMs(); }
+    if (S.phase !== 'play') return;
+
+    /* Liftwarte */
+    var h = S.snake[0], seen = 0;
+    S.wardens.forEach(function (w) {
+      if (w.stun > 0) { w.stun -= dt; w.cone = []; return; }
+      if (!w.hold) {
+        w.s += w.sign * liftwartTempo() * dt;
+        if (w.s >= ROUTE_LEN) { w.s = ROUTE_LEN; w.sign = -1; }
+        if (w.s <= 0) { w.s = 0; w.sign = 1; }
+        if (S.level >= UMDREHEN_AB_LEVEL) {
+          w.turnTimer -= dt;
+          if (w.turnTimer <= 0) { w.sign *= -1; w.turnTimer = rand(2.5, 6.5); }
+        }
+      }
+      platziereLiftwart(w);
+      w.cone = sichtkegel(w);
+      for (var i = 0; i < w.cone.length; i++) {
+        if (w.cone[i].x === h.x && w.cone[i].y === h.y) { seen = Math.max(seen, 1 + (LIFTWART_SICHTWEITE - w.cone[i].d) / LIFTWART_SICHTWEITE); }
+      }
+      /* Liftwart läuft in den Kopf hinein */
+      if (Math.round(w.x) === h.x && Math.round(w.y) === h.y) seen = 99;
+    });
+    if (seen >= 99) return ende('liftwart');
+    if (seen > 0) {
+      S.susp += dt * seen * (1 + (S.level - 1) * 0.12) / VERDACHT_SEKUNDEN / 1.5;
+      S.alarmBeep -= dt;
+      if (S.alarmBeep <= 0) { SOUND.warnung(); S.alarmBeep = 0.25; }
+      S.wardenTalk -= dt;
+      if (S.susp > 0.35 && S.wardenTalk <= 0) {
+        var w0 = S.wardens.filter(function (w) { return w.stun <= 0; })[0];
+        if (w0) blase(pick(SPRUECHE.liftwart), w0.x, w0.y, '#ffe3e3');
+        S.wardenTalk = 2.5;
+      }
+    } else S.susp = Math.max(0, S.susp - dt * VERDACHT_ABBAU);
+    if (S.susp >= 1) { S.susp = 1; return ende('liftwart'); }
+
+    /* Power-ups */
+    if (S.power) { S.power.life -= dt; if (S.power.life <= 0) { S.power = null; S.powerTimer = rand(POWERUP_PAUSE[0], POWERUP_PAUSE[1]); } }
+    else { S.powerTimer -= dt; if (S.powerTimer <= 0) neuesPowerup(); }
+
+    /* Snowboarder-Kid */
+    if (S.kid) {
+      S.kid.x += S.kid.dir * KID_TEMPO * dt;
+      if (S.kid.x < -1 || S.kid.x > COLS) S.kid = null;
+      else {
+        var kx = Math.round(S.kid.x);
+        for (var i = 0; i < S.snake.length; i++) {
+          if (S.snake[i].x === kx && S.snake[i].y === S.kid.y) { kidTreffer(); break; }
+        }
+      }
+    } else if (S.level >= KID_AB_LEVEL) {
+      S.kidTimer -= dt;
+      if (S.kidTimer <= 0) { neuesKid(); S.kidTimer = rand(7, 13); }
+    }
+    if (S.phase !== 'play') return;
+
+    /* Schimpfende Wartende */
+    S.bubbleTimer -= dt;
+    if (S.bubbleTimer <= 0) {
+      var near = WARTENDE.slice().sort(function (a, b) { return Math.abs(a.y - h.y) - Math.abs(b.y - h.y); }).slice(0, 4);
+      var wt = pick(near);
+      blase(pick(SPRUECHE.wartende), wt.x, wt.y);
+      S.bubbleTimer = rand(3.5, 7);
+    }
+    S.bubbles.forEach(function (b) { b.life -= dt; });
+    S.bubbles = S.bubbles.filter(function (b) { return b.life > 0; });
+    updateHud();
+  }
+
+  function neuesKid() {
+    var rows = [];
+    for (var y = 2; y < ROWS - 1; y++) if (!isWall(5, y) && !isWall(10, y)) rows.push(y);
+    var h = S.snake[0];
+    rows = rows.filter(function (y) { return y !== h.y; });
+    var y = pick(rows), dir = Math.random() < 0.5 ? 1 : -1;
+    S.kid = { x: dir > 0 ? 0.5 : COLS - 1.5, y: y, dir: dir };
+  }
+  function kidTreffer() {
+    S.kid = null;
+    SOUND.kid();
+    if (S.snake.length <= KID_KOSTET) return ende('kid');
+    S.snake.splice(-KID_KOSTET); S.prev.splice(-KID_KOSTET); S.colors.splice(-KID_KOSTET);
+    banner('🏂 ' + pick(SPRUECHE.kid));
+    updateHud();
+  }
+
+  function rang(punkte) {
+    var r = RAENGE[0];
+    RAENGE.forEach(function (x) { if (punkte >= x.ab) r = x; });
+    return r.titel;
+  }
+
+  var letzterText = '';
+  function ende(cause) {
+    if (S.phase === 'over') return;
+    var aufgegeben = cause === 'aufgegeben';
+    S.phase = 'over';
+    S.cause = cause;
+    if (cause === 'liftwart') { S.susp = 1; SOUND.pfeife(); }
+    else if (cause === 'kid') SOUND.kid();
+    else if (!aufgegeben) SOUND.bumm();
+    updateHud();
+    var e = SPRUECHE.ende[cause];
+    var r = rang(S.points);
+    var laenge = S.snake.length;
+    $('overIcon').textContent = e.icon;
+    $('overTitle').textContent = e.titel;
+    $('overText').textContent = pick(e.texte).replace(/\{name\}/g, spieler.name);
+    $('finalPoints').textContent = S.points;
+    $('finalLength').textContent = laenge;
+    $('finalLevel').textContent = S.level;
+    $('overRank').textContent = r;
+    letzterText = SPRUECHE.teilen.replace('{punkte}', S.points).replace('{laenge}', laenge).replace('{rang}', r);
+    $('shareText').textContent = letzterText;
+    $('shareInfo').textContent = '';
+    var punkte = S.points, sekunden = Math.max(1, Math.round(S.time));
+
+    /* Ergebnis an die Bestenliste der App (Supabase) melden */
+    if (window.GameTest) GameTest.reportScore({ points: punkte, seconds: sekunden });
+
+    /* … und lokal speichern */
+    Bestenliste.rekorde().then(function (vorher) {
+      var alt = vorher.filter(function (x) { return x.name === spieler.name; })[0];
+      var neu = punkte > 0 && (!alt || !alt.best || punkte > alt.best.punkte);
+      $('overRecord').textContent = neu ? '🎉 ' + pick(SPRUECHE.rekord) : (alt && alt.best ? 'Dein Rekord: ' + alt.best.punkte + ' Punkte' : '');
+      return Bestenliste.speichern({ name: spieler.name, punkte: punkte, laenge: laenge, datum: new Date().toISOString().slice(0, 10) });
+    });
+    setTimeout(function () { if (S.phase === 'over') { zeige('over'); $('againBtn').focus(); } }, aufgegeben ? 0 : 900);
+  }
+
+  /* Score teilen: in die Zwischenablage (für die WhatsApp-Gruppe) */
+  function kopieren(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).catch(function () { return kopierenAlt(text); });
+    }
+    return kopierenAlt(text);
+  }
+  function kopierenAlt(text) {
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) resolve(); else reject();
+    });
+  }
+  $('shareBtn').addEventListener('click', function () {
+    kopieren(letzterText).then(function () {
+      $('shareInfo').textContent = '✅ Kopiert! Ab damit in die WhatsApp-Gruppe.';
+    }, function () {
+      $('shareInfo').textContent = 'Kopieren hat nicht geklappt – markier den Text oben einfach selbst.';
+    });
+  });
+
+  /* Bestenliste anzeigen */
+  var boardZurueck = 'start';
+  function zeigeBestenliste(zurueck) {
+    boardZurueck = zurueck;
+    Bestenliste.rekorde().then(function (rows) {
+      var body = $('boardBody');
+      body.innerHTML = '';
+      rows.forEach(function (r, i) {
+        var tr = document.createElement('tr');
+        var last = i === rows.length - 1;
+        if (last) tr.className = 'last';
+        var td = function (html, cls) { var c = document.createElement('td'); if (cls) c.className = cls; c.innerHTML = html; tr.appendChild(c); };
+        var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+        td(String(i + 1));
+        td('<span class="dot" style="display:inline-block;width:18px;height:18px;vertical-align:middle;border-width:2px;border-color:' + r.freund.jacket + ';--cap:' + r.freund.cap + '"></span> <b>' + esc(r.name) + '</b>' +
+          (last ? '<br><span class="tag">' + esc(SPRUECHE.zahltRunde) + '</span>' : ''));
+        td(r.best ? String(r.best.punkte) : '–', 'num');
+        td(r.best ? String(r.best.laenge) : '–', 'num');
+        td(r.best ? esc(r.best.datum.split('-').reverse().join('.')) : 'noch nie');
+        body.appendChild(tr);
+      });
+      zeige('board');
+      $('boardClose').focus();
+    });
+  }
+
+  /* =====================================================================
+     STARTBILDSCHIRM: Countdown, Spielerauswahl, Foto
+     ===================================================================== */
+  function countdown() {
+    var diff = new Date(URLAUB_START).getTime() - Date.now(), el = $('countdown');
+    if (isNaN(diff)) { el.textContent = ''; return; }
+    if (diff <= 0) {
+      el.innerHTML = '🎿 ' + URLAUB_NAME + ' läuft!<b>Warum spielst du hier und stehst nicht am Lift?</b>';
+      return;
+    }
+    var s = Math.floor(diff / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    el.innerHTML = '⏳ Noch bis zum ' + URLAUB_NAME + ':<b>' + d + ' Tage · ' + h + ' Std · ' + m + ' Min · ' + sec + ' Sek</b>';
+  }
+  countdown();
+  setInterval(countdown, 1000);
+
+  function zeigeSpieler() {
+    var box = $('who');
+    box.innerHTML = '';
+    FREUNDE.forEach(function (f) {
+      var b = document.createElement('button');
+      b.className = 'who' + (f === spieler ? ' on' : '');
+      b.id = 'p-' + f.name;
+      b.setAttribute('aria-pressed', f === spieler ? 'true' : 'false');
+      var dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = f.jacket; dot.style.borderColor = f.jacket; dot.style.setProperty('--cap', f.cap);
+      b.appendChild(dot);
+      b.appendChild(document.createTextNode(f.name));
+      b.addEventListener('click', function () { spieler = f; store.set(KEY_SPIELER, f.name); zeigeSpieler(); ladeFoto(); });
+      box.appendChild(b);
+    });
+  }
+  function ladeFoto() {
+    var data = store.get(KEY_FOTO + spieler.name);
+    fotoImg = null;
+    $('fotoVorschau').hidden = !data;
+    $('fotoWeg').hidden = !data;
+    $('fotoLabel').textContent = data ? 'Anderes Foto' : 'Eigenes Gesicht als Kopf';
+    if (data) {
+      $('fotoVorschau').src = data;
+      var img = new Image();
+      img.onload = function () { fotoImg = img; };
+      img.src = data;
+    }
+  }
+  $('fotoInput').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    this.value = '';
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        /* quadratisch zuschneiden und verkleinern, damit es in den Browser-Speicher passt */
+        var size = 128, c = document.createElement('canvas'), x = c.getContext('2d');
+        c.width = c.height = size;
+        var s = Math.min(img.width, img.height);
+        x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        store.set(KEY_FOTO + spieler.name, c.toDataURL('image/jpeg', 0.82));
+        ladeFoto();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('fotoWeg').addEventListener('click', function () { store.del(KEY_FOTO + spieler.name); ladeFoto(); });
+
+  var gespeichert = store.get(KEY_SPIELER);
+  FREUNDE.forEach(function (f) { if (f.name === gespeichert) spieler = f; });
+  zeigeSpieler();
+  ladeFoto();
+
+  $('startBtn').addEventListener('click', starte);
+  $('tutorialOk').addEventListener('click', los);
+  $('againBtn').addEventListener('click', starte);
+  $('whoBtn').addEventListener('click', function () { S = neuerZustand(); neuesEssen(); updateHud(); zeige('start'); });
+  $('startBoardBtn').addEventListener('click', function () { zeigeBestenliste('start'); });
+  $('overBoardBtn').addEventListener('click', function () { zeigeBestenliste('over'); });
+  $('boardClose').addEventListener('click', function () { zeige(boardZurueck); });
+  $('pauseBtn').addEventListener('click', function () { if (S.phase === 'play') pause(true); else pause(false); });
+  $('resumeBtn').addEventListener('click', function () { pause(false); });
+  $('quitBtn').addEventListener('click', function () { S.phase = 'play'; ende('aufgegeben'); });
+  $('muteBtn').addEventListener('click', function () { setMuted(!muted); });
+  $('startMuteBtn').addEventListener('click', function () { setMuted(!muted); });
+  setMuted(muted);
+
+  /* =====================================================================
+     HUD
+     ===================================================================== */
+  var hudCache = '';
+  function updateHud() {
+    var e = S.effects;
+    var key = [S.points, S.snake.length, S.level, Math.round(S.susp * 50), Math.ceil(e.jager), Math.ceil(e.williams), Math.ceil(e.furz), S.phase].join('|');
+    if (key === hudCache) return;
+    hudCache = key;
+    $('hudPoints').textContent = S.points;
+    $('hudLength').textContent = S.snake.length;
+    $('hudLevel').textContent = S.level;
+    $('suspFill').style.width = Math.round(S.susp * 100) + '%';
+    $('suspWrap').classList.toggle('alarm', S.susp > 0.65);
+    var fx = '';
+    if (e.jager > 0) fx += '<span class="pill" title="Jagertee: doppelte Punkte">🍺 ×2 ' + Math.ceil(e.jager) + 's</span>';
+    if (e.williams > 0) fx += '<span class="pill" title="Williams: Turbo">🥃 ' + Math.ceil(e.williams) + 's</span>';
+    if (e.furz > 0) fx += '<span class="pill" title="Liftwart betäubt">💨 ' + Math.ceil(e.furz) + 's</span>';
+    $('effects').innerHTML = fx;
+    $('pauseBtn').textContent = S.phase === 'pause' ? '▶' : '⏸';
+  }
+
+  /* =====================================================================
+     ZEICHNEN
+     ===================================================================== */
+  var cv = $('cv'), ctx = cv.getContext('2d'), bg = document.createElement('canvas');
+  var CELL = 20, DPR = 1;
+  var touch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+
+  function resize() {
+    var landscape = window.innerWidth > window.innerHeight * 1.15;
+    document.body.classList.toggle('landscape', touch && landscape);
+    $('pad').hidden = !touch;
+    var st = $('stage').getBoundingClientRect();
+    var w = Math.max(100, st.width - 12), h = Math.max(100, st.height - 12);
+    CELL = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
+    DPR = Math.min(3, window.devicePixelRatio || 1);
+    cv.style.width = CELL * COLS + 'px';
+    cv.style.height = CELL * ROWS + 'px';
+    cv.width = Math.round(CELL * COLS * DPR);
+    cv.height = Math.round(CELL * ROWS * DPR);
+    malHintergrund();
+  }
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(function () { resize(); }).observe(document.body);
+
+  function rr(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  /* Hintergrund einmal vorzeichnen: Schnee, Gänge, Gitter, Zaun, Lift-Station */
+  function malHintergrund() {
+    bg.width = cv.width; bg.height = cv.height;
+    var c = bg.getContext('2d'), C = CELL;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.fillStyle = '#f4f9ff'; c.fillRect(0, 0, COLS * C, ROWS * C);
+    /* Schneegesprenkel */
+    var seed = 7;
+    var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (var i = 0; i < 500; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(160,190,220,.25)' : 'rgba(255,255,255,.9)'; c.fillRect(rnd() * COLS * C, rnd() * ROWS * C, 2, 2); }
+    /* Gänge: plattgetretener Schnee mit Skispuren */
+    c.fillStyle = '#e3edf7';
+    c.fillRect(C * 0.5, C * 1.5, (COLS - 1) * C, (ROWS - 2) * C);
+    c.strokeStyle = 'rgba(150,175,205,.35)'; c.lineWidth = 1;
+    for (var y = 2; y < ROWS - 1; y++) {
+      if (isWall(5, y) && isWall(10, y)) continue;
+      c.beginPath(); c.moveTo(C, y * C + C * 0.3 + rnd() * 3); c.lineTo((COLS - 1) * C, y * C + C * 0.3 + rnd() * 3); c.stroke();
+    }
+    /* Absperrgitter (Gänge) */
+    BARRIERS.forEach(function (b) { gitter(c, (b.x0 - 0.1) * C, b.y * C + C / 2, (b.x1 + 1.1) * C, b.y * C + C / 2); });
+    /* Rand: Zaun links, rechts, unten */
+    gitter(c, C / 2, C * 1.8, C / 2, (ROWS - 0.5) * C);
+    gitter(c, (COLS - 0.5) * C, C * 1.8, (COLS - 0.5) * C, (ROWS - 0.5) * C);
+    gitter(c, C / 2, (ROWS - 0.5) * C, (COLS - 0.5) * C, (ROWS - 0.5) * C);
+    /* Wartende der Nachbarschlange am Zaun */
+    WARTENDE.forEach(function (w, i) {
+      if (!w.c) w.c = zufallsFarben();
+      var px = w.x === 0 ? C * 0.22 : (COLS - 0.22) * C;
+      skifahrer(c, px, w.y * C + C / 2, w.x === 0 ? 0 : Math.PI, C * 0.36, w.c, null);
+    });
+    /* Lift-Station oben */
+    var g = c.createLinearGradient(0, 0, 0, C * 1.5);
+    g.addColorStop(0, '#495057'); g.addColorStop(1, '#868e96');
+    c.fillStyle = g; c.fillRect(0, 0, COLS * C, C * 1.05);
+    c.fillStyle = '#c92a2a'; c.fillRect(0, C * 1.0, COLS * C, C * 0.12);
+    c.fillStyle = '#fff'; c.font = '800 ' + Math.round(C * 0.55) + 'px "Trebuchet MS",sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('🚡 SESSELLIFT · EINSTIEG', COLS * C / 2, C * 0.55);
+    /* Drehkreuze in Zeile 1 */
+    c.fillStyle = '#ced4da'; c.fillRect(C * 0.5, C * 1.15, (COLS - 1) * C, C * 0.8);
+    for (var x = 1; x < COLS - 1; x += 2) {
+      c.fillStyle = '#343a40'; rr(c, x * C + C * 0.2, C * 1.25, C * 0.6, C * 0.6, 4); c.fill();
+      c.strokeStyle = '#ffd43b'; c.lineWidth = Math.max(2, C * 0.08);
+      c.beginPath(); c.moveTo(x * C + C * 0.5, C * 1.55); c.lineTo(x * C + C * 1.4, C * 1.55); c.stroke();
+    }
+  }
+  function gitter(c, x0, y0, x1, y1) {
+    var C = CELL, len = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+    var nx = -uy * C * 0.16, ny = ux * C * 0.16;
+    c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = Math.max(3, C * 0.3);
+    c.beginPath(); c.moveTo(x0 + 2, y0 + 3); c.lineTo(x1 + 2, y1 + 3); c.stroke();
+    c.strokeStyle = '#868e96'; c.lineWidth = Math.max(1.5, C * 0.09);
+    [1, -1].forEach(function (s) { c.beginPath(); c.moveTo(x0 + nx * s, y0 + ny * s); c.lineTo(x1 + nx * s, y1 + ny * s); c.stroke(); });
+    for (var t = 0; t <= len; t += C * 0.33) {
+      c.strokeStyle = '#adb5bd'; c.lineWidth = Math.max(1, C * 0.05);
+      c.beginPath(); c.moveTo(x0 + ux * t + nx, y0 + uy * t + ny); c.lineTo(x0 + ux * t - nx, y0 + uy * t - ny); c.stroke();
+    }
+    for (t = 0; t <= len + 1; t += C) {
+      c.fillStyle = '#495057';
+      c.beginPath(); c.arc(x0 + ux * t, y0 + uy * t, Math.max(2, C * 0.13), 0, Math.PI * 2); c.fill();
+    }
+    /* rot-weißes Absperrband an jedem dritten Pfosten */
+    for (t = C * 1.5; t < len; t += C * 3) {
+      c.fillStyle = '#e03131'; c.fillRect(x0 + ux * t - C * 0.15, y0 + uy * t - C * 0.15, C * 0.3, C * 0.3);
+      c.fillStyle = '#fff'; c.fillRect(x0 + ux * t - C * 0.05, y0 + uy * t - C * 0.15, C * 0.1, C * 0.3);
+    }
+  }
+
+  /* Skifahrer von oben: Skier, Jacke, Mütze mit Bommel. a = Blickrichtung (Winkel) */
+  function skifahrer(c, x, y, a, r, colors, foto) {
+    c.save(); c.translate(x, y); c.rotate(a);
+    c.fillStyle = '#212529';
+    rr(c, -r * 1.05, -r * 0.62, r * 2.3, r * 0.22, r * 0.1); c.fill();
+    rr(c, -r * 1.05, r * 0.4, r * 2.3, r * 0.22, r * 0.1); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(r * 0.1, r * 0.12, r * 0.85, r * 0.75, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = colors.jacket; c.beginPath(); c.ellipse(0, 0, r * 0.75, r * 0.88, 0, 0, Math.PI * 2); c.fill();
+    if (foto) {
+      c.rotate(-a);
+      c.save(); c.beginPath(); c.arc(0, 0, r * 0.82, 0, Math.PI * 2); c.closePath(); c.clip();
+      c.drawImage(foto, -r * 0.82, -r * 0.82, r * 1.64, r * 1.64); c.restore();
+      c.strokeStyle = colors.cap; c.lineWidth = Math.max(2, r * 0.18);
+      c.beginPath(); c.arc(0, 0, r * 0.82, 0, Math.PI * 2); c.stroke();
+    } else {
+      c.fillStyle = colors.cap; c.beginPath(); c.arc(r * 0.1, 0, r * 0.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(-r * 0.25, 0, r * 0.2, 0, Math.PI * 2); c.fill();
+    }
+    c.restore();
+  }
+
+  function liftwartZeichnen(c, w, t) {
+    var C = CELL, x = w.x * C + C / 2, y = w.y * C + C / 2, r = C * 0.5, a = Math.atan2(w.fy, w.fx);
+    c.save(); c.translate(x, y);
+    if (w.stun > 0) {
+      /* grüne Furzwolke + Sterne */
+      for (var i = 0; i < 6; i++) {
+        var ang = t * 1.5 + i * 1.05;
+        c.fillStyle = 'rgba(130,201,30,.35)';
+        c.beginPath(); c.arc(Math.cos(ang) * r * 0.9, Math.sin(ang) * r * 0.9, r * 0.55, 0, Math.PI * 2); c.fill();
+      }
+      a = t * 3; // dreht sich benommen
+    }
+    c.rotate(a);
+    c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(r * 0.1, r * 0.15, r * 0.95, r * 0.85, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ff922b'; c.beginPath(); c.ellipse(0, 0, r * 0.8, r * 0.95, 0, 0, Math.PI * 2); c.fill();   // Warnweste
+    c.strokeStyle = '#f1f3f5'; c.lineWidth = r * 0.14;
+    c.beginPath(); c.moveTo(-r * 0.6, -r * 0.55); c.lineTo(-r * 0.6, r * 0.55); c.stroke();                 // Reflexstreifen
+    c.beginPath(); c.moveTo(-r * 0.25, -r * 0.85); c.lineTo(-r * 0.25, r * 0.85); c.stroke();
+    c.fillStyle = '#212529'; c.fillRect(-r * 0.2, r * 0.6, r * 0.3, r * 0.35);                               // Funkgerät
+    c.strokeStyle = '#212529'; c.lineWidth = r * 0.08; c.beginPath(); c.moveTo(-r * 0.05, r * 0.95); c.lineTo(-r * 0.45, r * 1.25); c.stroke();
+    c.fillStyle = '#f1c27d'; c.beginPath(); c.arc(r * 0.18, 0, r * 0.48, 0, Math.PI * 2); c.fill();          // Kopf
+    c.fillStyle = '#495057'; c.beginPath(); c.arc(r * 0.05, 0, r * 0.42, Math.PI * 0.5, Math.PI * 1.5); c.fill(); // Kappe
+    c.fillStyle = '#343a40'; c.beginPath(); c.ellipse(r * 0.6, 0, r * 0.12, r * 0.38, 0, 0, Math.PI * 2); c.fill(); // Schnauzer
+    c.restore();
+    if (w.stun > 0) {
+      c.font = Math.round(C * 0.5) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('💫', x, y - C * 0.8);
+    }
+  }
+
+  function kidZeichnen(c, k, t) {
+    var C = CELL, x = k.x * C + C / 2, y = k.y * C + C / 2, r = C * 0.42;
+    c.save(); c.translate(x, y);
+    c.fillStyle = 'rgba(255,255,255,.7)';
+    for (var i = 1; i < 4; i++) { c.beginPath(); c.arc(-k.dir * i * C * 0.35, (i % 2 ? 1 : -1) * C * 0.12, r * 0.4 / i + 1, 0, Math.PI * 2); c.fill(); }
+    c.rotate(k.dir > 0 ? 0 : Math.PI);
+    c.fillStyle = '#7950f2'; rr(c, -r * 0.4, -r * 1.1, r * 0.8, r * 2.2, r * 0.4); c.fill();   // Board quer
+    c.fillStyle = '#20c997'; c.beginPath(); c.ellipse(0, 0, r * 0.5, r * 0.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#ffd43b'; c.beginPath(); c.arc(r * 0.12, 0, r * 0.35, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+
+  function blaseZeichnen(c, b) {
+    var C = CELL, fs = Math.max(11, Math.round(C * 0.5));
+    c.font = '700 ' + fs + 'px "Trebuchet MS",sans-serif';
+    var maxW = Math.min(COLS * C * 0.62, C * 10), words = b.text.split(' '), lines = [], line = '';
+    words.forEach(function (w) {
+      var test = line ? line + ' ' + w : w;
+      if (c.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test;
+    });
+    lines.push(line);
+    var w = Math.max.apply(null, lines.map(function (l) { return c.measureText(l).width; })) + fs, h = lines.length * fs * 1.2 + fs * 0.6;
+    var ax = b.x * C + C / 2, ay = b.y * C;
+    var x = Math.max(4, Math.min(COLS * C - w - 4, ax - w / 2)), y = Math.max(4, ay - h - C * 0.4);
+    var alpha = Math.min(1, b.life * 3);
+    c.globalAlpha = alpha;
+    c.fillStyle = b.color; c.strokeStyle = '#13243a'; c.lineWidth = 2;
+    rr(c, x, y, w, h, fs * 0.5); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(Math.max(x + 8, Math.min(x + w - 8, ax)) - 6, y + h - 1); c.lineTo(ax, Math.min(ay + C * 0.1, y + h + C * 0.4)); c.lineTo(Math.max(x + 8, Math.min(x + w - 8, ax)) + 6, y + h - 1); c.closePath(); c.fill();
+    c.stroke();
+    c.fillStyle = b.color; c.fillRect(Math.max(x + 8, Math.min(x + w - 8, ax)) - 5, y + h - 3, 10, 3);
+    c.fillStyle = '#13243a'; c.textAlign = 'center'; c.textBaseline = 'top';
+    lines.forEach(function (l, i) { c.fillText(l, x + w / 2, y + fs * 0.35 + i * fs * 1.2); });
+    c.globalAlpha = 1;
+  }
+
+  function draw(now) {
+    var t = now / 1000, C = CELL;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(bg, 0, 0);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (!S) return;
+
+    /* Sessel am Seil */
+    ctx.strokeStyle = '#212529'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, C * 0.18); ctx.lineTo(COLS * C, C * 0.18); ctx.stroke();
+    for (var i = -1; i < 6; i++) {
+      var cx = ((S.chairs * C * 1.3 + i * C * 4.5) % (COLS * C + C * 4.5)) - C * 2;
+      ctx.fillStyle = '#1864ab'; rr(ctx, cx, C * 0.06, C * 1.6, C * 0.28, 3); ctx.fill();
+    }
+
+    /* Sichtkegel (halbtransparent rot) */
+    S.wardens.forEach(function (w) {
+      w.cone.forEach(function (cell) {
+        ctx.fillStyle = 'rgba(240,62,62,' + (0.16 + 0.16 * (1 - cell.d / LIFTWART_SICHTWEITE)) + ')';
+        ctx.fillRect(cell.x * C, cell.y * C, C, C);
+      });
+    });
+    /* Kopf im Blick: Feld rot umranden */
+    var h0 = S.snake[0];
+    if (S.susp > 0 && S.phase === 'play') {
+      ctx.strokeStyle = 'rgba(224,49,49,' + (0.5 + 0.5 * Math.sin(t * 20)) + ')'; ctx.lineWidth = 3;
+      ctx.strokeRect(h0.x * C + 1, h0.y * C + 1, C - 2, C - 2);
+    }
+
+    /* Essen (Skifahrer / Kumpel) */
+    if (S.food) {
+      var f = S.food, bob = Math.sin(t * 5) * C * 0.05;
+      ctx.fillStyle = f.kumpel ? 'rgba(255,212,59,.55)' : 'rgba(77,171,247,.3)';
+      ctx.beginPath(); ctx.arc(f.x * C + C / 2, f.y * C + C / 2, C * (0.62 + 0.05 * Math.sin(t * 6)), 0, Math.PI * 2); ctx.fill();
+      skifahrer(ctx, f.x * C + C / 2, f.y * C + C / 2 + bob, -Math.PI / 2, C * 0.42, f.colors, null);
+      if (f.kumpel) {
+        ctx.font = '800 ' + Math.max(10, Math.round(C * 0.42)) + 'px "Trebuchet MS",sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(f.kumpel.name, f.x * C + C / 2, f.y * C - 1);
+        ctx.fillStyle = '#13243a'; ctx.fillText(f.kumpel.name, f.x * C + C / 2, f.y * C - 1);
+      }
+    }
+    /* Power-up */
+    if (S.power && (S.power.life > 2 || Math.sin(t * 18) > 0)) {
+      var p = S.power;
+      ctx.fillStyle = p.type === 'furz' ? 'rgba(130,201,30,.45)' : 'rgba(255,255,255,.85)';
+      ctx.beginPath(); ctx.arc(p.x * C + C / 2, p.y * C + C / 2, C * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.font = Math.round(C * 0.78) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.emoji, p.x * C + C / 2, p.y * C + C / 2 + C * 0.05 + Math.sin(t * 4) * C * 0.06);
+    }
+
+    /* Schlange (weich zwischen den Feldern bewegt) */
+    var k = S.phase === 'play' ? Math.min(1, S.acc / tickMs()) : 1;
+    var pos = S.snake.map(function (s, j) {
+      var pv = S.prev[j] || s;
+      return { x: (pv.x + (s.x - pv.x) * k) * C + C / 2, y: (pv.y + (s.y - pv.y) * k) * C + C / 2 };
+    });
+    ctx.strokeStyle = 'rgba(19,36,58,.25)'; ctx.lineWidth = C * 0.18; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); pos.forEach(function (p, j) { if (j) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.stroke();
+    for (var j = pos.length - 1; j >= 0; j--) {
+      var nb = j === 0 ? { x: pos[0].x + S.dir.x, y: pos[0].y + S.dir.y } : pos[j - 1];
+      var ang = Math.atan2(nb.y - pos[j].y, nb.x - pos[j].x);
+      if (j === 0) ang = Math.atan2(S.dir.y, S.dir.x);
+      skifahrer(ctx, pos[j].x, pos[j].y, ang, C * (j === 0 ? 0.52 : 0.42), S.colors[j] || S.colors[S.colors.length - 1], j === 0 ? fotoImg : null);
+    }
+    if (S.phase === 'ready' || S.phase === 'play') {
+      ctx.font = '800 ' + Math.max(10, Math.round(C * 0.42)) + 'px "Trebuchet MS",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(spieler.name, pos[0].x, pos[0].y - C * 0.5);
+      ctx.fillStyle = '#c92a2a'; ctx.fillText(spieler.name, pos[0].x, pos[0].y - C * 0.5);
+    }
+
+    if (S.kid) kidZeichnen(ctx, S.kid, t);
+    S.wardens.forEach(function (w) { liftwartZeichnen(ctx, w, t); });
+    S.bubbles.forEach(function (b) { blaseZeichnen(ctx, b); });
+
+    /* ERWISCHT */
+    if (S.phase === 'over' && S.cause === 'liftwart') {
+      ctx.fillStyle = 'rgba(201,42,42,.35)'; ctx.fillRect(0, 0, COLS * C, ROWS * C);
+      ctx.font = '900 ' + Math.round(C * 1.6) + 'px "Trebuchet MS",sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6; ctx.strokeStyle = '#fff'; ctx.strokeText('ERWISCHT!', COLS * C / 2, ROWS * C / 2);
+      ctx.fillStyle = '#c92a2a'; ctx.fillText('ERWISCHT!', COLS * C / 2, ROWS * C / 2);
+    }
+  }
+
+  /* Hauptschleife */
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000) * SPIEL.timeScale;
+    last = now;
+    if (S && S.phase === 'play' && dt > 0) update(dt);
+    if (S && S.phase !== 'play') { S.chairs += dt; S.bubbles.forEach(function (b) { b.life -= dt; }); }
+    /* Besoffen: Bild wackelt */
+    var wob = $('wobble');
+    if (S && S.effects.jager > 0 && S.phase === 'play') {
+      var tt = now / 1000;
+      wob.style.transform = 'rotate(' + (Math.sin(tt * 2.1) * 1.6).toFixed(2) + 'deg) translate(' + (Math.sin(tt * 3.3) * 4).toFixed(1) + 'px,' + (Math.cos(tt * 2.6) * 3).toFixed(1) + 'px)';
+    } else if (wob.style.transform) wob.style.transform = '';
+    draw(now);
+    requestAnimationFrame(frame);
+  }
+
+  /* Zugang für den Durchspiel-Test (tools/spieltests/liftschlange.js) */
+  window.SPIEL = {
+    timeScale: 1,
+    state: function () {
+      return {
+        phase: S.phase, points: S.points, length: S.snake.length, people: S.people, level: S.level,
+        susp: S.susp, cause: S.cause, head: copy(S.snake[0]), dir: copy(S.dir), effects: JSON.parse(JSON.stringify(S.effects)),
+        wardens: S.wardens.map(function (w) { return { x: w.x, y: w.y, stun: w.stun, cone: w.cone.length }; }),
+        kid: S.kid ? { x: S.kid.x, y: S.kid.y } : null, player: spieler.name, foto: !!fotoImg, tickMs: tickMs(),
+        food: S.food ? { x: S.food.x, y: S.food.y } : null, bubbles: S.bubbles.length
+      };
+    },
+    /* Ein Schritt der Schlange (plus die Zeit dafür) – für Tests mit timeScale 0 */
+    step: function () { if (S.phase === 'play') { S.acc = tickMs(); update(0.001); } },
+    /* Zeit vergehen lassen; still = Schlange bleibt stehen */
+    advance: function (sec, still) { for (var i = 0; i < sec * 50 && S.phase === 'play'; i++) { if (still) S.acc = 0; update(0.02); } },
+    /* Ding n Felder vor den Kopf legen: 'person', 'kumpel', 'jager', 'williams', 'schmarrn', 'furz' */
+    place: function (type, n) {
+      var h = S.snake[0], x = h.x + S.dir.x * (n || 1), y = h.y + S.dir.y * (n || 1);
+      if (type === 'person' || type === 'kumpel') {
+        neuesEssen();
+        var kumpel = type === 'kumpel' ? FREUNDE.filter(function (f) { return f !== spieler; })[0] : null;
+        S.food = { x: x, y: y, kumpel: kumpel, colors: kumpel ? { cap: kumpel.cap, jacket: kumpel.jacket } : zufallsFarben() };
+      } else { neuesPowerup(type); S.power.x = x; S.power.y = y; }
+    },
+    kid: function (x, y, dir) { S.kid = { x: x, y: y, dir: dir || 1 }; },
+    /* Liftwart festhalten: Feld und Blickrichtung (null = wieder patrouillieren) */
+    holdWarden: function (i, hold) { S.wardens[i].hold = hold; S.wardens[i].stun = 0; },
+    level: function (n) { S.people = (n - 1) * LEUTE_PRO_LEVEL; levelUp(n); },
+    isWall: isWall,
+    view: function () { var r = cv.getBoundingClientRect(); return { canvas: [r.width, r.height], screen: [innerWidth, innerHeight], left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }
+  };
+
+  S = neuerZustand();
+  neuesEssen();
+  resize();
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
