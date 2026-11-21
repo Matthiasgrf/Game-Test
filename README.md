@@ -1,7 +1,7 @@
 # Game-Test – GitHub + Supabase + Claude Code (Lernbeispiel)
 
 Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, einer
-**Spiele-Übersicht** (Labyrinth für Kinder, Zahlenraten, Elisabeth von Thüringen) und **Highscores**. User können **nur vom Admin**
+**Spiele-Übersicht** (u. a. Labyrinth für Kinder, Zahlenraten und die Lernspiele der Klasse 3c) und **Highscores**. User können **nur vom Admin**
 angelegt werden – es gibt keine Selbstregistrierung.
 
 ## Architektur
@@ -87,6 +87,14 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 | Labyrinth-Abenteuer | React, `src/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
 | Zahlenraten | React, `src/games/zahlenraten/` | Kindergarten | `public/games/zahlenraten/readme.md` |
 | Elisabeth von Thüringen | HTML, `public/games/elisabeth/` | Klasse-3c | `public/games/elisabeth/readme.md` |
+| Flug über Europa | HTML, `public/games/europaflug/` | Klasse-3c | `public/games/europaflug/readme.md` |
+| Getreide-Abenteuer | HTML, `public/games/sachunterricht-getreide/` | Klasse-3c | `public/games/sachunterricht-getreide/readme.md` |
+| Flug über Deutschland | HTML, `public/games/deutschlandflug/` | Klasse-3c | `public/games/deutschlandflug/readme.md` |
+| Flug über die Welt | HTML, `public/games/weltflug/` | Klasse-3c | `public/games/weltflug/readme.md` |
+| Robi in der Zahlenfabrik | HTML, `public/games/mathe-robi/` | Klasse-3c | `public/games/mathe-robi/readme.md` |
+| Bauer Franz und die Getreideernte | HTML, `public/games/sachunterricht-getreideernte/` | Klasse-3c | `public/games/sachunterricht-getreideernte/readme.md` |
+| Die Formen-Werkstatt | HTML, `public/games/mathe-formen/` | Klasse-3c | `public/games/mathe-formen/readme.md` |
+| Die Wortmonster | HTML, `public/games/deutsch-wortmonster/` | Klasse-3c | `public/games/deutsch-wortmonster/readme.md` |
 
 Es gibt zwei Arten von Spielen:
 

@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<title>Die Wortmonster</title>
+<style>
+/* Die Wortmonster – Deutsch, 3. Klasse: Übung für den Sprachkundetest.
+   Drei Monster fressen je eine Wortart: Nomi (Nomen), Flitz (Verben), Ada (Adjektive).
+   Inhalte stammen von vier Arbeitsblättern (Artikel, Verben, Adjektive, Sprachkundetest) und weiteren Wörtern. */
+:root{--ink:#22204a;--accent:#ff6f3c;--ok:#2fa84f;--bad:#e2504a;--paper:#fffdf7;--line:#e4dcf5;--n:#4a90e2;--v:#ff8a1f;--a:#b05bd6}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+  background:radial-gradient(circle,rgba(255,255,255,.35) 3px,transparent 3.5px) 0 0/34px 34px,linear-gradient(160deg,#7bd8c9,#a8c8ff 50%,#f7c6e8)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 4px}
+.pill{background:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;font-size:16px;color:inherit;
+  text-decoration:none;box-shadow:0 3px 10px rgba(40,30,90,.22);display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:42px;white-space:nowrap}
+.bar .pill{min-width:0}
+#progress{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){.bar{gap:6px;padding-left:8px;padding-right:8px}.bar .pill{padding:8px 10px;font-size:15px}}
+main{flex:1;display:flex;flex-direction:column;padding:6px 12px calc(16px + env(safe-area-inset-bottom))}
+.card{margin:auto;background:var(--paper);border-radius:24px;padding:20px;width:100%;box-shadow:0 8px 26px rgba(40,30,90,.25);border:3px solid #fff}
+h1{margin:2px 0 6px;font-size:clamp(30px,6vw,44px);text-align:center;letter-spacing:.5px}
+h1 span{display:inline-block}
+p{font-size:18px;line-height:1.4;margin:8px 0}
+.btn{display:block;width:100%;margin:10px 0 0;padding:13px 18px;min-height:54px;font:inherit;font-size:19px;font-weight:700;text-align:center;
+  color:var(--ink);background:#fff;border:3px solid var(--line);border-radius:16px;cursor:pointer;text-decoration:none}
+.btn.main{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 0 #c94d22}
+.btn.main:active{transform:translateY(3px);box-shadow:0 1px 0 #c94d22}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 180px}
+button,a{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ---------- Monster ---------- */
+.msvg{display:block;width:100%;height:auto;overflow:visible}
+.msvg .eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.2s infinite}
+.msvg .mo{display:none}
+.eat .msvg .mo{display:inline}.eat .msvg .mc{display:none}
+.wig{animation:idle 2.6s ease-in-out infinite;transform-origin:50% 100%}
+[data-m="v"] .wig{animation:hop .7s ease-in-out infinite}
+[data-m="v"] .legL{animation:legs .35s infinite alternate;transform-box:fill-box;transform-origin:top center}
+[data-m="v"] .legR{animation:legs .35s infinite alternate-reverse;transform-box:fill-box;transform-origin:top center}
+[data-m="a"] .skin{animation:rainbow 7s linear infinite}
+.chew .wig{animation:chew .28s ease-in-out 3}
+.yuck .wig{animation:shake .5s ease-in-out}
+.burp .wig{animation:burp .8s ease-in-out}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+@keyframes idle{50%{transform:translateY(-5px) scale(1.02,.98)}}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px) rotate(2deg)}}
+@keyframes legs{to{transform:rotate(14deg)}}
+@keyframes rainbow{0%,100%{fill:#b05bd6}25%{fill:#e45fb4}50%{fill:#b05bd6}75%{fill:#7466e8}}
+@keyframes chew{50%{transform:scale(1.08,.9)}}
+@keyframes shake{20%{transform:rotate(-9deg)}40%{transform:rotate(8deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(4deg)}}
+@keyframes burp{30%{transform:scale(1.25,.85)}60%{transform:scale(.95,1.1)}}
+
+/* ---------- Start ---------- */
+.start{max-width:860px}
+.intro{text-align:center;max-width:600px;margin:0 auto 12px}
+.areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.area{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 10px 12px;font:inherit;color:inherit;background:#fff;
+  border:4px solid var(--line);border-radius:20px;cursor:pointer;text-align:center;transition:transform .15s}
+.area:hover{transform:translateY(-3px)}
+.area .pic{width:110px;height:110px;display:flex;align-items:flex-end;justify-content:center}
+.area .pic .one{width:104px}
+.area .pic .one{display:block}.area .pic .three{display:flex;align-items:flex-end;gap:2px}.area .pic .three>span{display:block;width:44px}
+.area b{font-size:21px}
+.area small{font-size:15px;opacity:.8;line-height:1.25}
+.area .st{font-size:17px;margin-top:4px;min-height:22px;letter-spacing:2px}
+.area[data-area="nomen"]{border-color:#a9cdf6;background:#f1f7ff}
+.area[data-area="verben"]{border-color:#ffc58f;background:#fff5ea}
+.area[data-area="adjektive"]{border-color:#dcb3ef;background:#fbf2ff}
+.area[data-area="mix"]{border-color:#9edcc3;background:#ecfbf4}
+.testbtn{margin-top:14px}
+.testbtn small{display:block;font-size:15px;font-weight:400;opacity:.95}
+
+/* ---------- Spiel ---------- */
+#game{max-width:860px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:8px;flex:1}
+#stage{display:flex;justify-content:center;align-items:flex-end;gap:clamp(8px,4vw,40px);min-height:130px;padding-top:34px}
+.mon{position:relative;width:clamp(78px,20vw,112px);display:flex;flex-direction:column;align-items:center;cursor:default;border-radius:18px;
+  transition:background .2s}
+#stage.one .mon{width:clamp(110px,28vw,150px)}
+.mon .grow{width:100%;transition:transform .5s cubic-bezier(.3,1.6,.5,1);transform-origin:50% 100%}
+.mon .mname small{font-size:inherit}
+#stage:not(.one) .dot{display:none}
+#stage:not(.one) .mname small{display:block;font-size:12px;line-height:1.1}
+#stage:not(.one) .mname{border-radius:12px;text-align:center;padding:2px 8px}
+.mon .mname{font-weight:700;font-size:15px;background:rgba(255,255,255,.85);border-radius:999px;padding:2px 10px;margin-top:2px;white-space:nowrap}
+.mon.target{cursor:pointer}
+.mon.target .mname{border:2px dashed currentColor}
+.mon.hot{background:rgba(255,255,255,.55)}
+.mon.sel .mname{background:#ffe680}
+.bub{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#fff;border:3px solid var(--ink);border-radius:16px;
+  padding:4px 10px;font-weight:700;font-size:15px;white-space:nowrap;z-index:5;pointer-events:none;animation:pop .25s}
+.bub::after{content:"";position:absolute;top:100%;left:calc(50% + var(--tail,0px));margin-left:-7px;border:7px solid transparent;border-top-color:var(--ink)}
+@keyframes pop{from{transform:translateX(-50%) scale(.3)}}
+.belly{height:14px;background:rgba(255,255,255,.6);border-radius:999px;overflow:hidden;border:2px solid #fff;max-width:420px;width:100%;margin:0 auto}
+.belly div{height:100%;width:0;background:linear-gradient(90deg,#ffd23f,#ff6f3c);border-radius:999px;transition:width .5s}
+.play{margin:0 auto;max-width:860px;padding:16px 18px}
+.kicker{text-align:center;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.65}
+#prompt{margin:2px 0 12px;font-size:clamp(21px,3.4vw,27px);line-height:1.25;text-align:center}
+#task{font-size:clamp(20px,3.4vw,25px);line-height:2;text-align:center}
+.gap{display:inline-block;min-width:3.6em;min-height:1.45em;line-height:1.3;padding:0 6px;margin:0 2px;border-bottom:3px dashed #a39bc4;vertical-align:baseline;
+  border-radius:6px;font-weight:700;text-align:center}
+.gap.sm{min-width:1.4em}
+.gap.cur{background:#fff3a6;border-bottom-color:var(--accent);animation:glow 1.2s ease-in-out infinite}
+.gap.done{color:var(--ok);border-bottom-style:solid;border-bottom-color:var(--ok)}
+.gap.fix{color:var(--bad);border-bottom-style:solid;border-bottom-color:var(--bad)}
+@keyframes glow{50%{background:#ffe066}}
+.line{display:block;text-align:left;max-width:560px;margin:0 auto}
+.lbl{display:inline-block;font-size:.62em;font-weight:700;background:#eee8ff;border-radius:8px;padding:2px 8px;vertical-align:middle;margin-right:6px;
+  line-height:1.5;min-width:8.5em;text-align:center}
+.given{display:inline-block;font-weight:700;background:#fff;border:3px solid var(--line);border-radius:12px;padding:0 12px;margin-bottom:6px}
+.txt{text-align:left;max-width:640px;margin:0 auto;line-height:2.1}
+#opts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
+.co{min-width:72px;min-height:54px;padding:8px 18px;font:inherit;font-size:21px;font-weight:700;color:var(--ink);background:#fff;
+  border:3px solid #cfc6ee;border-radius:14px;cursor:pointer;box-shadow:0 3px 0 #cfc6ee;touch-action:manipulation}
+.co:hover{border-color:var(--accent)}
+.co.wrong{background:#ffe1dc;border-color:var(--bad);box-shadow:none;animation:shake2 .4s;cursor:default;opacity:.7}
+.co.used{visibility:hidden}
+@keyframes shake2{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+/* Wörter im Satz antippen */
+.sent{max-width:680px;margin:0 auto;line-height:2.3}
+.tw{font:inherit;font-size:inherit;color:inherit;background:#fff;border:2px solid #ddd5f3;border-radius:10px;padding:0 6px;margin:2px 1px;cursor:pointer;
+  line-height:1.5;touch-action:manipulation}
+.tw.hit{background:#d6f5dc;border-color:var(--ok);color:#1d6b33;font-weight:700}
+.tw.miss{background:#ffe1dc;border-color:var(--bad);animation:shake2 .4s}
+.tw.hint{animation:glow 1s infinite;border-color:var(--accent)}
+.count{font-size:16px;font-weight:700;opacity:.7;margin-top:4px}
+/* Wörterschlange */
+.snake{max-width:720px;margin:0 auto;padding:4px;text-align:center;font-size:20px;line-height:66px}
+.seg{display:inline;background:linear-gradient(#8fdc6f,#55b84a);border:3px solid #2f7d35;border-radius:999px;padding:7px 8px;margin:0 2px;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone}
+.seg .eye{font-size:24px;margin-right:2px;vertical-align:middle}
+.sl{display:inline-block;vertical-align:middle;font:inherit;font-weight:700;font-size:clamp(20px,4.6vw,26px);color:#173d1c;background:transparent;border:0;border-radius:8px;min-width:.8em;padding:4px 1px;
+  cursor:pointer;touch-action:manipulation;line-height:1.3}
+.sl:hover{background:rgba(255,255,255,.5)}
+.sl.miss{background:#ffb4aa;animation:shake2 .4s}
+.sl.hint{background:#fff3a6;animation:glow 1s infinite}
+.seg.cutoff{margin-left:16px}
+/* Wörter sortieren */
+.chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.chip{font:inherit;font-size:22px;font-weight:700;color:var(--ink);background:#fff;border:3px solid #cfc6ee;border-radius:14px;padding:8px 16px;min-height:52px;
+  cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 3px 0 #cfc6ee}
+.chip.sel{background:#fff3a6;border-color:var(--accent);transform:translateY(-4px)}
+.chip.miss{background:#ffe1dc;border-color:var(--bad);animation:shake2 .4s}
+.chip.drag{position:fixed;z-index:50;pointer-events:none;opacity:.95;transform:scale(1.1);margin:0}
+.chip.ghost{opacity:.3}
+.howto{font-size:16px;opacity:.75;margin:10px 0 0;text-align:center}
+/* Siegerpodest */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;max-width:600px;margin:0 auto;line-height:1.3}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;border-radius:14px 14px 4px 4px;color:#fff;padding:8px 4px;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.15)}
+.step .gap{background:rgba(255,255,255,.95);color:var(--ink);min-width:4.5em;font-size:clamp(17px,3.4vw,23px);border-bottom-color:#fff}
+.step .gap.cur{background:#fff3a6}
+.step small{font-size:13px;font-weight:700;letter-spacing:.3px}
+.step b{font-size:22px}
+.s0{background:#b9a6e4;min-height:96px}.s1{background:#9d7ce0;min-height:132px}.s2{background:#7d55d4;min-height:168px}
+#fb{min-height:30px;font-weight:700;font-size:18px;text-align:center;margin:12px 0 0}
+#fb.ok{color:#1d7a3a}#fb.no{color:#b23a33}
+#fb .exp{display:block;font-weight:400;color:var(--ink);margin-top:4px}
+.flyer{position:fixed;z-index:60;pointer-events:none;font-weight:700;font-size:22px;background:#fff3a6;border:3px solid var(--accent);border-radius:12px;
+  padding:4px 10px;transition:transform .45s cubic-bezier(.5,-0.3,.7,.6),opacity .45s;white-space:nowrap}
+
+/* ---------- Ende ---------- */
+.win{max-width:640px;text-align:center;position:relative;overflow:hidden}
+.party{display:flex;justify-content:center;align-items:flex-end;gap:10px;margin:6px 0}
+.party>div{width:min(26vw,120px)}
+.party>div:nth-child(1) .wig{animation:dance 1s ease-in-out infinite}
+.party>div:nth-child(2) .wig{animation:dance 1s ease-in-out .33s infinite}
+.party>div:nth-child(3) .wig{animation:dance 1s ease-in-out .66s infinite}
+@keyframes dance{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-16px) rotate(5deg)}}
+.stars{font-size:46px;letter-spacing:6px}
+.stars .off{filter:grayscale(1);opacity:.3}
+.res{text-align:left;margin:12px 0;display:grid;gap:8px}
+.res .r{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 12px}
+.res .r b{flex:1;font-size:17px}
+.res .r .pts{font-weight:700;white-space:nowrap}
+.res .r button{font:inherit;font-size:15px;font-weight:700;border:0;border-radius:10px;background:var(--accent);color:#fff;padding:8px 12px;cursor:pointer;min-height:40px}
+.confetti{position:fixed;top:-20px;width:10px;height:16px;z-index:40;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+.btn.reward{background:linear-gradient(90deg,#ffd23f,#ff9f1c);border-color:#f2a922;color:#4a2a00;box-shadow:0 4px 0 #c9800f;animation:wobble 1.6s ease-in-out infinite}
+@keyframes wobble{0%,100%{transform:rotate(0)}10%{transform:rotate(-2deg) scale(1.03)}20%{transform:rotate(2deg) scale(1.03)}30%{transform:rotate(0)}}
+.hint2{font-size:15px;opacity:.75;text-align:center;margin:10px 0 0}
+
+/* ---------- Belohnung: Snack-Regen ---------- */
+#snack{flex:1;display:flex;flex-direction:column;max-width:860px;width:100%;margin:0 auto}
+.sbox{position:relative;flex:1;min-height:360px;border-radius:24px;overflow:hidden;border:3px solid #fff;touch-action:none;user-select:none;-webkit-user-select:none;
+  background:linear-gradient(#bfe6ff,#e8f6ff 70%,#9fdc8a 70%,#6cc35a);box-shadow:0 8px 26px rgba(40,30,90,.25);cursor:pointer}
+#scv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#smon{position:absolute;bottom:6px;left:0;width:clamp(90px,22vw,120px);pointer-events:none;will-change:transform}
+#smon .bub{font-size:14px}
+.shud{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;gap:10px;pointer-events:none}
+.shud .tbar{flex:1;height:14px;background:rgba(255,255,255,.7);border-radius:999px;overflow:hidden;border:2px solid #fff}
+.shud .tbar div{height:100%;width:100%;background:linear-gradient(90deg,#2fa84f,#ffd23f);border-radius:999px}
+.shud b{background:#fff;border-radius:999px;padding:4px 12px;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.sover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;
+  background:rgba(255,255,255,.55)}
+.sover .big{font-size:clamp(60px,16vw,110px);font-weight:700;color:var(--accent);text-shadow:0 4px 0 #fff;animation:pop2 .5s}
+@keyframes pop2{from{transform:scale(.3);opacity:0}}
+.sover h2{margin:0;font-size:clamp(22px,4vw,30px)}
+.sover p{margin:0;font-weight:700}
+.picks{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.picks button{width:110px;padding:8px;font:inherit;font-weight:700;font-size:17px;color:inherit;background:#fff;border:3px solid var(--line);border-radius:18px;cursor:pointer}
+.legend{font-size:16px;font-weight:700;background:#fff;border-radius:14px;padding:6px 12px}
+
+@media (max-width:560px){
+  .card{padding:14px}.play{padding:12px 10px}
+  #stage{min-height:100px;padding-top:30px}
+  .areas{grid-template-columns:1fr 1fr;gap:8px}
+  .area{padding:8px 6px}.area .pic{width:84px;height:84px}.area .pic .one{width:80px}.area .pic .three>span{width:34px}
+  .area b{font-size:18px}.area small{font-size:13px}
+  .lbl{min-width:0;display:block;width:max-content;margin:6px auto 0}
+  .line{text-align:center}
+  .co{font-size:19px;padding:8px 12px;min-width:60px}
+  .s0{min-height:80px}.s1{min-height:110px}.s2{min-height:140px}
+  .step small{font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar" hidden>
+  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  <span class="pill" id="progress"></span>
+  <button class="pill" id="mute" type="button" aria-label="Ton an oder aus">🔊</button>
+</div>
+<main>
+  <section class="card start" id="start">
+    <h1><span>👾</span> Die Wortmonster</h1>
+    <p class="intro">Die Monster haben Hunger! Aber jedes Monster frisst nur <b>eine</b> Wortart.
+      Füttere sie mit den richtigen Wörtern – dann werden sie groß und satt.</p>
+    <div class="areas">
+      <button class="area" data-area="nomen" type="button"><span class="pic"><span class="one" data-pic="n"></span></span>
+        <b>Nomi</b><small>frisst Nomen<br>Artikel · Einzahl · Nomen finden</small><span class="st" data-st="nomen"></span></button>
+      <button class="area" data-area="verben" type="button"><span class="pic"><span class="one" data-pic="v"></span></span>
+        <b>Flitz</b><small>frisst Verben<br>Grundform · Personalform</small><span class="st" data-st="verben"></span></button>
+      <button class="area" data-area="adjektive" type="button"><span class="pic"><span class="one" data-pic="a"></span></span>
+        <b>Ada</b><small>frisst Adjektive<br>Vergleichsstufen</small><span class="st" data-st="adjektive"></span></button>
+      <button class="area" data-area="mix" type="button"><span class="pic"><span class="three"><span data-pic="n"></span><span data-pic="v"></span><span data-pic="a"></span></span></span>
+        <b>Monster-Buffet</b><small>alle Wortarten<br>Wörterschlange · Wortgruppen</small><span class="st" data-st="mix"></span></button>
+    </div>
+    <button class="btn main testbtn" data-area="test" type="button">📝 Probetest – wie im echten Test<small id="testBest">15 Aufgaben, jeweils ein Versuch</small></button>
+    <div class="row">
+      <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+      <button class="btn" id="muteStart" type="button">🔊 Ton an</button>
+    </div>
+  </section>
+
+  <section id="game" hidden>
+    <div id="stage"></div>
+    <div class="belly" title="Bauch"><div id="bellyFill"></div></div>
+    <div class="card play">
+      <div class="kicker" id="kicker"></div>
+      <h2 id="prompt"></h2>
+      <div id="task"></div>
+      <div id="opts"></div>
+      <p id="fb" aria-live="polite"></p>
+      <button class="btn main" id="nextBtn" type="button" hidden>Weiter ➜</button>
+    </div>
+  </section>
+
+  <section id="snack" hidden>
+    <div class="sbox" id="sbox">
+      <canvas id="scv"></canvas>
+      <div id="smon"></div>
+      <div class="shud"><div class="tbar"><div id="stime"></div></div><b id="sscore">0</b></div>
+      <div class="sover" id="sover"></div>
+    </div>
+  </section>
+
+  <section class="card win" id="win" hidden>
+    <div class="party" id="party"></div>
+    <div id="winBox"></div>
+    <button class="btn reward" id="rewardBtn" type="button" hidden>🍭 Belohnung: Snack-Regen</button>
+    <p class="hint2" id="rewardHint" hidden>Löse eine neue Runde – dann gibt es wieder Snack-Regen! 🍭</p>
+    <button class="btn main" id="againBtn" type="button">🔄 Nochmal spielen</button>
+    <div class="row">
+      <button class="btn" id="menuBtn" type="button">👾 Andere Monster</button>
+      <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  /* Eigener Schlüssel für den Speicherstand: { best: {bereich: sterne}, test: punkte, mute: bool } */
+  var SAVE = 'deutsch_wortmonster_v1';
+
+  /* ================= Inhalte ================= */
+  var MON = {
+    n: { name: 'Nomi', art: 'Nomen', color: '#4a90e2' },
+    v: { name: 'Flitz', art: 'Verben', color: '#ff8a1f' },
+    a: { name: 'Ada', art: 'Adjektive', color: '#b05bd6' }
+  };
+  var AREA = {
+    nomen: { label: 'Nomen & Artikel', mons: ['n'] },
+    verben: { label: 'Verben', mons: ['v'] },
+    adjektive: { label: 'Adjektive', mons: ['a'] },
+    mix: { label: 'Alle Wortarten', mons: ['n', 'v', 'a'] },
+    test: { label: 'Probetest', mons: ['n', 'v', 'a'] }
+  };
+
+  /* Nomen: Artikel, Einzahl, Mehrzahl, 1 = vom Arbeitsblatt („Das Abenteuer“ und Wörterschlange) */
+  var NOMEN = [
+    ['das', 'Abenteuer', 'Abenteuer', 1], ['der', 'Freund', 'Freunde', 1], ['der', 'Wald', 'Wälder', 1], ['die', 'Fußspur', 'Fußspuren', 1],
+    ['der', 'Boden', 'Böden', 1], ['die', 'Minute', 'Minuten', 1], ['die', 'Spur', 'Spuren', 1], ['das', 'Geräusch', 'Geräusche', 1],
+    ['der', 'Baum', 'Bäume', 1], ['die', 'Angst', 'Ängste', 1], ['der', 'Förster', 'Förster', 1],
+    ['die', 'Wahrheit', 'Wahrheiten', 1], ['die', 'Tanne', 'Tannen', 1], ['der', 'Bär', 'Bären', 1], ['der', 'Nebel', 'Nebel', 1], ['die', 'Pfütze', 'Pfützen', 1],
+    ['der', 'Himmel', 'Himmel'], ['die', 'Sonne', 'Sonnen'], ['das', 'Haus', 'Häuser'], ['das', 'Kind', 'Kinder'], ['das', 'Buch', 'Bücher'],
+    ['die', 'Schule', 'Schulen'], ['der', 'Hund', 'Hunde'], ['die', 'Katze', 'Katzen'], ['das', 'Fenster', 'Fenster'], ['die', 'Blume', 'Blumen'],
+    ['der', 'Apfel', 'Äpfel'], ['das', 'Pferd', 'Pferde'], ['der', 'Tisch', 'Tische'], ['die', 'Maus', 'Mäuse'], ['der', 'Vogel', 'Vögel'],
+    ['das', 'Nest', 'Nester'], ['das', 'Brot', 'Brote'], ['der', 'Fuchs', 'Füchse'], ['die', 'Uhr', 'Uhren'], ['das', 'Licht', 'Lichter'],
+    ['der', 'Igel', 'Igel'], ['die', 'Höhle', 'Höhlen'], ['die', 'Wiese', 'Wiesen'], ['das', 'Bild', 'Bilder'], ['der', 'Garten', 'Gärten']
+  ];
+
+  /* Verben: Grundform, Personalformen [ich, du, er/sie/es, wir, ihr, sie] (null = zwei Formen erlaubt, nicht abfragen), Hinweis */
+  var VERBEN = [
+    ['spielen', ['spiele', 'spielst', 'spielt', 'spielen', 'spielt', 'spielen']],
+    ['backen', ['backe', null, null, 'backen', 'backt', 'backen']],
+    ['tanzen', ['tanze', 'tanzt', 'tanzt', 'tanzen', 'tanzt', 'tanzen']],
+    ['wohnen', ['wohne', 'wohnst', 'wohnt', 'wohnen', 'wohnt', 'wohnen']],
+    ['laufen', ['laufe', 'läufst', 'läuft', 'laufen', 'lauft', 'laufen'], 'Aus „au“ wird bei du und er/sie/es „äu“.', 'laufst'],
+    ['träumen', ['träume', 'träumst', 'träumt', 'träumen', 'träumt', 'träumen']],
+    ['streiten', ['streite', 'streitest', 'streitet', 'streiten', 'streitet', 'streiten']],
+    ['reisen', ['reise', 'reist', 'reist', 'reisen', 'reist', 'reisen']],
+    ['sehen', ['sehe', 'siehst', 'sieht', 'sehen', 'seht', 'sehen'], 'Aus „e“ wird bei du und er/sie/es „ie“.', 'sehst'],
+    ['hören', ['höre', 'hörst', 'hört', 'hören', 'hört', 'hören']],
+    ['lesen', ['lese', 'liest', 'liest', 'lesen', 'lest', 'lesen'], 'Aus „e“ wird bei du und er/sie/es „ie“.', 'lesst'],
+    ['rennen', ['renne', 'rennst', 'rennt', 'rennen', 'rennt', 'rennen']],
+    ['schwimmen', ['schwimme', 'schwimmst', 'schwimmt', 'schwimmen', 'schwimmt', 'schwimmen']],
+    ['spazieren', ['spaziere', 'spazierst', 'spaziert', 'spazieren', 'spaziert', 'spazieren']],
+    ['malen', ['male', 'malst', 'malt', 'malen', 'malt', 'malen']],
+    ['singen', ['singe', 'singst', 'singt', 'singen', 'singt', 'singen']],
+    ['schreiben', ['schreibe', 'schreibst', 'schreibt', 'schreiben', 'schreibt', 'schreiben']],
+    ['fahren', ['fahre', 'fährst', 'fährt', 'fahren', 'fahrt', 'fahren'], 'Aus „a“ wird bei du und er/sie/es „ä“.', 'fahrst'],
+    ['springen', ['springe', 'springst', 'springt', 'springen', 'springt', 'springen']],
+    ['lachen', ['lache', 'lachst', 'lacht', 'lachen', 'lacht', 'lachen']],
+    ['rufen', ['rufe', 'rufst', 'ruft', 'rufen', 'ruft', 'rufen']],
+    ['schlafen', ['schlafe', 'schläfst', 'schläft', 'schlafen', 'schlaft', 'schlafen'], 'Aus „a“ wird bei du und er/sie/es „ä“.', 'schlafst']
+  ];
+  var PRON = ['ich', 'du', 'er', 'wir', 'ihr', 'sie'];
+  var ENDING = ['-e', '-st', '-t', '-en', '-t', '-en'];
+  /* Tabelle vom Arbeitsblatt „Verben“: Grundform, Person (0–5), was gegeben ist (g = Grundform, p = Personalform), Fürwort */
+  var VTAB = [['spielen', 3, 'g'], ['backen', 0, 'p'], ['tanzen', 4, 'g'], ['wohnen', 2, 'p', 'er'], ['laufen', 1, 'g'],
+    ['träumen', 0, 'g'], ['streiten', 2, 'p', 'sie'], ['reisen', 3, 'g'], ['sehen', 5, 'p'], ['hören', 1, 'g']];
+
+  /* Adjektive: Grundform, 1. Vergleichsstufe, 2. Vergleichsstufe, gegebene Stufe auf dem Arbeitsblatt (0–2, sonst zufällig) */
+  var ADJ = [
+    ['groß', 'größer', 'am größten', 0], ['schnell', 'schneller', 'am schnellsten', 1], ['dünn', 'dünner', 'am dünnsten', 0],
+    ['alt', 'älter', 'am ältesten', 2], ['flach', 'flacher', 'am flachsten', 0], ['kurz', 'kürzer', 'am kürzesten', 1],
+    ['stachelig', 'stacheliger', 'am stacheligsten', 1], ['dumm', 'dümmer', 'am dümmsten', 0], ['laut', 'lauter', 'am lautesten', 2],
+    ['stark', 'stärker', 'am stärksten', 0], ['krank', 'kränker', 'am kränksten', 0], ['glatt', 'glatter', 'am glattesten', 0],
+    ['witzig', 'witziger', 'am witzigsten', 1],
+    ['klein', 'kleiner', 'am kleinsten'], ['lang', 'länger', 'am längsten'], ['kalt', 'kälter', 'am kältesten'], ['warm', 'wärmer', 'am wärmsten'],
+    ['jung', 'jünger', 'am jüngsten'], ['hell', 'heller', 'am hellsten'], ['leise', 'leiser', 'am leisesten'], ['schön', 'schöner', 'am schönsten'],
+    ['lustig', 'lustiger', 'am lustigsten'], ['süß', 'süßer', 'am süßesten'], ['nett', 'netter', 'am nettesten']
+  ];
+  var ADJ_MORE = ['fröhlich', 'riesig', 'rund', 'gelb', 'niedlich', 'winterlich', 'glücklich', 'sommerlich', 'kühl', 'langweilig', 'blau', 'bunt', 'müde'];
+  var STUFE = ['Grundform', '1. Vergleichsstufe', '2. Vergleichsstufe'];
+
+  /* Sätze zum Antippen. [Nomen:Einzahl_mit_Artikel]  {Verb:Grundform}  <Adjektiv>. story = aus „Das Abenteuer“ (wörtlich). */
+  var SAETZE = [
+    { s: '[Alex:Alex_(ein_Name)] {spielt:spielen} mit seinen [Freunden:der_Freund] im [Wald:der_Wald].', story: 1 },
+    { s: 'Plötzlich {erkennen:erkennen} sie [Fußspuren:die_Fußspur] auf dem [Boden:der_Boden].', story: 1 },
+    { s: 'Ein paar [Minuten:die_Minute] vorher {war:sein} dort noch nichts zu {sehen:sehen}.', story: 1 },
+    { s: 'Langsam {folgen:folgen} sie den [Spuren:die_Spur].', story: 1 },
+    { s: 'Auf einmal {hören:hören} sie ein lautes [Geräusch:das_Geräusch] und {erschrecken:erschrecken} sich fürchterlich.', story: 1 },
+    { s: 'Hinter dem [Baum:der_Baum] {bewegt:bewegen} sich etwas.', story: 1 },
+    { s: 'Die [Freunde:der_Freund] {sind:sein} starr vor [Angst:die_Angst].', story: 1 },
+    { s: '[Alex:Alex_(ein_Name)] {ist:sein} erleichtert.', story: 1 },
+    { s: '„Es {ist:sein} nur der [Förster:der_Förster]“, {ruft:rufen} er.', story: 1 },
+    { s: 'Der <große> [Bär:der_Bär] {schläft:schlafen} in seiner <warmen> [Höhle:die_Höhle].', adj: 1 },
+    { s: 'Die <kleine> [Katze:die_Katze] {springt:springen} in die <tiefe> [Pfütze:die_Pfütze].', adj: 1 },
+    { s: 'Im <dunklen> [Wald:der_Wald] {steht:stehen} eine <hohe> [Tanne:die_Tanne].', adj: 1 },
+    { s: 'Das <fröhliche> [Kind:das_Kind] {liest:lesen} ein <spannendes> [Buch:das_Buch].', adj: 1 },
+    { s: 'Am [Morgen:der_Morgen] {liegt:liegen} <dichter> [Nebel:der_Nebel] über der <grünen> [Wiese:die_Wiese].', adj: 1 },
+    { s: 'Die <glücklichen> [Kinder:das_Kind] {tanzen:tanzen} im <bunten> [Garten:der_Garten].', adj: 1 }
+  ];
+
+  /* Wörterschlange vom Arbeitsblatt „Wir üben für den Sprachkundetest“ (n = Nomen, v = Verb, a = Adjektiv) */
+  var SCHLANGE = [['fröhlich', 'a'], ['Wahrheit', 'n'], ['riesig', 'a'], ['spielen', 'v'], ['rund', 'a'], ['gelb', 'a'], ['Tanne', 'n'], ['rennen', 'v'],
+    ['niedlich', 'a'], ['lesen', 'v'], ['Bär', 'n'], ['spazieren', 'v'], ['winterlich', 'a'], ['tanzen', 'v'], ['Nebel', 'n'], ['glücklich', 'a'],
+    ['schwimmen', 'v'], ['Pfütze', 'n']];
+
+  /* Wortgruppen: Adjektiv, Artikel, Nomen (die Adjektive vom Arbeitsblatt) */
+  var WORTGRUPPEN = [['blau', 'der', 'Himmel'], ['kühl', 'der', 'Winter'], ['langweilig', 'der', 'Unterricht'], ['hell', 'die', 'Sonne'],
+    ['sommerlich', 'der', 'Urlaub'], ['kühl', 'das', 'Wasser'], ['blau', 'die', 'Blume'], ['hell', 'das', 'Licht'], ['sommerlich', 'das', 'Kleid'],
+    ['langweilig', 'das', 'Buch'], ['kühl', 'der', 'Wind'], ['blau', 'das', 'Meer'], ['hell', 'der', 'Mond'], ['langweilig', 'die', 'Fahrt'],
+    ['sommerlich', 'die', 'Hitze']];
+
+  /* Vergleiche im Satz: drei Dinge und ein Adjektiv aus ADJ */
+  var VERGLEICHE = [['Die Schnecke', 'Der Hase', 'Der Gepard', 'schnell'], ['Der Hund', 'Das Pferd', 'Der Elefant', 'groß'],
+    ['Mama', 'Oma', 'Uroma', 'alt'], ['Die Katze', 'Die Maus', 'Die Ameise', 'klein'], ['Der Igel', 'Die Rose', 'Der Kaktus', 'stachelig'],
+    ['Das Flüstern', 'Das Reden', 'Das Schreien', 'laut'], ['Der Bleistift', 'Das Lineal', 'Der Besen', 'lang'],
+    ['Der Hase', 'Der Hund', 'Der Bär', 'stark'], ['Das Brett', 'Der Spiegel', 'Das Eis', 'glatt'], ['Der Herbst', 'Der Winter', 'Der Nordpol', 'kalt']];
+
+  /* ================= Hilfen ================= */
+  function rnd(n) { return Math.floor(Math.random() * n); }
+  function pick(a) { return a[rnd(a.length)]; }
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function uniq(a) { var s = {}; return a.filter(function (x) { if (x == null || s[x]) return false; s[x] = 1; return true; }); }
+  /* Antwortkarten: richtige Antwort + bis zu n-1 verschiedene falsche, gemischt */
+  function cards(right, wrongs, n) { return shuffle([right].concat(uniq(wrongs).filter(function (w) { return w !== right; }).slice(0, (n || 4) - 1))); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var ARTS = ['der', 'die', 'das'];
+  function unb(art) { return art === 'die' ? 'eine' : 'ein'; }
+  function verb(g) { for (var i = 0; i < VERBEN.length; i++) if (VERBEN[i][0] === g) return VERBEN[i]; }
+  function adj(b) { for (var i = 0; i < ADJ.length; i++) if (ADJ[i][0] === b) return ADJ[i]; }
+  function nounAt(sg) { for (var i = 0; i < NOMEN.length; i++) if (NOMEN[i][1] === sg) return NOMEN[i]; }
+  /* Wort-Kärtchen zum Sortieren */
+  function wordN(n) { return { w: n[1], m: 'n', say: n[0] + ' ' + n[1] }; }
+  function wordV(v) { return { w: v[0], m: 'v', say: v[0] }; }
+  function wordA(a) { return { w: a, m: 'a', say: a }; }
+  var ALL_ADJ = uniq(ADJ.map(function (a) { return a[0]; }).concat(ADJ_MORE));
+
+  /* ================= Aufgaben-Generatoren =================
+     Aufgabentypen:
+       gaps  – Text mit Lücken {0}, {1} …; für jede Lücke ein Schritt mit Karten (opts) und richtigen Antworten (ok).
+               Mit pool teilen sich alle Lücken einen Kartenstapel (wie die Lösungswörter auf dem Arbeitsblatt).
+       tap   – Satz, in dem alle Wörter einer Wortart angetippt werden.
+       sort  – Wort-Kärtchen an die richtigen Monster verfüttern.
+       snake – Wörterschlange zerschneiden, danach sortieren. */
+  var TIP_ART = 'Tipp: Sprich alle drei laut: der …, die …, das … – was klingt richtig?';
+  var TIP_UNB = 'Tipp: Zu „der“ und „das“ gehört „ein“, zu „die“ gehört „eine“.';
+  var TIP_PF = 'Tipp: ich → -e, du → -st, er/sie/es → -t, wir → -en, ihr → -t, sie → -en.';
+  var TIP_GF = 'Tipp: Die Grundform endet auf -en oder -n – so steht das Verb im Wörterbuch.';
+  var TIP_ST = 'Tipp: Die 1. Vergleichsstufe endet auf -er. Die 2. Vergleichsstufe heißt „am …sten“. Achte auf ä, ö, ü!';
+  var TIP_WA = {
+    n: 'Tipp: Kann man der, die oder das davorsetzen? Nomen schreibt man groß.',
+    v: 'Tipp: Verben sagen, was jemand tut. Kann man „ich …“ oder „wir …“ davorsetzen?',
+    a: 'Tipp: Adjektive sagen, wie etwas ist oder aussieht. Kann man „sehr …“ davorsetzen?'
+  };
+
+  var GEN = {
+    /* Nomen mit bestimmtem und unbestimmtem Artikel (Tabelle auf dem Arbeitsblatt „Artikel“) */
+    artikel: function () {
+      var ws = NOMEN.filter(function (n) { return n[3]; });
+      var n = Math.random() < 0.65 ? pick(ws) : pick(NOMEN);
+      return {
+        area: 'nomen', kind: 'artikel', key: 'artikel:' + n[1], type: 'gaps', mons: ['n'],
+        prompt: 'Welche Artikel passen?',
+        text: '<span class="line"><span class="lbl">bestimmter Artikel</span> {0} ' + n[1] + '</span>' +
+              '<span class="line"><span class="lbl">unbestimmter Artikel</span> {1} ' + n[1] + '</span>',
+        steps: [{ opts: ARTS.slice(), ok: [n[0]], tip: TIP_ART }, { opts: ['ein', 'eine'], ok: [unb(n[0])], tip: TIP_UNB }],
+        exp: n[0] + ' ' + n[1] + ' – ' + unb(n[0]) + ' ' + n[1] + '. Bestimmte Artikel: der, die, das. Unbestimmte Artikel: ein, eine.'
+      };
+    },
+    /* Einzahl bilden – auf dem Arbeitsblatt sollen die Nomen in der EINZAHL in die Tabelle */
+    einzahl: function () {
+      var ws = NOMEN.filter(function (n) { return n[3] && n[1] !== 'Angst'; });
+      var n = Math.random() < 0.6 ? pick(ws) : pick(NOMEN);
+      var art = n[0], sg = n[1], pl = n[2], other = pick(ARTS.filter(function (a) { return a !== art; }));
+      var same = sg === pl;
+      return {
+        area: 'nomen', kind: 'einzahl', key: 'einzahl:' + sg, type: 'gaps', mons: ['n'],
+        prompt: 'Schreibe in der Einzahl!',
+        text: '<span class="given">die ' + pl + '</span>' +
+              '<span class="line"><span class="lbl">bestimmter Artikel</span> {0}</span>' +
+              '<span class="line"><span class="lbl">unbestimmter Artikel</span> {1}</span>',
+        steps: [
+          { opts: cards(art + ' ' + sg, ['die ' + pl, other + ' ' + sg], 3), ok: [art + ' ' + sg],
+            tip: 'Tipp: Einzahl heißt: nur eins. Wie sagt man, wenn es nur ein Ding ist?' + (same ? ' Hier sieht das Nomen gleich aus – nur der Artikel ändert sich.' : '') },
+          { opts: cards(unb(art) + ' ' + sg, [(art === 'die' ? 'ein' : 'eine') + ' ' + sg, same ? null : unb(art) + ' ' + pl], 3), ok: [unb(art) + ' ' + sg], tip: TIP_UNB }
+        ],
+        exp: 'Mehrzahl: die ' + pl + '. Einzahl: ' + art + ' ' + sg + ' – ' + unb(art) + ' ' + sg + '.' + (same ? ' Bei diesem Nomen ändert sich nur der Artikel.' : '')
+      };
+    },
+    /* Merksatz vom Arbeitsblatt */
+    merksatz: function () {
+      return {
+        area: 'nomen', kind: 'merksatz', key: 'merksatz', type: 'gaps', mons: ['n'],
+        prompt: 'Ergänze den Merksatz!',
+        text: '<span class="line">Bestimmte Artikel sind: {0}, {1}, {2}.</span><span class="line">Unbestimmte Artikel sind: {3}, {4}.</span>',
+        pool: shuffle(['der', 'die', 'das', 'ein', 'eine']),
+        steps: [0, 1, 2].map(function () { return { ok: ['der', 'die', 'das'], tip: 'Tipp: Bestimmte Artikel sind die drei kurzen Wörter: der, die, das.' }; })
+          .concat([3, 4].map(function () { return { ok: ['ein', 'eine'], tip: 'Tipp: Unbestimmte Artikel fangen alle mit „ein“ an.' }; })),
+        exp: 'Bestimmte Artikel: der, die, das. Unbestimmte Artikel: ein, eine.'
+      };
+    },
+    /* Nomen / Verben / Adjektive in einem Satz antippen */
+    tapN: function () { return tapTask('n', SAETZE.filter(function (s) { return s.story || Math.random() < 0.5; })); },
+    tapV: function () { return tapTask('v', SAETZE); },
+    tapA: function () { return tapTask('a', SAETZE.filter(function (s) { return s.adj; })); },
+    /* Welches Wort ist ein Nomen / Verb / Adjektiv? */
+    waehleN: function () { return waehle('n'); },
+    waehleV: function () { return waehle('v'); },
+    waehleA: function () { return waehle('a'); },
+
+    /* Lückentext vom Arbeitsblatt „Verben“ */
+    vlueck: function () {
+      return {
+        area: 'verben', kind: 'vlueck', key: 'vlueck', type: 'gaps', mons: ['v'],
+        prompt: 'Fülle den Lückentext aus!',
+        text: '<span class="txt">Verben haben eine {0} und eine {1}. Es gibt insgesamt {2} Personalformen. Die Personalformen zeigen an, {3} gerade etwas macht.</span>',
+        pool: shuffle(['Grundform', 'Personalform', 'sechs', 'wer', 'drei', 'was']),
+        steps: [
+          { ok: ['Grundform', 'Personalform'], tip: 'Tipp: „spielen“ ist die eine Form, „du spielst“ die andere. Wie heißen sie?' },
+          { ok: ['Grundform', 'Personalform'], tip: 'Tipp: Die zweite Form zeigt die Person: ich, du, er …' },
+          { ok: ['sechs'], tip: 'Tipp: Zähle: ich, du, er/sie/es, wir, ihr, sie.' },
+          { ok: ['wer'], tip: 'Tipp: Die Personalform zeigt an, welche Person etwas macht. Frage: W…?' }
+        ],
+        exp: 'Verben haben eine Grundform und eine Personalform. Es gibt sechs Personalformen. Sie zeigen an, wer gerade etwas macht.'
+      };
+    },
+    /* Die sechs Personalformen der Reihe nach */
+    personen: function () {
+      var t = '';
+      for (var i = 0; i < 6; i++) t += '<span class="line">Die ' + (i + 1) + '. Personalform heißt: {' + i + '}</span>';
+      var okl = [['ich'], ['du'], ['er, sie, es'], ['wir'], ['ihr'], ['sie']];
+      return {
+        area: 'verben', kind: 'personen', key: 'personen', type: 'gaps', mons: ['v'],
+        prompt: 'Wie heißen die sechs Personalformen?',
+        text: t, pool: shuffle(['ich', 'du', 'er, sie, es', 'wir', 'ihr', 'sie']),
+        steps: okl.map(function (ok, i) {
+          return { ok: ok, tip: 'Tipp: Erst kommt eine Person allein (ich, du, er/sie/es), dann mehrere (wir, ihr, sie).' + (i === 5 ? ' Die 6. ist „sie“ – das sind viele.' : '') };
+        }),
+        exp: '1. ich, 2. du, 3. er, sie, es, 4. wir, 5. ihr, 6. sie.'
+      };
+    },
+    /* Zeile aus der Tabelle vom Arbeitsblatt „Verben“ – wörtlich */
+    vtab: function () { var r = pick(VTAB); return r[2] === 'g' ? pfTask(verb(r[0]), r[1], r[3], true) : gfTask(verb(r[0]), r[1], r[3], true); },
+    /* Personalform bilden mit weiteren Verben */
+    pform: function () {
+      var v = pick(VERBEN), p;
+      do { p = rnd(6); } while (!v[1][p]);
+      return pfTask(v, p, p === 2 ? pick(['er', 'sie', 'es']) : null, false);
+    },
+    /* Grundform finden mit weiteren Verben */
+    gform: function () {
+      var v = pick(VERBEN), p;
+      do { p = rnd(6); } while (!v[1][p] || v[1][p] === v[0]);
+      return gfTask(v, p, p === 2 ? pick(['er', 'sie', 'es']) : null, false);
+    },
+
+    /* Lückentext vom Arbeitsblatt „Adjektive“ mit den Lösungswörtern */
+    alueck: function () {
+      return {
+        area: 'adjektive', kind: 'alueck', key: 'alueck', type: 'gaps', mons: ['a'],
+        prompt: 'Fülle den Lückentext aus!',
+        text: '<span class="txt">Adjektive sagen einem, wie sich jemand {0}, wie etwas {1} oder {2}. Mit Adjektiven kann man {3}. ' +
+              'Es gibt die {4}, die {5}. {6} und die {7}. {8}.</span>',
+        small: [5, 7],
+        pool: shuffle(['Vergleichsstufe', 'vergleichen', 'Vergleichsstufe', 'ist', '1', 'aussieht', '2', 'fühlt', 'Grundform']),
+        steps: [
+          { ok: ['fühlt'], tip: 'Tipp: Wie sich jemand … – froh, traurig, müde?' },
+          { ok: ['ist', 'aussieht'], tip: 'Tipp: Wie etwas … oder … – groß, rund, bunt?' },
+          { ok: ['ist', 'aussieht'], tip: 'Tipp: Wie etwas … oder … – groß, rund, bunt?' },
+          { ok: ['vergleichen'], tip: 'Tipp: groß – größer – am größten. Damit kann man …' },
+          { ok: ['Grundform'], tip: 'Tipp: Die erste Stufe ist das Wort, wie es im Wörterbuch steht.' },
+          { ok: ['1'], tip: 'Tipp: Jetzt kommt die erste Vergleichsstufe. Welche Zahl?' },
+          { ok: ['Vergleichsstufe'], tip: 'Tipp: 1. Vergleichs…' },
+          { ok: ['2'], tip: 'Tipp: Jetzt kommt die zweite Vergleichsstufe. Welche Zahl?' },
+          { ok: ['Vergleichsstufe'], tip: 'Tipp: 2. Vergleichs…' }
+        ],
+        exp: 'Adjektive sagen, wie sich jemand fühlt, wie etwas ist oder aussieht. Mit Adjektiven kann man vergleichen: Grundform, 1. Vergleichsstufe, 2. Vergleichsstufe.'
+      };
+    },
+    /* Siegerpodest: Zeile aus der Tabelle vom Arbeitsblatt „Adjektive“ ergänzen */
+    podest: function () {
+      var ws = ADJ.filter(function (a) { return a[3] != null; });
+      var a = Math.random() < 0.65 ? pick(ws) : pick(ADJ);
+      var g = a[3] != null ? a[3] : rnd(3);
+      var miss = [0, 1, 2].filter(function (s) { return s !== g; });
+      var html = '<div class="podium">';
+      var gi = 0;
+      for (var s = 0; s < 3; s++) {
+        html += '<div class="step s' + s + '"><small>' + STUFE[s] + '</small>' + (s === g ? '<b>' + a[s] + '</b>' : '{' + (gi++) + '}') + '</div>';
+      }
+      html += '</div>';
+      return {
+        area: 'adjektive', kind: 'podest', key: 'podest:' + a[0], type: 'gaps', mons: ['a'],
+        prompt: 'Ergänze die Vergleichsstufen!', text: html,
+        steps: miss.map(function (s) { return { opts: cards(a[s], wrongStufe(a, s), 4), ok: [a[s]], tip: TIP_ST }; }),
+        exp: a[0] + ' – ' + a[1] + ' – ' + a[2] + '.' + (umlaut(a) ? ' Hier kommen Pünktchen dazu: ' + a[0] + ' → ' + a[1] + '.' : ' In der 2. Vergleichsstufe steht immer „am“.')
+      };
+    },
+    /* Vergleich im Satz */
+    vergleich: function () {
+      var v = pick(VERGLEICHE), a = adj(v[3]), s = 1 + rnd(2);
+      var parts = [v[0] + ' ist ' + a[0] + '.', v[1] + ' ist ' + (s === 1 ? '{0}' : a[1]) + '.', v[2] + ' ist ' + (s === 2 ? '{0}' : a[2]) + '.'];
+      return {
+        area: 'adjektive', kind: 'vergleich', key: 'vergleich:' + v[3], type: 'gaps', mons: ['a'],
+        prompt: 'Welche Vergleichsstufe passt?',
+        text: '<span class="line">' + parts.join('</span><span class="line">') + '</span>',
+        steps: [{ opts: cards(a[s], wrongStufe(a, s), 4), ok: [a[s]], tip: TIP_ST }],
+        exp: a[0] + ' – ' + a[1] + ' – ' + a[2] + '. ' + v[2] + ' ist ' + a[2] + '.'
+      };
+    },
+
+    /* Wörterschlange zerschneiden und sortieren */
+    schlange: function (orig) {
+      var words;
+      if (orig !== false && (orig || Math.random() < 0.5)) {
+        var k = rnd(3); words = SCHLANGE.slice(k * 6, k * 6 + 6);
+      } else words = shuffle(SCHLANGE).slice(0, 6);
+      words = words.map(function (x) {
+        if (x[1] === 'n') return wordN(nounAt(x[0]));
+        return x[1] === 'v' ? wordV(verb(x[0])) : wordA(x[0]);
+      });
+      return {
+        area: 'mix', kind: 'schlange', key: 'schlange:' + words.map(function (w) { return w.w; }).join(''), type: 'snake', mons: ['n', 'v', 'a'],
+        prompt: 'Trenne die Wörterschlange!', words: words,
+        exp: 'Nomen: ' + say(words, 'n') + '. Verben: ' + say(words, 'v') + '. Adjektive: ' + say(words, 'a') + '.'
+      };
+    },
+    /* Wörter an die Monster verfüttern */
+    sortieren: function () {
+      var ns = shuffle(NOMEN).slice(0, 2).map(wordN), vs = shuffle(VERBEN).slice(0, 2).map(wordV), as = shuffle(ALL_ADJ).slice(0, 2).map(wordA);
+      var words = shuffle(ns.concat(vs, as));
+      return {
+        area: 'mix', kind: 'sortieren', key: 'sortieren:' + words.map(function (w) { return w.w; }).join(','), type: 'sort', mons: ['n', 'v', 'a'],
+        prompt: 'Welches Monster frisst welches Wort?', words: words,
+        exp: 'Nomen: ' + say(words, 'n') + '. Verben: ' + say(words, 'v') + '. Adjektive: ' + say(words, 'a') + '.'
+      };
+    },
+    /* Wortgruppen bilden: Artikel + Adjektiv + Nomen */
+    wortgruppe: function () {
+      var w = pick(WORTGRUPPEN), right = w[1] + ' ' + w[0] + 'e ' + w[2];
+      var other = pick(ARTS.filter(function (a) { return a !== w[1]; }));
+      return {
+        area: 'mix', kind: 'wortgruppe', key: 'wortgruppe:' + w[0] + w[2], type: 'gaps', mons: ['a'],
+        prompt: 'Welche Wortgruppe mit „' + w[0] + '“ ist richtig?', text: '<span class="line" style="text-align:center">{0}</span>',
+        steps: [{ opts: cards(right, [other + ' ' + w[0] + 'e ' + w[2], w[1] + ' ' + w[0] + ' ' + w[2], w[1] + ' ' + w[0] + 'er ' + w[2]], 4), ok: [right],
+          tip: 'Tipp: Passt der Artikel zum Nomen? Und steht das Adjektiv zwischen Artikel und Nomen mit einem -e am Ende?' }],
+        exp: right + ': Das Adjektiv „' + w[0] + '“ steht zwischen Artikel und Nomen und bekommt ein -e.'
+      };
+    }
+  };
+
+  function say(words, m) { return words.filter(function (w) { return w.m === m; }).map(function (w) { return w.say; }).join(', ') || '–'; }
+  function umlaut(a) { return /[äöü]/.test(a[1]) && !/[äöü]/.test(a[0]); }
+  /* typische Fehler als falsche Karten */
+  function wrongStufe(a, s) {
+    var noU = a[0] + 'er';
+    var supAlt = 'am ' + a[0] + (/esten$/.test(a[2]) ? 'sten' : 'esten');
+    var baseU = umlaut(a) ? a[0].replace(/[aou](?!.*[aou])/, function (c) { return { a: 'ä', o: 'ö', u: 'ü' }[c]; }) : null;
+    if (s === 0) return [a[1], a[2], baseU];
+    if (s === 1) return shuffle([noU, a[2], a[0], supAlt]);
+    return shuffle([a[1], supAlt, 'am ' + a[0], noU]);
+  }
+  /* Personalform bilden: Grundform gegeben */
+  function pfTask(v, p, pron, ws) {
+    pron = pron || PRON[p];
+    var right = v[1][p];
+    var wrongs = shuffle(uniq(v[1].concat([v[0], (p === 1 || p === 2) ? v[3] : null])).filter(function (f) { return f !== right; }));
+    if (v[3] && (p === 1 || p === 2)) wrongs.unshift(v[3]);
+    return {
+      area: 'verben', kind: ws ? 'vtab' : 'pform', key: 'pf:' + v[0] + p, type: 'gaps', mons: ['v'],
+      prompt: 'Bilde die Personalform!',
+      text: '<span class="line"><span class="lbl">Grundform</span> ' + v[0] + '</span><span class="line"><span class="lbl">Personalform</span> ' +
+            pron + ' {0}' + (p === 5 ? ' <small>(viele)</small>' : '') + '</span>',
+      steps: [{ opts: cards(right, wrongs, 4), ok: [right], tip: TIP_PF }],
+      exp: pron + ' ' + right + '. Bei „' + PRON[p] + (p === 2 ? '/sie/es' : '') + '“ endet das Verb auf ' + ENDING[p] + '.' + (v[2] && (p === 1 || p === 2) ? ' ' + v[2] : '')
+    };
+  }
+  /* Grundform finden: Personalform gegeben */
+  function gfTask(v, p, pron, ws) {
+    pron = pron || PRON[p];
+    var form = v[1][p];
+    var wrongs = shuffle(uniq(v[1]).filter(function (f) { return f !== v[0] && f !== form; }));
+    wrongs.unshift(form);
+    return {
+      area: 'verben', kind: ws ? 'vtab' : 'gform', key: 'gf:' + v[0] + p, type: 'gaps', mons: ['v'],
+      prompt: 'Wie heißt die Grundform?',
+      text: '<span class="line"><span class="lbl">Personalform</span> ' + pron + ' ' + form + '</span><span class="line"><span class="lbl">Grundform</span> {0}</span>',
+      steps: [{ opts: cards(v[0], wrongs, 4), ok: [v[0]], tip: TIP_GF }],
+      exp: 'Die Grundform von „' + pron + ' ' + form + '“ heißt „' + v[0] + '“.'
+    };
+  }
+  /* Satz zum Antippen zerlegen */
+  function parseSentence(s) {
+    return s.split(' ').map(function (tok) {
+      var m = /^([„"]?)([\[{<])([^\]}>:]+)(?::([^\]}>]+))?[\]}>](.*)$/.exec(tok);
+      if (!m) {
+        var p = /^([„"]?)(.*?)([.,!?“"]*)$/.exec(tok);
+        return { pre: p[1], w: p[2], post: p[3], m: null };
+      }
+      return { pre: m[1], w: m[3], info: (m[4] || '').replace(/_/g, ' '), post: m[5], m: { '[': 'n', '{': 'v', '<': 'a' }[m[2]] };
+    });
+  }
+  function tapTask(m, list) {
+    list = list.filter(function (s) { return s.s.indexOf({ n: '[', v: '{', a: '<' }[m]) >= 0; });
+    var s = pick(list), toks = parseSentence(s.s);
+    var targets = toks.filter(function (t) { return t.m === m; });
+    var exp;
+    if (m === 'n') exp = 'Nomen: ' + targets.map(function (t) { return t.info.indexOf(t.w) === 0 ? t.info : t.w + ' (' + t.info + ')'; }).join(', ') + '.';
+    else if (m === 'v') exp = 'Verben: ' + targets.map(function (t) { return t.w + (t.info !== t.w ? ' (Grundform: ' + t.info + ')' : ''); }).join(', ') + '.';
+    else exp = 'Adjektive: ' + targets.map(function (t) { return t.w; }).join(', ') + '. Sie sagen, wie etwas ist.';
+    if (m === 'n' && /Alex/.test(s.s)) exp += ' Alex ist ein Name – Namen sind auch Nomen.';
+    return {
+      area: { n: 'nomen', v: 'verben', a: 'adjektive' }[m], kind: 'tap' + m.toUpperCase(), key: 'tap' + m + ':' + s.s, type: 'tap', mons: [m], tm: m,
+      prompt: 'Tippe alle ' + MON[m].art + ' an!', story: !!s.story, toks: toks, need: targets.length, exp: exp
+    };
+  }
+  function waehle(m) {
+    var n = wordN(pick(NOMEN)), v = wordV(pick(VERBEN)), a = wordA(pick(ALL_ADJ));
+    var w = { n: n, v: v, a: a }, right = w[m].w;
+    var name = { n: 'ein Nomen', v: 'ein Verb', a: 'ein Adjektiv' }[m];
+    return {
+      area: { n: 'nomen', v: 'verben', a: 'adjektive' }[m], kind: 'waehle' + m.toUpperCase(), key: 'waehle' + m + ':' + right, type: 'gaps', mons: [m],
+      prompt: 'Welches Wort ist ' + name + '?', text: '<span class="line" style="text-align:center">' + MON[m].name + ' möchte: {0}</span>',
+      steps: [{ opts: shuffle([n.w, v.w, a.w]), ok: [right], tip: TIP_WA[m] }],
+      exp: '„' + right + '“ ist ' + name + '. ' + (m === 'n' ? 'Man sagt: ' + n.say + '.' : m === 'v' ? 'Man sagt: ich ' + verb(right)[1][0] + ', wir ' + right + '.' : 'Man kann sagen: sehr ' + right + '.')
+    };
+  }
+
+  /* Runden zusammenstellen: Liste von Generator-Namen */
+  var ROUNDS = {
+    nomen: ['artikel', 'tapN', 'einzahl', 'artikel', 'tapN', 'merksatz', 'einzahl', 'waehleN', 'artikel', 'tapN'],
+    verben: ['vlueck', 'vtab', 'vtab', 'tapV', 'personen', 'vtab', 'pform', 'gform', 'tapV', 'vtab'],
+    adjektive: ['alueck', 'podest', 'podest', 'tapA', 'vergleich', 'podest', 'waehleA', 'podest', 'vergleich', 'tapA'],
+    mix: ['schlange', 'sortieren', 'wortgruppe', 'artikel', 'vtab', 'schlange', 'podest', 'wortgruppe', 'sortieren', 'waehleV'],
+    test: ['artikel', 'einzahl', 'tapN', 'artikel', 'vlueck', 'vtab', 'gform', 'vtab', 'alueck', 'podest', 'vergleich', 'podest', 'schlange', 'sortieren', 'wortgruppe']
+  };
+  function buildRound(area) {
+    var seen = {}, firstSnake = true;
+    return ROUNDS[area].map(function (g) {
+      var q, tries = 0;
+      do {
+        q = g === 'schlange' ? GEN.schlange(firstSnake ? true : undefined) : GEN[g]();
+      } while (seen[q.key] && ++tries < 30);
+      if (g === 'schlange') firstSnake = false;
+      seen[q.key] = 1;
+      return q;
+    });
+  }
+
+  /* ================= Monster-Bilder ================= */
+  function svgMon(m) {
+    var mouthOpen = function (cx, cy, rx, ry, ink) {
+      return '<g class="mo"><ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="' + ink + '"/>' +
+        '<ellipse cx="' + cx + '" cy="' + (cy + ry * 0.5) + '" rx="' + rx * 0.55 + '" ry="' + ry * 0.35 + '" fill="#ff6b8a"/>' +
+        '<path d="M' + (cx - 18) + ' ' + (cy - ry + 2) + 'l6 10 6-10z M' + (cx + 6) + ' ' + (cy - ry + 2) + 'l6 10 6-10z" fill="#fff"/></g>';
+    };
+    if (m === 'n') return '<svg class="msvg" viewBox="0 0 200 200" aria-hidden="true"><g class="wig">' +
+      '<path d="M58 60 44 14 86 44Z" fill="#ffd23f" stroke="#1b2f5e" stroke-width="4" stroke-linejoin="round"/>' +
+      '<path d="M142 60 156 14 114 44Z" fill="#ffd23f" stroke="#1b2f5e" stroke-width="4" stroke-linejoin="round"/>' +
+      '<ellipse cx="68" cy="184" rx="24" ry="11" fill="#2a5fb0"/><ellipse cx="132" cy="184" rx="24" ry="11" fill="#2a5fb0"/>' +
+      '<ellipse class="skin" cx="100" cy="110" rx="80" ry="74" fill="#4a90e2" stroke="#1b2f5e" stroke-width="4"/>' +
+      '<ellipse cx="100" cy="142" rx="46" ry="30" fill="#a9d0f7"/>' +
+      '<circle cx="40" cy="120" r="7" fill="#7fb3ee"/><circle cx="160" cy="100" r="9" fill="#7fb3ee"/>' +
+      '<g class="eyes"><circle cx="70" cy="80" r="21" fill="#fff" stroke="#1b2f5e" stroke-width="3"/><circle cx="130" cy="80" r="21" fill="#fff" stroke="#1b2f5e" stroke-width="3"/>' +
+      '<circle cx="75" cy="84" r="9" fill="#1b2f5e"/><circle cx="135" cy="84" r="9" fill="#1b2f5e"/><circle cx="78" cy="80" r="3" fill="#fff"/><circle cx="138" cy="80" r="3" fill="#fff"/></g>' +
+      '<path class="mc" d="M72 116 Q100 142 128 116" fill="none" stroke="#1b2f5e" stroke-width="6" stroke-linecap="round"/>' +
+      mouthOpen(100, 124, 32, 24, '#1b2f5e') + '</g></svg>';
+    if (m === 'v') return '<svg class="msvg" viewBox="0 0 200 200" aria-hidden="true"><g class="wig">' +
+      '<g class="legL"><path d="M82 168 78 188" stroke="#7a3b00" stroke-width="8" stroke-linecap="round"/><ellipse cx="72" cy="191" rx="17" ry="7" fill="#e63946"/></g>' +
+      '<g class="legR"><path d="M118 168 122 188" stroke="#7a3b00" stroke-width="8" stroke-linecap="round"/><ellipse cx="128" cy="191" rx="17" ry="7" fill="#e63946"/></g>' +
+      '<path d="M86 40Q78 14 62 12M114 40Q122 14 138 12" fill="none" stroke="#7a3b00" stroke-width="4" stroke-linecap="round"/>' +
+      '<circle cx="62" cy="12" r="8" fill="#ffd23f" stroke="#7a3b00" stroke-width="3"/><circle cx="138" cy="12" r="8" fill="#ffd23f" stroke="#7a3b00" stroke-width="3"/>' +
+      '<path d="M46 108Q20 98 24 74M154 108Q180 98 176 74" fill="none" stroke="#ff8a1f" stroke-width="11" stroke-linecap="round"/>' +
+      '<ellipse class="skin" cx="100" cy="104" rx="60" ry="70" fill="#ff8a1f" stroke="#7a3b00" stroke-width="4"/>' +
+      '<ellipse cx="100" cy="140" rx="32" ry="24" fill="#ffc285"/>' +
+      '<path d="M50 70h12M48 90h10M140 70h12M144 90h10" stroke="#e86f00" stroke-width="5" stroke-linecap="round"/>' +
+      '<g class="eyes"><circle cx="100" cy="76" r="28" fill="#fff" stroke="#7a3b00" stroke-width="3"/><circle cx="106" cy="80" r="12" fill="#2b1600"/><circle cx="110" cy="75" r="4" fill="#fff"/></g>' +
+      '<path class="mc" d="M78 122 Q100 144 122 122" fill="none" stroke="#7a3b00" stroke-width="6" stroke-linecap="round"/>' +
+      mouthOpen(100, 130, 26, 20, '#5a2a00') + '</g></svg>';
+    return '<svg class="msvg" viewBox="0 0 200 200" aria-hidden="true"><g class="wig">' +
+      '<path d="M100 32V10" stroke="#5b2a78" stroke-width="4"/><path d="M100 -4l5 10 11 1-8 7 3 11-11-6-11 6 3-11-8-7 11-1z" fill="#ffd23f" stroke="#5b2a78" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<ellipse cx="70" cy="186" rx="20" ry="9" fill="#5b2a78"/><ellipse cx="130" cy="186" rx="20" ry="9" fill="#5b2a78"/>' +
+      '<path class="skin" d="M100 30C152 30 184 70 182 116 180 162 150 186 100 186 50 186 20 162 18 116 16 70 48 30 100 30Z" fill="#b05bd6" stroke="#5b2a78" stroke-width="4"/>' +
+      '<circle cx="48" cy="80" r="9" fill="#fff" opacity=".35"/><circle cx="156" cy="132" r="12" fill="#fff" opacity=".35"/><circle cx="150" cy="66" r="6" fill="#fff" opacity=".35"/><circle cx="42" cy="146" r="7" fill="#fff" opacity=".35"/>' +
+      '<g class="eyes"><circle cx="74" cy="88" r="18" fill="#fff" stroke="#5b2a78" stroke-width="3"/><circle cx="126" cy="88" r="18" fill="#fff" stroke="#5b2a78" stroke-width="3"/>' +
+      '<circle cx="77" cy="92" r="8" fill="#2a1038"/><circle cx="129" cy="92" r="8" fill="#2a1038"/>' +
+      '<path d="M60 72l-6-8M70 68l-2-9M88 72l6-8M112 72l-6-8M122 68l2-9M140 72l6-8" stroke="#5b2a78" stroke-width="3" stroke-linecap="round"/></g>' +
+      '<circle cx="56" cy="116" r="9" fill="#ff8fc2" opacity=".8"/><circle cx="144" cy="116" r="9" fill="#ff8fc2" opacity=".8"/>' +
+      '<path class="mc" d="M76 126 Q100 150 124 126" fill="none" stroke="#5b2a78" stroke-width="6" stroke-linecap="round"/>' +
+      mouthOpen(100, 134, 28, 21, '#3d1450') + '</g></svg>';
+  }
+
+  /* ================= Töne ================= */
+  var AC = null;
+  function tone(f, d, type, when, vol, to) {
+    if (state.mute) return;
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      var t = AC.currentTime + (when || 0), o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+      g.gain.setValueAtTime(vol || 0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + 0.02);
+    } catch (e) {}
+  }
+  var SND = {
+    chomp: function () { tone(180, 0.07, 'square', 0, 0.08, 120); tone(160, 0.07, 'square', 0.1, 0.08, 110); tone(140, 0.07, 'square', 0.2, 0.08, 100); },
+    ok: function () { tone(523, 0.12, 'triangle', 0); tone(659, 0.12, 'triangle', 0.1); tone(784, 0.2, 'triangle', 0.2); },
+    bad: function () { tone(260, 0.3, 'triangle', 0, 0.15, 150); },
+    burp: function () { tone(110, 0.45, 'sawtooth', 0, 0.12, 60); },
+    win: function () { [523, 659, 784, 1047, 784, 1047].forEach(function (f, i) { tone(f, 0.22, 'triangle', i * 0.13); }); }
+  };
+
+  /* ================= Spielzustand ================= */
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { screen: 'start', area: null, list: [], i: 0, step: 0, err: 0, first: 0, streak: 0, results: [], fed: { n: 0, v: 0, a: 0 }, mute: false, busy: false };
+  var store = { best: {}, test: 0, snack: 0, mute: false };
+  function load() { try { var d = JSON.parse(localStorage.getItem(SAVE) || '{}'); store.best = d.best || {}; store.test = d.test || 0; store.snack = d.snack || 0; store.mute = !!d.mute; } catch (e) {} state.mute = store.mute; }
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(store)); } catch (e) {} }
+
+  function show(screen) {
+    state.screen = screen;
+    ['start', 'game', 'win', 'snack'].forEach(function (id) { $(id).hidden = id !== screen; });
+    $('bar').hidden = screen !== 'game' && screen !== 'snack';
+    if (screen !== 'snack') stopSnack();
+    window.scrollTo(0, 0);
+  }
+  function starsHtml(n) { var s = ''; for (var i = 0; i < 3; i++) s += i < n ? '⭐' : '<span class="off">⭐</span>'; return s; }
+  function renderStart() {
+    [].forEach.call(document.querySelectorAll('[data-pic]'), function (el) { el.innerHTML = svgMon(el.getAttribute('data-pic')); });
+    [].forEach.call(document.querySelectorAll('[data-st]'), function (el) { var b = store.best[el.getAttribute('data-st')]; el.innerHTML = b ? starsHtml(b) : ''; });
+    $('testBest').textContent = store.test ? '15 Aufgaben · bisher am besten: ' + store.test + ' von 15 Punkten' : '15 Aufgaben, jeweils ein Versuch';
+    updateMute();
+    show('start');
+  }
+  function updateMute() { $('mute').textContent = state.mute ? '🔇' : '🔊'; $('muteStart').textContent = state.mute ? '🔇 Ton aus' : '🔊 Ton an'; }
+  function toggleMute() { state.mute = store.mute = !state.mute; save(); updateMute(); }
+
+  function startArea(area) {
+    [].forEach.call(document.querySelectorAll('.confetti'), function (c) { c.remove(); });
+    state.area = area; state.test = area === 'test';
+    state.list = buildRound(area); state.i = 0; state.first = 0; state.streak = 0; state.results = []; state.fed = { n: 0, v: 0, a: 0 };
+    state.start = Date.now();   /* Game-Test: Zeit für die Bestenliste */
+    $('stage').innerHTML = ''; $('stage').removeAttribute('data-k');
+    show('game');
+    renderTask();
+  }
+
+  /* ---------- Bühne mit den Monstern ---------- */
+  function renderStage(ms) {
+    var k = ms.join('');
+    var st = $('stage');
+    if (st.getAttribute('data-k') !== k) {
+      st.setAttribute('data-k', k);
+      st.className = ms.length === 1 ? 'one' : '';
+      st.innerHTML = ms.map(function (m) {
+        return '<div class="mon" data-m="' + m + '"><div class="grow">' + svgMon(m) + '</div><div class="mname" style="color:' + MON[m].color + '">' +
+          MON[m].name + '<small><span class="dot"> · </span>' + MON[m].art + '</small></div></div>';
+      }).join('');
+      [].forEach.call(st.querySelectorAll('.mon'), function (el) { el.addEventListener('click', function () { onMonster(el.getAttribute('data-m')); }); });
+    }
+    growAll();
+  }
+  function monEl(m) { return document.querySelector((state.screen === 'snack' ? '#smon' : '#stage') + ' .mon[data-m="' + m + '"]'); }
+  function growAll() { ['n', 'v', 'a'].forEach(function (m) { var el = monEl(m); if (el) el.querySelector('.grow').style.transform = 'scale(' + (1 + Math.min(state.fed[m], 12) * 0.03) + ')'; }); }
+  var bubTimer = {};
+  function bubble(m, text) {
+    var el = monEl(m); if (!el) return;
+    var old = el.querySelector('.bub'); if (old) old.remove();
+    var b = document.createElement('div'); b.className = 'bub'; b.textContent = text; el.appendChild(b);
+    /* Sprechblase am Bildschirmrand nach innen schieben, sonst ragt sie hinaus (waagerechtes Scrollen) */
+    var r = el.getBoundingClientRect(), mid = r.left + r.width / 2, half = b.offsetWidth / 2;
+    var W = document.documentElement.clientWidth, dx = 0;
+    if (mid + half > W - 6) dx = W - 6 - (mid + half); else if (mid - half < 6) dx = 6 - (mid - half);
+    if (dx) { b.style.transform = 'translateX(calc(-50% + ' + Math.round(dx) + 'px))'; b.style.setProperty('--tail', Math.round(-dx) + 'px'); }
+    clearTimeout(bubTimer[m]); bubTimer[m] = setTimeout(function () { b.remove(); }, 1600);
+  }
+  function anim(m, cls, ms) {
+    var el = monEl(m); if (!el) return;
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    setTimeout(function () { el.classList.remove(cls); }, ms);
+  }
+  var YUM = ['Mjam!', 'Lecker!', 'Schmatz!', 'Mmmh!', 'Köstlich!', 'Nom nom!'];
+  function eat(m, text) {
+    var el = monEl(m); if (!el) return;
+    el.classList.add('eat');
+    setTimeout(function () { el.classList.remove('eat'); anim(m, 'chew', 900); }, 260);
+    SND.chomp();
+    if (text !== false) bubble(m, text || pick(YUM));
+  }
+  function yuck(m, text) { anim(m, 'yuck', 520); SND.bad(); bubble(m, text || 'Bäh!'); }
+  /* Wort fliegt ins Maul des Monsters */
+  function fly(src, text, m) {
+    var el = monEl(m); if (!el || !src) return;
+    var a = src.getBoundingClientRect(), b = el.querySelector('.grow').getBoundingClientRect();
+    var f = document.createElement('div'); f.className = 'flyer'; f.textContent = text;
+    f.style.left = a.left + 'px'; f.style.top = a.top + 'px';
+    document.body.appendChild(f);
+    var fr = f.getBoundingClientRect();
+    var dx = b.left + b.width / 2 - (a.left + fr.width / 2), dy = b.top + b.height * 0.62 - (a.top + fr.height / 2);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { f.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.2)'; f.style.opacity = '0.2'; }); });
+    setTimeout(function () { f.remove(); }, 500);
+  }
+
+  /* ---------- Aufgabe anzeigen ---------- */
+  function cur() { return state.list[state.i]; }
+  function renderTask() {
+    var q = cur();
+    [].forEach.call(document.querySelectorAll('.flyer'), function (f) { f.remove(); });
+    state.step = 0; state.err = 0; state.done = false; state.sel = null; state.phase = null;
+    var n = state.list.length;
+    $('progress').textContent = (state.test ? 'Aufgabe ' : 'Happen ') + (state.i + 1) + ' / ' + n;
+    $('bellyFill').style.width = (100 * state.i / n) + '%';
+    $('kicker').textContent = state.test ? 'Probetest · ' + AREA[q.area].label : AREA[q.area].label;
+    $('prompt').textContent = q.prompt;
+    $('fb').textContent = ''; $('fb').className = '';
+    $('nextBtn').hidden = true;
+    $('opts').innerHTML = '';
+    renderStage(q.mons);
+    if (q.type === 'gaps') renderGaps(q);
+    else if (q.type === 'tap') renderTap(q);
+    else if (q.type === 'snake') renderSnake(q);
+    else renderSort(q, q.words);
+  }
+
+  /* ----- Lücken ----- */
+  function renderGaps(q) {
+    var small = q.small || [];
+    $('task').innerHTML = q.text.replace(/\{(\d+)\}/g, function (_, k) { return '<span class="gap' + (small.indexOf(+k) >= 0 ? ' sm' : '') + '" data-g="' + k + '"></span>'; });
+    state.pool = q.pool ? q.pool.slice() : null;
+    showStep();
+  }
+  function gapEl(k) { return document.querySelector('#task .gap[data-g="' + k + '"]'); }
+  function stepOpts(q) { return state.pool ? state.pool : q.steps[state.step].opts; }
+  function showStep() {
+    var q = cur();
+    [].forEach.call(document.querySelectorAll('#task .gap'), function (g) { g.classList.remove('cur'); });
+    var g = gapEl(state.step); if (g) g.classList.add('cur');
+    var box = $('opts'); box.innerHTML = '';
+    stepOpts(q).forEach(function (t, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'co'; b.textContent = t; b.setAttribute('data-t', t); b.setAttribute('data-i', i);
+      b.addEventListener('click', function () { onCard(b); });
+      box.appendChild(b);
+    });
+  }
+  function onCard(b) {
+    var q = cur(); if (state.done || state.busy || b.classList.contains('wrong')) return;
+    var step = q.steps[state.step], t = b.getAttribute('data-t'), m = q.mons[0];
+    if (step.ok.indexOf(t) >= 0) {
+      fly(b, t, m); eat(m);
+      fillGap(t, 'done');
+      if (state.pool) state.pool.splice(+b.getAttribute('data-i'), 1);
+      nextStep();
+    } else {
+      state.err++;
+      b.classList.add('wrong');
+      yuck(m, 'Bäh! Das passt nicht.');
+      if (!state.test) { fb('no', '🤔 Noch nicht ganz. ' + step.tip); return; }
+      /* Probetest: ein Versuch – richtige Antwort wird eingesetzt */
+      var right = step.ok.filter(function (o) { return stepOpts(q).indexOf(o) >= 0; })[0];
+      fb('no', '❌ Richtig wäre: ' + right);
+      fillGap(right, 'fix');
+      if (state.pool) state.pool.splice(state.pool.indexOf(right), 1);
+      state.busy = true;
+      setTimeout(function () { state.busy = false; nextStep(); }, 900);
+    }
+  }
+  function fillGap(t, cls) { var g = gapEl(state.step); if (g) { g.textContent = t; g.classList.remove('cur'); g.classList.add(cls); } }
+  function nextStep() {
+    var q = cur();
+    state.step++;
+    if (state.step >= q.steps.length) finish();
+    else showStep();
+  }
+  function fb(cls, text, exp) {
+    var el = $('fb'); el.className = cls; el.textContent = text;
+    if (exp) { var s = document.createElement('span'); s.className = 'exp'; s.textContent = exp; el.appendChild(s); }
+  }
+
+  /* ----- Wörter im Satz antippen ----- */
+  function renderTap(q) {
+    state.found = 0; state.miss = 0;
+    var html = '<div class="sent">';
+    q.toks.forEach(function (t, i) {
+      html += esc(t.pre) + '<button type="button" class="tw" data-i="' + i + '">' + esc(t.w) + '</button>' + esc(t.post) + ' ';
+    });
+    html += '</div><div class="count" id="count"></div>';
+    if (q.story) html = '<div class="count">aus „Das Abenteuer“</div>' + html;
+    $('task').innerHTML = html;
+    [].forEach.call(document.querySelectorAll('#task .tw'), function (b) { b.addEventListener('click', function () { onTap(b); }); });
+    tapCount();
+  }
+  function tapCount() { var q = cur(); $('count').textContent = 'Gefunden: ' + state.found + ' / ' + q.need; }
+  function onTap(b) {
+    var q = cur(); if (state.done || b.classList.contains('hit')) return;
+    var t = q.toks[+b.getAttribute('data-i')], m = q.tm;
+    if (t.m === m) {
+      b.classList.add('hit'); b.classList.remove('hint');
+      state.found++; tapCount();
+      fly(b, t.w, m); eat(m, m === 'n' && t.info ? t.info.replace(' (ein Name)', '') + '!' : null);
+      if (state.found >= q.need) finish();
+      else fb('ok', '👍 Gut! Such weiter.');
+    } else {
+      state.err++; state.miss++;
+      b.classList.remove('miss'); void b.offsetWidth; b.classList.add('miss');
+      yuck(m, 'Bäh! Kein ' + { n: 'Nomen', v: 'Verb', a: 'Adjektiv' }[m] + '.');
+      var tip = TIP_WA[m];
+      if (m === 'n' && /^[A-ZÄÖÜ]/.test(t.w)) tip = '„' + t.w + '“ ist groß, weil es am Satzanfang steht. Kann man der, die oder das davorsetzen?';
+      fb('no', state.test ? '❌ „' + t.w + '“ ist kein ' + { n: 'Nomen', v: 'Verb', a: 'Adjektiv' }[m] + '.' : '🤔 „' + t.w + '“ ist kein ' + { n: 'Nomen', v: 'Verb', a: 'Adjektiv' }[m] + '. ' + tip);
+      if (state.miss >= 3) hintTap();
+    }
+  }
+  function hintTap() {
+    var q = cur();
+    [].forEach.call(document.querySelectorAll('#task .tw'), function (b) { var t = q.toks[+b.getAttribute('data-i')]; if (t.m === q.tm && !b.classList.contains('hit')) b.classList.add('hint'); });
+  }
+
+  /* ----- Wörterschlange ----- */
+  function renderSnake(q) {
+    state.phase = 'cut'; state.miss = 0;
+    var letters = q.words.map(function (w) { return w.w; }).join('');
+    var starts = {}, pos = 0;
+    q.words.forEach(function (w) { if (pos) starts[pos] = 1; pos += w.w.length; });
+    state.snake = { letters: letters, starts: starts, cut: {} };
+    drawSnake();
+    $('opts').innerHTML = '<p class="howto">✂️ Tippe auf den <b>ersten Buchstaben</b> jedes neuen Wortes.</p>';
+  }
+  /* Die Schlange in Stücke zeichnen: neues Stück nach jedem Schnitt */
+  function drawSnake() {
+    var s = state.snake, html = '<div class="snake">', segOpen = false;
+    for (var i = 0; i < s.letters.length; i++) {
+      if (i === 0 || s.cut[i]) {
+        if (segOpen) html += '</span>';
+        html += '<span class="seg' + (i === 0 ? ' head' : ' cutoff') + '">' + (i === 0 ? '<span class="eye">👀</span>' : '');
+        segOpen = true;
+      }
+      html += '<button type="button" class="sl" data-i="' + i + '">' + esc(s.letters[i]) + '</button>&#8203;';
+    }
+    html += '</span></div><div class="count" id="count"></div>';
+    $('task').innerHTML = html;
+    [].forEach.call(document.querySelectorAll('#task .sl'), function (b) { b.addEventListener('click', function () { onLetter(b); }); });
+    var total = Object.keys(s.starts).length, done = Object.keys(s.cut).length;
+    $('count').textContent = 'Wörter: ' + (done + 1) + ' / ' + (total + 1);
+  }
+  function onLetter(b) {
+    var s = state.snake, i = +b.getAttribute('data-i');
+    if (state.phase !== 'cut' || state.done) return;
+    if (s.starts[i] && !s.cut[i]) {
+      s.cut[i] = 1; SND.chomp();
+      drawSnake();
+      fb('ok', '✂️ Schnipp!');
+      if (Object.keys(s.cut).length === Object.keys(s.starts).length) {
+        state.phase = 'sort';
+        fb('ok', '✂️ Alle Wörter getrennt! Jetzt füttere die Monster.');
+        setTimeout(function () { if (cur().type === 'snake' && state.phase === 'sort') renderSort(cur(), cur().words, true); }, 700);
+      }
+    } else if (!s.cut[i]) {
+      state.err++; state.miss++;
+      b.classList.remove('miss'); void b.offsetWidth; b.classList.add('miss');
+      SND.bad();
+      fb('no', i === 0 ? '🤔 Hier fängt die Schlange erst an. Wo beginnt das nächste Wort?' :
+        (state.test ? '❌ Hier fängt kein neues Wort an.' : '🤔 Hier fängt kein neues Wort an. Lies langsam Buchstabe für Buchstabe. Tipp: Nomen beginnen mit einem großen Buchstaben.'));
+      if (state.miss >= 3) {
+        var next = Object.keys(s.starts).map(Number).filter(function (k) { return !s.cut[k]; })[0];
+        var nb = document.querySelector('#task .sl[data-i="' + next + '"]'); if (nb) nb.classList.add('hint');
+      }
+    }
+  }
+
+  /* ----- Wörter sortieren (Ziehen oder Antippen) ----- */
+  function renderSort(q, words, keepFb) {
+    state.phase = 'sort';
+    state.left = words.map(function (w, i) { return i; });
+    var html = '<div class="chips">' + words.map(function (w, i) { return '<button type="button" class="chip" data-i="' + i + '">' + esc(w.w) + '</button>'; }).join('') + '</div>';
+    $('task').innerHTML = html;
+    $('opts').innerHTML = '<p class="howto">Ziehe jedes Wort zum richtigen Monster – oder tippe erst das Wort und dann das Monster an.</p>';
+    if (!keepFb) $('fb').textContent = '';
+    [].forEach.call(document.querySelectorAll('#stage .mon'), function (el) { el.classList.add('target'); el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); });
+    [].forEach.call(document.querySelectorAll('#task .chip'), function (c) { dragable(c); });
+  }
+  function selectChip(c) {
+    [].forEach.call(document.querySelectorAll('#task .chip'), function (x) { x.classList.toggle('sel', x === c && !x.classList.contains('sel')); });
+    state.sel = c && c.classList.contains('sel') ? +c.getAttribute('data-i') : null;
+  }
+  function onMonster(m) { if (state.phase === 'sort' && state.sel != null) feed(state.sel, m); }
+  function feed(i, m) {
+    var q = cur(), w = q.words[i], c = document.querySelector('#task .chip[data-i="' + i + '"]');
+    if (!c || state.done) return;
+    if (w.m === m) {
+      fly(c, w.w, m); eat(m, w.m === 'n' ? w.say + '!' : null);
+      gone(c, i);
+    } else {
+      state.err++;
+      yuck(m, 'Bäh! Ich will ' + MON[m].art + '!');
+      if (!state.test) {
+        c.classList.remove('miss'); void c.offsetWidth; c.classList.add('miss');
+        fb('no', '🤔 „' + w.w + '“ schmeckt ' + MON[m].name + ' nicht. ' + TIP_WA[w.m]);
+        selectChip(null);
+        return;
+      }
+      fb('no', '❌ „' + w.w + '“ gehört zu ' + MON[w.m].name + ' – ' + { n: 'ein Nomen', v: 'ein Verb', a: 'ein Adjektiv' }[w.m] + '.');
+      fly(c, w.w, w.m); eat(w.m);
+      gone(c, i);
+    }
+  }
+  function gone(c, i) {
+    c.remove(); state.sel = null;
+    state.left = state.left.filter(function (x) { return x !== i; });
+    if (!state.left.length) {
+      [].forEach.call(document.querySelectorAll('#stage .mon'), function (el) { el.classList.remove('target', 'hot'); el.removeAttribute('tabindex'); el.removeAttribute('role'); });
+      finish();
+    }
+  }
+  /* Ziehen mit Maus oder Finger; kurzes Antippen wählt das Wort aus */
+  function dragable(c) {
+    c.addEventListener('pointerdown', function (e) {
+      if (state.done) return;
+      var sx = e.clientX, sy = e.clientY, clone = null, hot = null;
+      try { c.setPointerCapture(e.pointerId); } catch (x) {}
+      function monAt(x, y) {
+        var els = document.querySelectorAll('#stage .mon');
+        for (var k = 0; k < els.length; k++) { var r = els[k].getBoundingClientRect(); if (x >= r.left - 10 && x <= r.right + 10 && y >= r.top - 30 && y <= r.bottom + 10) return els[k]; }
+        return null;
+      }
+      function move(ev) {
+        if (!clone && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 8) {
+          clone = c.cloneNode(true); clone.classList.add('drag'); clone.classList.remove('sel'); document.body.appendChild(clone); c.classList.add('ghost');
+        }
+        if (clone) {
+          clone.style.left = (ev.clientX - clone.offsetWidth / 2) + 'px'; clone.style.top = (ev.clientY - clone.offsetHeight / 2) + 'px';
+          var h = monAt(ev.clientX, ev.clientY);
+          if (h !== hot) { if (hot) hot.classList.remove('hot'); hot = h; if (hot) hot.classList.add('hot'); }
+        }
+      }
+      function up(ev) {
+        c.removeEventListener('pointermove', move); c.removeEventListener('pointerup', up); c.removeEventListener('pointercancel', up);
+        if (hot) hot.classList.remove('hot');
+        if (!clone) { selectChip(c); return; }
+        clone.remove(); c.classList.remove('ghost');
+        var target = ev.type === 'pointerup' ? monAt(ev.clientX, ev.clientY) : null;
+        if (target) feed(+c.getAttribute('data-i'), target.getAttribute('data-m'));
+      }
+      c.addEventListener('pointermove', move); c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+    });
+    c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectChip(c); } });
+  }
+
+  /* ---------- Aufgabe fertig ---------- */
+  function finish() {
+    var q = cur(); state.done = true;
+    var ok = state.err === 0;
+    state.results.push({ area: q.area, ok: ok, kind: q.kind });
+    if (ok) { state.first++; state.streak++; } else state.streak = 0;
+    q.mons.forEach(function (m) { state.fed[m]++; });
+    growAll();
+    $('bellyFill').style.width = (100 * (state.i + 1) / state.list.length) + '%';
+    $('opts').innerHTML = '';
+    if (state.test) fb(ok ? 'ok' : 'no', ok ? '✅ Richtig!' : '❌ Diesmal war ein Fehler dabei.', q.exp);
+    else fb('ok', ok ? '✅ ' + pick(['Richtig!', 'Super!', 'Toll gemacht!', 'Klasse!']) : '✅ Geschafft!', q.exp);
+    setTimeout(SND.ok, 250);
+    if (ok && state.streak > 0 && state.streak % 3 === 0) {
+      setTimeout(function () {
+        q.mons.forEach(function (m) { anim(m, 'burp', 900); bubble(m, 'Rülps! 😋 ' + state.streak + ' richtig hintereinander!'); });
+        SND.burp();
+      }, 700);
+    }
+    $('nextBtn').hidden = false;
+    $('nextBtn').textContent = state.i + 1 >= state.list.length ? 'Zum Ergebnis 🎉' : 'Weiter ➜';
+    $('nextBtn').focus({ preventScroll: true });
+  }
+  function next() {
+    state.i++;
+    if (state.i >= state.list.length) end(); else renderTask();
+  }
+
+  /* ---------- Ende ---------- */
+  function end() {
+    var n = state.list.length, pts = state.first, stars;
+    var html = '';
+    if (state.test) {
+      stars = pts >= 13 ? 3 : pts >= 9 ? 2 : 1;
+      if (pts > store.test) store.test = pts;
+      html += '<h1>Probetest geschafft!</h1><div class="stars">' + starsHtml(stars) + '</div>' +
+        '<p><b>' + pts + ' von ' + n + ' Punkten</b> – ' + (stars === 3 ? 'super, du bist bereit für den Test! 🎉' : stars === 2 ? 'schon richtig gut! Übe noch ein bisschen.' : 'gut, dass du übst! Füttere die Monster noch ein paar Mal.') + '</p>';
+      html += '<div class="res">';
+      ['nomen', 'verben', 'adjektive', 'mix'].forEach(function (a) {
+        var r = state.results.filter(function (x) { return x.area === a; }), g = r.filter(function (x) { return x.ok; }).length;
+        var good = g === r.length;
+        html += '<div class="r"><b>' + (a === 'nomen' ? '🔵 ' : a === 'verben' ? '🟠 ' : a === 'adjektive' ? '🟣 ' : '🟢 ') + AREA[a].label + '</b><span class="pts">' + g + ' / ' + r.length + (good ? ' ✔' : '') + '</span>' +
+          (good ? '' : '<button type="button" data-go="' + a + '">Üben ▶</button>') + '</div>';
+      });
+      html += '</div>';
+    } else {
+      stars = pts >= 9 ? 3 : pts >= 6 ? 2 : 1;
+      if (stars > (store.best[state.area] || 0)) store.best[state.area] = stars;
+      var who = state.area === 'mix' ? 'Alle Monster sind' : MON[AREA[state.area].mons[0]].name + ' ist';
+      html += '<h1>' + who + ' satt! 😋</h1><div class="stars">' + starsHtml(stars) + '</div>' +
+        '<p>Du hast <b>' + pts + ' von ' + n + '</b> Happen gleich beim ersten Versuch richtig verfüttert.</p>' +
+        '<p>' + (stars === 3 ? 'Rülps! Das war ein Festmahl! 🎉' : stars === 2 ? 'Lecker! Beim nächsten Mal schaffst du noch mehr.' : 'Gut gemacht! Übung macht den Meister.') + '</p>';
+    }
+    /* Game-Test: Ergebnis an die Bestenliste melden (eigene Liste je Bereich) */
+    var sek = Math.min(86400, Math.round((Date.now() - state.start) / 1000));
+    html += '<p>⏱ Zeit: ' + (sek >= 60 ? Math.floor(sek / 60) + ' min ' + (sek % 60) + ' s' : sek + ' s') + '</p>';
+    if (window.GameTest) GameTest.reportScore({ points: pts, maxPoints: n, seconds: sek, variant: state.area });
+    state.reward = { secs: [15, 17, 20][stars - 1], mons: AREA[state.area].mons };
+    save();
+    $('winBox').innerHTML = html;
+    $('rewardBtn').hidden = false; $('rewardHint').hidden = true;
+    $('againBtn').textContent = '🔄 Nochmal spielen';
+    $('party').innerHTML = ['n', 'v', 'a'].map(function (m) { return '<div>' + svgMon(m) + '</div>'; }).join('');
+    [].forEach.call(document.querySelectorAll('#winBox [data-go]'), function (b) { b.addEventListener('click', function () { startArea(b.getAttribute('data-go')); }); });
+    show('win');
+    confetti();
+    SND.win();
+  }
+  function confetti() {
+    var cols = ['#ff6f3c', '#4a90e2', '#ffd23f', '#b05bd6', '#2fa84f', '#ec5fa8'];
+    for (var i = 0; i < 50; i++) {
+      var c = document.createElement('div'); c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw'; c.style.background = pick(cols);
+      c.style.animationDuration = (2 + Math.random() * 2) + 's'; c.style.animationDelay = Math.random() * 0.8 + 's';
+      document.body.appendChild(c);
+      (function (el) { setTimeout(function () { el.remove(); }, 5000); })(c);
+    }
+  }
+
+  /* ---------- Belohnung: Snack-Regen ----------
+     Einmal pro fertiger Runde. Spielzeit nach Sternen: 15 / 17 / 20 Sekunden (wird vorher nicht angezeigt).
+     Snacks = 1 Punkt, goldener Stern = 5 Punkte, Stinkesocke = −3 Punkte. */
+  var SNACKS = ['🍎', '🍌', '🍓', '🍪', '🍩', '🍬', '🧁', '🍉', '🍒', '🥨'];
+  var SN = null;
+  function startSnack() {
+    if (!state.reward) return;
+    var r = state.reward; state.reward = null;
+    [].forEach.call(document.querySelectorAll('.confetti'), function (c) { c.remove(); });
+    SN = { secs: r.secs, m: null, score: 0, caught: 0, items: [], pops: [], el: 0, spawn: 0, x: 0, tx: 0, key: 0, run: false, raf: 0, last: 0 };
+    $('smon').innerHTML = ''; $('sscore').textContent = '0'; $('stime').style.width = '100%';
+    show('snack');
+    $('progress').textContent = '🍭 Snack-Regen';
+    sizeSnack();
+    if (r.mons.length === 1) pickSnack(r.mons[0]);
+    else {
+      $('sover').hidden = false;
+      $('sover').innerHTML = '<h2>Wen willst du füttern?</h2><div class="picks">' + r.mons.map(function (m) {
+        return '<button type="button" data-pick="' + m + '">' + svgMon(m) + MON[m].name + '</button>';
+      }).join('') + '</div>';
+      [].forEach.call(document.querySelectorAll('[data-pick]'), function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); pickSnack(b.getAttribute('data-pick')); }); });
+    }
+  }
+  function pickSnack(m) {
+    SN.m = m;
+    $('smon').innerHTML = '<div class="mon" data-m="' + m + '"><div class="grow">' + svgMon(m) + '</div></div>';
+    var W = $('sbox').clientWidth; SN.x = SN.tx = W / 2; placeMon();
+    $('sover').hidden = false;
+    var n = 3;
+    var tick = function () {
+      if (!SN || state.screen !== 'snack') return;
+      if (n > 0) {
+        $('sover').innerHTML = '<div class="big">' + n + '</div><p class="legend">🍎 🍪 🍬 = 1 · ⭐ = 5 · 🧦 Socke = −3</p><p>Fang die Snacks!</p>';
+        tone(440, 0.12, 'triangle'); n--; SN.cd = setTimeout(tick, 700);
+      } else {
+        $('sover').innerHTML = '<div class="big">Los!</div>'; tone(880, 0.2, 'triangle');
+        SN.cd = setTimeout(function () { $('sover').hidden = true; }, 450);
+        SN.run = true; SN.last = 0; SN.raf = requestAnimationFrame(loopSnack);
+      }
+    };
+    tick();
+  }
+  function sizeSnack() {
+    var c = $('scv'), b = $('sbox'), d = window.devicePixelRatio || 1;
+    c.width = Math.round(b.clientWidth * d); c.height = Math.round(b.clientHeight * d);
+    c.getContext('2d').setTransform(d, 0, 0, d, 0, 0);
+  }
+  function placeMon() {
+    var w = $('smon').offsetWidth, W = $('sbox').clientWidth;
+    SN.x = Math.max(w / 2, Math.min(W - w / 2, SN.x));
+    $('smon').style.transform = 'translateX(' + (SN.x - w / 2) + 'px) scale(' + (1 + Math.min(SN.caught, 30) * 0.008) + ')';
+  }
+  function spawnSnack(kind, x) {
+    var W = $('sbox').clientWidth, r = Math.random();
+    kind = kind || (r < 0.07 ? 'star' : r < 0.25 ? 'sock' : 'snack');
+    var size = Math.max(34, Math.min(52, W * 0.075));
+    SN.items.push({ k: kind, e: kind === 'star' ? '⭐' : kind === 'sock' ? '🧦' : pick(SNACKS), x: x != null ? x : size / 2 + Math.random() * (W - size), y: -size,
+      v: ($('sbox').clientHeight * (0.32 + SN.el * 0.018)) * (0.85 + Math.random() * 0.3), s: size, rot: (Math.random() - 0.5) * 2 });
+  }
+  function loopSnack(ts) {
+    if (!SN || !SN.run) return;
+    if (document.hidden) { SN.last = 0; SN.raf = requestAnimationFrame(loopSnack); return; }
+    var dt = SN.last ? Math.min(0.05, (ts - SN.last) / 1000) : 0; SN.last = ts;
+    var box = $('sbox'), W = box.clientWidth, H = box.clientHeight, ctx = $('scv').getContext('2d');
+    SN.el += dt;
+    var left = Math.max(0, SN.secs - SN.el);
+    $('stime').style.width = (100 * left / SN.secs) + '%';
+    /* neue Snacks, mit der Zeit immer mehr */
+    SN.spawn -= dt;
+    if (SN.spawn <= 0) { spawnSnack(); SN.spawn = Math.max(0.33, 0.85 - SN.el * 0.03); }
+    /* Monster bewegen: zum Finger hin oder mit Pfeiltasten */
+    if (SN.key) SN.tx = SN.x + SN.key * 40;
+    var dx = SN.tx - SN.x, step = 900 * dt;
+    SN.x += Math.abs(dx) < step ? dx : step * Math.sign(dx);
+    placeMon();
+    var mw = $('smon').offsetWidth, mtop = H - 6 - mw * (1 + Math.min(SN.caught, 30) * 0.008);
+    ctx.clearRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    SN.items = SN.items.filter(function (it) {
+      it.y += it.v * dt;
+      if (it.y > mtop + mw * 0.25 && it.y < mtop + mw * 0.8 && Math.abs(it.x - SN.x) < mw * 0.45) { catchSnack(it); return false; }
+      if (it.y > H + it.s) return false;
+      ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(Math.sin(SN.el * 3 + it.rot) * 0.25);
+      ctx.font = it.s + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.fillText(it.e, 0, 0); ctx.restore();
+      return true;
+    });
+    /* kleine Punkte-Anzeigen */
+    ctx.font = 'bold 26px "Trebuchet MS",sans-serif';
+    SN.pops = SN.pops.filter(function (p) {
+      p.t += dt; if (p.t > 0.8) return false;
+      ctx.globalAlpha = 1 - p.t / 0.8; ctx.fillStyle = p.c; ctx.fillText(p.s, p.x, p.y - p.t * 60); ctx.globalAlpha = 1;
+      return true;
+    });
+    if (left <= 0) { finishSnack(); return; }
+    SN.raf = requestAnimationFrame(loopSnack);
+  }
+  function catchSnack(it) {
+    var pts = it.k === 'star' ? 5 : it.k === 'sock' ? -3 : 1;
+    SN.score = Math.max(0, SN.score + pts);
+    if (pts > 0) { SN.caught++; eat(SN.m, it.k === 'star' ? 'Wow! +5 ⭐' : (Math.random() < 0.3 ? pick(YUM) : false)); }
+    else yuck(SN.m, 'Bäh! Socke! 🧦');
+    SN.pops.push({ s: (pts > 0 ? '+' : '') + pts, x: it.x, y: it.y, t: 0, c: pts > 0 ? '#1d7a3a' : '#c0392b' });
+    $('sscore').textContent = SN.score;
+  }
+  function stopSnack() { if (SN) { SN.run = false; cancelAnimationFrame(SN.raf); clearTimeout(SN.cd); } }
+  function finishSnack() {
+    if (!SN) return;
+    stopSnack();
+    var rec = SN.score > store.snack;
+    if (rec) { store.snack = SN.score; save(); }
+    var m = SN.m || 'n';
+    $('winBox').innerHTML = '<h1>Mjam! 😋</h1><p><b>' + MON[m].name + ' hat ' + SN.score + ' Punkte erschnappt!</b></p>' +
+      '<p>' + (rec ? '🏆 Neuer Rekord!' : 'Rekord: ' + store.snack + ' Punkte') + '</p>';
+    $('party').innerHTML = '<div>' + svgMon(m) + '</div>';
+    $('rewardBtn').hidden = true; $('rewardHint').hidden = false;
+    $('againBtn').textContent = '🔄 Nochmal üben';
+    SN = null;
+    show('win');
+    confetti(); SND.win();
+  }
+  (function () {
+    var box = $('sbox');
+    function aim(e) { if (SN && SN.m) { var r = box.getBoundingClientRect(); SN.tx = e.clientX - r.left; SN.key = 0; } }
+    box.addEventListener('pointerdown', function (e) { aim(e); try { box.setPointerCapture(e.pointerId); } catch (x) {} });
+    box.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' || e.buttons) aim(e); });
+    document.addEventListener('keydown', function (e) { if (SN && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { SN.key = e.key === 'ArrowLeft' ? -1 : 1; e.preventDefault(); } });
+    document.addEventListener('keyup', function (e) { if (SN && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) SN.key = 0; });
+    window.addEventListener('resize', function () { if (state.screen === 'snack') sizeSnack(); });
+  })();
+
+  /* ---------- Bedienung ---------- */
+  [].forEach.call(document.querySelectorAll('[data-area]'), function (b) { b.addEventListener('click', function () { startArea(b.getAttribute('data-area')); }); });
+  $('nextBtn').addEventListener('click', next);
+  $('againBtn').addEventListener('click', function () { startArea(state.area); });
+  $('menuBtn').addEventListener('click', renderStart);
+  $('rewardBtn').addEventListener('click', startSnack);
+  $('mute').addEventListener('click', toggleMute);
+  $('muteStart').addEventListener('click', toggleMute);
+  document.addEventListener('keydown', function (e) {
+    if (state.screen !== 'game' || e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = parseInt(e.key, 10);
+    if (!k) return;
+    var q = cur();
+    if (q.type === 'gaps' && !state.done) { var b = document.querySelectorAll('#opts .co')[k - 1]; if (b) b.click(); }
+    else if (state.phase === 'sort' && state.sel != null && q.mons[k - 1]) feed(state.sel, q.mons[k - 1]);
+  });
+
+  load();
+  renderStart();
+
+  /* Zugang für den Durchspiel-Test (tools/spieltests/deutsch-wortmonster.js), nur mit ?test in der Adresse */
+  if (/[?&]test\b/.test(location.search)) {
+    window.WORTMONSTER = {
+      GEN: GEN, ROUNDS: ROUNDS, build: buildRound, parse: parseSentence, SAETZE: SAETZE, VERBEN: VERBEN, ADJ: ADJ, NOMEN: NOMEN, SCHLANGE: SCHLANGE,
+      state: function () { return state.screen; },
+      task: function () { return cur(); },
+      results: function () { return state.results; },
+      snack: function () { return SN ? { run: SN.run, score: SN.score, secs: SN.secs, m: SN.m, x: SN.x } : null; },
+      snackDrop: function (kind) { if (SN) spawnSnack(kind, SN.x); },
+      snackCalm: function () { if (SN) { SN.items = []; SN.spawn = 999; } },
+      snackFinish: function () { finishSnack(); },
+      /* was gerade richtig wäre */
+      solution: function () {
+        var q = cur();
+        if (state.done) return { type: 'done' };
+        if (q.type === 'gaps') {
+          var opts = stepOpts(q).slice(), step = q.steps[state.step];
+          return { type: 'gaps', ok: step.ok.filter(function (o) { return opts.indexOf(o) >= 0; }), opts: opts };
+        }
+        if (q.type === 'tap') {
+          var t = [], o = [];
+          [].forEach.call(document.querySelectorAll('#task .tw'), function (b) { var i = +b.getAttribute('data-i'); if (q.toks[i].m === q.tm) { if (!b.classList.contains('hit')) t.push(i); } else o.push(i); });
+          return { type: 'tap', targets: t, others: o };
+        }
+        if (state.phase === 'cut') {
+          var s = state.snake;
+          return { type: 'cut', starts: Object.keys(s.starts).map(Number).filter(function (k) { return !s.cut[k]; }),
+            others: s.letters.split('').map(function (_, i) { return i; }).filter(function (i) { return !s.starts[i]; }) };
+        }
+        if (state.phase === 'sort' && document.querySelector('#task .chip')) return { type: 'sort', chips: state.left.map(function (i) { return { i: i, m: q.words[i].m }; }) };
+        return { type: 'wait' };
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<title>Bauer Franz und die Getreideernte</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body { overflow: hidden; background-color: #9fd3f5; user-select: none; -webkit-user-select: none; touch-action: none; }
+#canvas-container { position: fixed; inset: 0; }
+#canvas-container canvas { display: block; }
+.hidden { display: none !important; }
+
+/* Anzeigen oben */
+#hud { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; flex-wrap: wrap;
+  justify-content: space-between; align-items: center; gap: 8px; z-index: 5; pointer-events: none; }
+.hud-box { background: rgba(255, 255, 255, 0.94); border: 3px solid #d97706; border-radius: 14px; padding: 7px 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 1rem; font-weight: bold; color: #451a03; pointer-events: auto; white-space: nowrap; }
+.home-link { text-decoration: none; }
+.home-link:focus-visible, button:focus-visible, a:focus-visible { outline: 4px solid #1d4ed8; outline-offset: 2px; }
+#compass { position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none;
+  display: flex; align-items: center; gap: 8px; border-color: #16a34a; }
+#compass-arrow { display: inline-block; font-size: 1.3rem; line-height: 1; color: #15803d; }
+#hint { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none; font-size: 0.95rem; }
+#toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 7; max-width: min(92vw, 520px);
+  background: #fffbeb; border: 3px solid #16a34a; border-radius: 16px; padding: 10px 18px; font-size: 1.1rem; font-weight: bold;
+  color: #14532d; text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,0.3); pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+#toast.show { opacity: 1; }
+
+/* Steuerung für Tablet und Handy */
+#touch-controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 22px calc(22px + env(safe-area-inset-bottom));
+  display: flex; justify-content: space-between; align-items: flex-end; z-index: 6; pointer-events: none; }
+#joy { width: 136px; height: 136px; border-radius: 50%; background: rgba(255, 251, 235, 0.6); border: 4px solid #d97706;
+  position: relative; pointer-events: auto; touch-action: none; box-shadow: 0 6px 14px rgba(0,0,0,0.3); }
+#joy::before { content: "▲"; position: absolute; top: 4px; left: 0; right: 0; text-align: center; color: #b45309; font-size: 1rem; }
+#joy-knob { position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%;
+  background: #f59e0b; border: 3px solid #92400e; pointer-events: none; }
+#mow-btn { width: 112px; height: 112px; border-radius: 50%; background: rgba(255, 251, 235, 0.92); border: 5px solid #16a34a;
+  color: #14532d; font-size: 1.15rem; font-weight: bold; pointer-events: auto; touch-action: none; box-shadow: 0 6px 14px rgba(0,0,0,0.3); cursor: pointer; }
+#mow-btn b { font-weight: bold; }
+#mow-btn span { display: block; font-size: 2rem; line-height: 1.1; }
+#mow-btn.pressed { background: #16a34a; color: #fff; transform: scale(0.94); }
+
+/* Fenster: Start, Aufgabe, Gewinn */
+.overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center;
+  padding: 14px; z-index: 20; touch-action: pan-y; }
+#start-screen { background: rgba(0, 0, 0, 0.35); }
+.modal-card { background: #fffbeb; border: 5px solid #f59e0b; border-radius: 22px; padding: 22px; max-width: 780px; width: 100%;
+  max-height: 94vh; overflow-y: auto; box-shadow: 0 15px 35px rgba(0,0,0,0.45); color: #1f2937; user-select: text; -webkit-user-select: text; }
+.center-card { text-align: center; max-width: 600px; }
+.center-card h1 { color: #b45309; font-size: clamp(1.5rem, 5vw, 2.1rem); margin-bottom: 12px; }
+.center-card p { font-size: 1.12rem; line-height: 1.45; margin-bottom: 12px; }
+.big-btn { display: block; width: 100%; margin-top: 10px; padding: 14px 18px; min-height: 54px; font-size: 1.2rem; font-weight: bold;
+  border-radius: 16px; border: 3px solid #b9dcf5; background: #eef7fd; color: #16324f; cursor: pointer; text-decoration: none; }
+.big-btn.main { background: #16a34a; border-color: #16a34a; color: #fff; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;
+  border-bottom: 2px solid #fde68a; padding-bottom: 8px; }
+.modal-header h2 { color: #b45309; font-size: 1.35rem; }
+.close-btn { background: #fee2e2; border: 2px solid #dc2626; color: #991b1b; border-radius: 10px; padding: 8px 12px; font-size: 0.95rem;
+  font-weight: bold; cursor: pointer; flex-shrink: 0; }
+.q-desc { font-size: 1.05rem; margin-bottom: 14px; line-height: 1.45; }
+.diagram-layout { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: center; background: #ffffff;
+  border: 2px dashed #f59e0b; border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+.diagram-layout svg { max-width: 100%; height: auto; }
+.inputs-col { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
+.field-row { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+.badge { background: #d97706; color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center;
+  justify-content: center; flex-shrink: 0; font-size: 0.95rem; }
+.desktop-input { padding: 7px 10px; border: 2px solid #d97706; border-radius: 8px; font-size: 1rem; width: 100%; background: #fff; }
+.inline-input { padding: 4px 8px; border: 2px solid #d97706; border-radius: 8px; font-size: 1rem; width: 135px; margin: 2px 3px;
+  font-weight: bold; color: #451a03; }
+.num-input { width: 46px; padding: 6px; text-align: center; font-size: 1.1rem; font-weight: bold; border: 2px solid #d97706; border-radius: 8px; flex-shrink: 0; }
+.word-bank { display: flex; flex-wrap: wrap; gap: 8px; background: #fef3c7; padding: 10px; border-radius: 12px; margin-bottom: 14px; justify-content: center; }
+.chip { background: #b45309; color: white; border: none; border-radius: 10px; padding: 9px 14px; font-size: 1rem; font-weight: bold;
+  cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+.chip.selected { background: #1d4ed8; outline: 3px solid #93c5fd; }
+.chip.used { opacity: 0.35; }
+.touch-slot { display: inline-flex; align-items: center; justify-content: center; min-width: 125px; min-height: 38px; padding: 5px 10px;
+  background: #fef9c3; border: 2px dashed #b45309; border-radius: 8px; font-size: 1rem; font-weight: bold; color: #78350f; cursor: pointer; margin: 2px; }
+.touch-slot.filled { background: #fde68a; border-style: solid; }
+.num-tap-btn { width: 46px; height: 42px; background: #fef3c7; border: 2px solid #d97706; border-radius: 10px; font-size: 1.2rem;
+  font-weight: bold; color: #451a03; cursor: pointer; flex-shrink: 0; }
+.is-correct { border-color: #16a34a !important; background-color: #dcfce7 !important; color: #14532d !important; }
+.is-wrong { border-color: #dc2626 !important; background-color: #fee2e2 !important; color: #7f1d1d !important; }
+table.work-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; background: white; }
+table.work-table th, table.work-table td { border: 2px solid #fcd34d; padding: 8px; text-align: left; font-size: 0.95rem; }
+table.work-table th { background: #fef3c7; color: #78350f; }
+.sort-row { display: flex; align-items: center; gap: 12px; background: white; border: 2px solid #fcd34d; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.q-card { background: white; border: 2px solid #fcd34d; border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.q-card div { font-weight: bold; margin-bottom: 6px; }
+.cloze { background: white; padding: 14px; border-radius: 12px; border: 2px solid #fcd34d; line-height: 2.3; font-size: 1.05rem; }
+.note { font-size: 0.95rem; color: #78350f; margin-bottom: 8px; font-weight: bold; text-align: center; }
+.action-bar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 16px; }
+.btn-primary { background: #16a34a; color: white; border: none; border-radius: 12px; padding: 12px 24px; font-size: 1.1rem; font-weight: bold; cursor: pointer; }
+.btn-tip { background: #e0f2fe; color: #075985; border: 2px solid #0284c7; border-radius: 12px; padding: 10px 18px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+.btn-mode { background: #fef3c7; color: #451a03; border: 2px solid #b45309; border-radius: 12px; padding: 10px 18px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+#feedback { margin-top: 14px; text-align: center; font-size: 1.1rem; font-weight: bold; min-height: 26px; }
+#tip-box { margin-top: 10px; background: #e0f2fe; border: 2px solid #38bdf8; border-radius: 10px; padding: 10px; color: #0c4a6e; font-size: 0.98rem; line-height: 1.4; }
+
+/* Gewinn-Bild: Der Leiterwagen fährt zur Mühle, dann liegt das Brot da. */
+#win-scene { width: 100%; max-width: 440px; border-radius: 14px; border: 3px solid #fcd34d; margin-bottom: 12px; }
+#win-screen .blades { animation: spin 6s linear infinite; }
+#win-screen .wagon { animation: fahren 4s ease-out forwards; }
+#win-screen .bread { opacity: 0; animation: brot 0.8s ease-out 3.6s forwards; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fahren { from { transform: translateX(-90px); } to { transform: translateX(215px); } }
+@keyframes brot { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 700px), (max-height: 480px) {
+  .hud-box { font-size: 0.85rem; padding: 5px 9px; border-width: 2px; }
+  #compass { top: calc(52px + env(safe-area-inset-top)); }
+  .modal-card { padding: 14px; }
+  .modal-header h2 { font-size: 1.1rem; }
+  #toast { font-size: 0.98rem; }
+}
+@media (max-width: 520px) { #compass { top: calc(92px + env(safe-area-inset-top)); } }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Anzeigen während des Spiels -->
+<div id="hud" class="hidden">
+  <a class="hud-box home-link" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  <div class="hud-box">📍 Stationen <span id="score">0</span> / 10</div>
+  <div class="hud-box">🌾 Karren <span id="karre">0</span>/<span id="karre-max">6</span> · 🏡 <span id="garben">0</span></div>
+  <div class="hud-box">🌺 Blumen <span id="blumen">0</span> / <span id="blumen-max">24</span></div>
+</div>
+<div id="compass" class="hud-box hidden"><span id="compass-arrow">⬆</span><span id="compass-text"></span></div>
+<div id="hint" class="hud-box hidden">⌨️ Pfeiltasten: laufen · Leertaste: mähen</div>
+<div id="toast" aria-live="polite"></div>
+
+<div id="touch-controls" class="hidden">
+  <div id="joy" aria-label="Steuerknüppel zum Laufen"><div id="joy-knob"></div></div>
+  <button type="button" id="mow-btn"><span id="mow-icon">🌾</span><b id="mow-label">Mähen</b></button>
+</div>
+
+<!-- Start -->
+<div id="start-screen" class="overlay">
+  <div class="modal-card center-card">
+    <h1>🌾 Bauer Franz und die Getreideernte</h1>
+    <p>Hilf Bauer Franz bei der Ernte wie früher! Mähe dir mit der Sense einen Weg durch das Feld. Lade die Garben in den Schubkarren und fahre sie zum Bauernhof. An 10 Stationen warten Aufgaben rund ums Getreide.</p>
+    <p id="start-controls"></p>
+    <p id="start-error" class="hidden" style="color:#b91c1c; font-weight:bold;">Dein Gerät kann die 3D-Ansicht leider nicht zeigen.</p>
+    <button type="button" class="big-btn main" id="startBtn">▶ Los geht's!</button>
+    <button type="button" class="big-btn hidden" id="resetBtn">🔄 Neu anfangen</button>
+    <a class="big-btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </div>
+</div>
+
+<!-- Aufgabe -->
+<div id="quiz-modal" class="overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="q-title">Station</h2>
+      <button type="button" class="close-btn" id="close-btn">✕ Weitergehen</button>
+    </div>
+    <div id="q-body"></div>
+    <div id="tip-box" class="hidden"></div>
+    <div class="action-bar">
+      <button type="button" class="btn-mode" id="mode-btn"></button>
+      <button type="button" class="btn-tip" id="tip-btn">💡 Tipp anzeigen</button>
+      <button type="button" class="btn-primary" id="check-btn">Antworten prüfen</button>
+      <button type="button" class="btn-primary hidden" id="next-btn">Weitergehen ➜</button>
+    </div>
+    <div id="feedback" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Gewonnen -->
+<div id="win-screen" class="overlay hidden">
+  <div class="modal-card center-card">
+    <svg id="win-scene" viewBox="0 0 400 140" role="img" aria-label="Der Leiterwagen fährt zur Mühle. Aus dem Mehl wird Brot.">
+      <rect width="400" height="140" fill="#bfe3f7"/>
+      <rect y="105" width="400" height="35" fill="#d9b85c"/>
+      <g transform="translate(335,0)">
+        <polygon points="-24,105 24,105 15,45 -15,45" fill="#f5efe0" stroke="#7c5832" stroke-width="2"/>
+        <polygon points="-19,45 19,45 0,24" fill="#7c5832"/>
+        <rect x="-7" y="84" width="14" height="21" fill="#7c5832"/>
+        <g transform="translate(0,48)"><g class="blades">
+          <rect x="-3" y="-40" width="6" height="80" fill="#8a5a2b"/>
+          <rect x="-40" y="-3" width="80" height="6" fill="#8a5a2b"/>
+        </g></g>
+      </g>
+      <g class="wagon">
+        <polygon points="6,84 14,58 22,84" fill="#eab308"/><polygon points="22,84 30,56 38,84" fill="#facc15"/>
+        <polygon points="38,84 46,58 54,84" fill="#eab308"/><polygon points="54,84 62,60 70,84" fill="#facc15"/>
+        <rect x="0" y="82" width="76" height="12" rx="2" fill="#8a5a2b"/>
+        <circle cx="16" cy="98" r="10" fill="#5b3a1a"/><circle cx="16" cy="98" r="3" fill="#eab308"/>
+        <circle cx="60" cy="98" r="10" fill="#5b3a1a"/><circle cx="60" cy="98" r="3" fill="#eab308"/>
+      </g>
+      <text class="bread" x="105" y="84" font-size="64" text-anchor="middle">🍞</text>
+    </svg>
+    <h1 style="color:#15803d;">🏆 Alle 10 Stationen geschafft!</h1>
+    <p>Du hast alle Bilder beschriftet, den Lückentext gelöst und das Getreide-Rätsel gemeistert. Die Garben fahren zur Mühle, und aus dem Mehl wird ein frisches Brot!</p>
+    <p id="win-stats" style="font-weight:bold; color:#78350f;"></p>
+    <p id="win-result" style="font-weight:bold;"></p>
+    <button type="button" class="big-btn main" id="againBtn">🔄 Nochmal spielen</button>
+    <button type="button" class="big-btn" id="moreBtn">🌾 Weiter mähen</button>
+    <a class="big-btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </div>
+</div>
+
+<script src="../shared/vendor/three-r128.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* Eigener Schlüssel für den Speicherstand dieses Spiels. */
+const SAVE = 'sachunterricht_getreideernte_v1';
+const TEST = /[?&]test\b/.test(location.search);
+const $ = id => document.getElementById(id);
+const show = (id, on) => $(id).classList.toggle('hidden', !on);
+
+const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+/* Aufgaben: Wörter antippen (Tablet/Handy) oder schreiben (Computer). Lässt sich im Aufgabenfenster umstellen. */
+let tapMode = isTouch || window.innerWidth <= 820;
+
+/* ---------- Die 10 Stationen: Inhalt wie im Getreide-Abenteuer (aus den Sachunterrichtsheften) ---------- */
+const stationsData = [
+  {
+    title: "Station 1: Das Getreidekorn beschriften",
+    type: "diagram_korn",
+    desc: "Beschrifte die drei Bestandteile des Getreidekorns auf der Zeichnung.",
+    words: ["Schale", "Mehlkörper", "Keimling"],
+    tip: "Außen schützt die Schale das Korn. Innen liegt der große helle Mehlkörper, und unten in der Ecke sitzt der kleine Keimling."
+  },
+  {
+    title: "Station 2: Der Mähdrescher beschriften",
+    type: "diagram_maehdrescher",
+    desc: "Beschrifte die 5 Bauteile des Mähdreschers auf dem Bild.",
+    words: ["Kabine", "Korntank", "Schneidewerk", "Dreschtrommel", "Schüttler"],
+    tip: "1: Hier sitzt der Fahrer (Kabine). 2: Oben werden die Körner gesammelt (Korntank). 3: Vorne wird gemäht (Schneidewerk). 4: Innen wird gedroschen (Dreschtrommel). 5: Hinten wird gesiebt (Schüttler)."
+  },
+  {
+    title: "Station 3: Die Getreidepflanze (Ähre & Rispe)",
+    type: "diagram_pflanze",
+    desc: "Beschrifte alle 7 Teile der beiden Getreidepflanzen.",
+    words: ["Grannen", "Ähre", "Rispe", "Halm", "Blätter", "Stängelknoten", "Wurzeln"],
+    tip: "Oben an der Ähre sind die feinen Grannen (1). Links ist die Ähre (2), rechts die verzweigte Rispe (3). Der Stängel heißt Halm (4), daran sind Blätter (5) und Verdickungen (Stängelknoten, 6). Unten sind die Wurzeln (7)."
+  },
+  {
+    title: "Station 4: Lückentext – Vom Korn zum Mehl",
+    type: "cloze_text",
+    desc: "Setze die passenden Wörter in den Text aus deinem Arbeitsblatt ein.",
+    words: ["Getreide", "Arbeit", "Sense", "Rechen", "Garben", "Wagen", "Säcke", "Mühle", "Mehl"],
+    tip: "Im Spätsommer ist das Getreide reif. Früher war diese Arbeit mühsam: Man schnitt mit der Sense, harkte mit dem Rechen zu Garben, lud sie auf einen Wagen, füllte die Körner in Säcke und fuhr zur Mühle für das Mehl."
+  },
+  {
+    title: "Station 5: Das große Getreide-Rätsel (Teil 1)",
+    type: "fill_list",
+    desc: "Beantworte die ersten vier Fragen aus deinem Rätselblatt!",
+    words: ["Roggen", "Weizen", "Gerste", "Hafer"],
+    items: [
+      { q: "1. Welches Getreide hat graue Körner?", a: "Roggen" },
+      { q: "2. Welches Getreide hat keine Grannen?", a: "Weizen" },
+      { q: "3. Welches Getreide braucht man zur Bierherstellung?", a: "Gerste" },
+      { q: "4. Welches Getreide ist ein sehr gutes Tierfutter?", a: "Hafer" }
+    ],
+    tip: "Graue Körner = Roggen; keine Grannen = Weizen; Bier = Gerste; Pferde-/Tierfutter = Hafer."
+  },
+  {
+    title: "Station 6: Das große Getreide-Rätsel (Teil 2)",
+    type: "fill_list",
+    desc: "Beantworte die nächsten vier Fragen aus deinem Heft!",
+    words: ["Hirse", "Mais", "Feld", "Tiere"],
+    items: [
+      { q: "5. Aus welchem Getreide besteht Fladenbrot?", a: "Hirse" },
+      { q: "6. Welches Getreide wächst an Kolben?", a: "Mais" },
+      { q: "7. Wo werden Getreidekörner ausgesät?", a: "Feld" },
+      { q: "8. Nicht nur für Menschen ist Getreide wichtig, sondern auch für...?", a: "Tiere" }
+    ],
+    tip: "Fladenbrot = Hirse; Kolben = Mais; ausgesät auf dem Feld; wichtig für Menschen und Tiere."
+  },
+  {
+    title: "Station 7: Wie das Getreide wächst (1 bis 5)",
+    type: "order_list",
+    desc: "Bringe die 5 Schritte im Jahresverlauf in die richtige Reihenfolge (1 bis 5).",
+    steps: [
+      { text: "Im Frühling wird es wärmer: Die Pflanze entwickelt Wurzeln, Stängel, Blätter und oben entsteht die Ähre.", order: 3 },
+      { text: "Im Oktober und November wird das Getreide gesät. Durch Wärme und Wasser quellen die Körner auf.", order: 1 },
+      { text: "Im Juli oder August sind die Pflanzen reif und gelb. Der Mähdrescher erntet das Getreide.", order: 4 },
+      { text: "Nach 2–3 Wochen durchbricht der Keimling die obere Erdschicht. Danach muss die Pflanze überwintern.", order: 2 },
+      { text: "Nachdem das Feld abgeerntet wurde, wird es nun wieder umgepflügt.", order: 5 }
+    ],
+    tip: "1: Aussaat im Oktober/November → 2: Keimling überwintert → 3: Wachstum im Frühling → 4: Ernte im Juli/August → 5: Umpflügen."
+  },
+  {
+    title: "Station 8: Arbeit des Bauern früher und heute",
+    type: "work_table",
+    desc: "Ergänze die fehlenden Werkzeuge von früher und heute.",
+    words: ["Pferd mit Egge", "Sense", "Dreschflegel", "Mähdrescher", "Getreidemühle"],
+    rows: [
+      { step: "eggen", early: "Pferd mit Egge", late: "Traktor mit Egge", missing: "early" },
+      { step: "ernten / mähen", early: "Sense", late: "Mähdrescher", missing: "early" },
+      { step: "dreschen", early: "Dreschflegel", late: "Mähdrescher", missing: "late" },
+      { step: "mahlen", early: "Wind-/Wassermühle", late: "Getreidemühle", missing: "late" }
+    ],
+    tip: "Früher eggte man mit dem Pferd mit Egge und mähte mit der Sense. Heute übernimmt der Mähdrescher das Dreschen und die große Getreidemühle das Mahlen."
+  },
+  {
+    title: "Station 9: Inhaltsstoffe des Getreidekorns",
+    type: "fill_list",
+    desc: "Ordne den drei Korn-Teilen ihre Aufgabe oder Inhaltsstoffe zu.",
+    words: ["Vitamine", "Stärke", "Keimling", "Kleie"],
+    items: [
+      { q: "1. In der Schale stecken viele Mineralstoffe und ...?", a: "Vitamine" },
+      { q: "2. Im Mehlkörper steckt sehr viel ... (für unser Mehl)?", a: "Stärke" },
+      { q: "3. Aus welchem Teil wächst eine neue Pflanze?", a: "Keimling" },
+      { q: "4. Wie nennt man die abgetrennte Schale (als Tierfutter)?", a: "Kleie" }
+    ],
+    tip: "Schale = Vitamine & Mineralstoffe; abgetrennte Schale = Kleie; Mehlkörper = Stärke; neue Pflanze = Keimling."
+  },
+  {
+    title: "Station 10: Expertenwissen (Spelze & Zahlungsmittel)",
+    type: "fill_list",
+    desc: "Löse die letzten drei Profi-Fragen aus deinen Arbeitsblättern!",
+    words: ["Spelze", "Hirten", "Schmiede", "Hefe"],
+    items: [
+      { q: "1. Worin sind die Körner an der Ähre von März bis Juni versteckt?", a: "Spelze" },
+      { q: "2. Wen bezahlte man früher oft mit Getreide? Schmiede und ...?", a: "Hirten" },
+      { q: "3. Was mischt der Bäcker in den Teig, damit das Brot luftig aufgeht?", a: "Hefe" }
+    ],
+    tip: "An der Ähre stecken die Körner in einer Spelze. Früher bezahlte man Hirten und Schmiede mit Korn. Beim Backen hilft Hefe (oder Sauerteig)."
+  }
+];
+
+/* ---------- Aufgabenfenster ---------- */
+let selectedChip = null;
+let currentStation = null;
+
+function field(answer, placeholder, inline) {
+  if (!tapMode) {
+    return `<input type="text" class="${inline ? 'inline-input' : 'desktop-input'} ans-field" data-answer="${answer}" placeholder="${placeholder || '...'}" autocomplete="off" autocapitalize="off" spellcheck="false">`;
+  }
+  return `<button type="button" class="touch-slot ans-field" data-answer="${answer}" data-value="">Tippen...</button>`;
+}
+
+function renderWordBank(words) {
+  if (!tapMode) {
+    return `<div class="word-bank" style="font-weight:bold; color:#78350f;">Wörter zur Hilfe: ${words.join(" • ")}</div>`;
+  }
+  const shuffled = [...words].sort(() => Math.random() - 0.5);
+  let html = `<div class="note">👇 Tippe zuerst ein Wort an und dann auf das passende Feld:</div><div class="word-bank">`;
+  shuffled.forEach(w => { html += `<button type="button" class="chip">${w}</button>`; });
+  return html + `</div>`;
+}
+
+function selectChip(btn) {
+  if (btn.classList.contains('used')) return;
+  document.querySelectorAll('#q-body .chip').forEach(c => c.classList.remove('selected'));
+  if (selectedChip === btn) { selectedChip = null; return; }
+  btn.classList.add('selected');
+  selectedChip = btn;
+}
+
+function handleSlotClick(slot) {
+  slot.classList.remove('is-correct', 'is-wrong');
+  if (slot.dataset.value) {                       /* schon ein Wort im Feld: wieder freigeben */
+    const oldWord = slot.dataset.value;
+    document.querySelectorAll('#q-body .chip.used').forEach(c => { if (c.textContent === oldWord) c.classList.remove('used'); });
+    slot.dataset.value = "";
+    slot.textContent = "Tippen...";
+    slot.classList.remove('filled');
+  }
+  if (selectedChip) {
+    slot.dataset.value = selectedChip.textContent;
+    slot.textContent = selectedChip.textContent;
+    slot.classList.add('filled');
+    selectedChip.classList.remove('selected');
+    selectedChip.classList.add('used');
+    selectedChip = null;
+  }
+}
+
+function cycleNumber(btn) {
+  btn.classList.remove('is-correct', 'is-wrong');
+  const val = (parseInt(btn.dataset.value || "0", 10) % 5) + 1;
+  btn.dataset.value = val;
+  btn.textContent = val;
+}
+
+function numberedFields(answers, placeholders) {
+  return `<div class="inputs-col">` + answers.map((a, i) =>
+    `<div class="field-row"><span class="badge">${i + 1}</span>${field(a, placeholders && placeholders[i])}</div>`).join('') + `</div>`;
+}
+
+function renderStationContent(st) {
+  selectedChip = null;
+  $('q-title').textContent = st.title;
+  $('feedback').textContent = "";
+  $('tip-box').textContent = "💡 " + st.tip;
+  show('tip-box', false);
+  show('tip-btn', true); show('check-btn', true); show('mode-btn', true); show('next-btn', false);
+  $('mode-btn').textContent = tapMode ? '⌨️ Lieber schreiben' : '👆 Lieber antippen';
+
+  let html = `<p class="q-desc">${st.desc}</p>`;
+
+  if (st.type === "diagram_korn") {
+    html += renderWordBank(st.words);
+    html += `<div class="diagram-layout">
+      <svg width="210" height="250" viewBox="0 0 260 320">
+        <path d="M110,20 C175,20 210,110 205,210 C200,275 160,300 110,300 C60,300 25,270 25,200 C25,100 55,20 110,20 Z" fill="#d97706" stroke="#78350f" stroke-width="4"/>
+        <path d="M110,34 C162,34 190,115 186,205 C182,255 155,275 110,275 C68,275 42,250 42,195 C42,110 68,34 110,34 Z" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+        <path d="M52,215 C75,205 115,225 122,255 C115,272 80,275 58,255 C48,242 46,225 52,215 Z" fill="#65a30d" stroke="#365314" stroke-width="3"/>
+        <line x1="196" y1="90" x2="235" y2="90" stroke="#000" stroke-width="2.5"/>
+        <circle cx="242" cy="90" r="14" fill="#d97706"/><text x="242" y="95" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+        <line x1="135" y1="150" x2="235" y2="150" stroke="#000" stroke-width="2.5"/>
+        <circle cx="242" cy="150" r="14" fill="#d97706"/><text x="242" y="155" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+        <line x1="95" y1="245" x2="235" y2="245" stroke="#000" stroke-width="2.5"/>
+        <circle cx="242" cy="245" r="14" fill="#d97706"/><text x="242" y="250" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+      </svg>
+      ${numberedFields(["Schale", "Mehlkörper", "Keimling"], ["Äußere Hülle...", "Größter Teil innen...", "Unten in der Ecke..."])}
+    </div>`;
+  } else if (st.type === "diagram_maehdrescher") {
+    html += renderWordBank(st.words);
+    html += `<div class="diagram-layout">
+      <svg width="310" height="195" viewBox="0 0 380 240">
+        <rect x="135" y="75" width="165" height="75" rx="10" fill="#65a30d" stroke="#365314" stroke-width="3"/>
+        <polygon points="185,45 275,45 285,75 175,75" fill="#eab308" stroke="#365314" stroke-width="3"/>
+        <polygon points="120,45 175,45 175,115 110,115" fill="#bae6fd" stroke="#365314" stroke-width="3"/>
+        <polygon points="45,155 125,105 135,125 60,175" fill="#4d7c0f" stroke="#365314" stroke-width="3"/>
+        <circle cx="48" cy="168" r="26" fill="#fef08a" stroke="#b45309" stroke-width="3"/>
+        <circle cx="165" cy="115" r="20" fill="#fed7aa" stroke="#9a3412" stroke-width="2.5" stroke-dasharray="4,2"/>
+        <rect x="200" y="95" width="80" height="22" fill="#fde68a" stroke="#9a3412" stroke-width="2" stroke-dasharray="4,2"/>
+        <circle cx="145" cy="165" r="32" fill="#1f2937"/><circle cx="145" cy="165" r="14" fill="#eab308"/>
+        <circle cx="265" cy="175" r="22" fill="#1f2937"/><circle cx="265" cy="175" r="9" fill="#eab308"/>
+        <circle cx="145" cy="65" r="13" fill="#d97706"/><text x="145" y="70" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+        <circle cx="230" cy="58" r="13" fill="#d97706"/><text x="230" y="63" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+        <circle cx="48" cy="168" r="13" fill="#d97706"/><text x="48" y="173" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+        <circle cx="165" cy="115" r="13" fill="#d97706"/><text x="165" y="120" text-anchor="middle" fill="#fff" font-weight="bold">4</text>
+        <circle cx="240" cy="106" r="13" fill="#d97706"/><text x="240" y="111" text-anchor="middle" fill="#fff" font-weight="bold">5</text>
+      </svg>
+      ${numberedFields(["Kabine", "Korntank", "Schneidewerk", "Dreschtrommel", "Schüttler"])}
+    </div>`;
+  } else if (st.type === "diagram_pflanze") {
+    html += renderWordBank(st.words);
+    html += `<div class="diagram-layout">
+      <svg width="240" height="270" viewBox="0 0 300 340">
+        <path d="M70,300 L40,330 M70,300 L60,335 M70,300 L80,335 M70,300 L100,330" stroke="#78350f" stroke-width="3"/>
+        <path d="M220,300 L195,330 M220,300 L220,335 M220,300 L245,330" stroke="#78350f" stroke-width="3"/>
+        <line x1="70" y1="300" x2="70" y2="120" stroke="#ca8a04" stroke-width="6"/>
+        <line x1="220" y1="300" x2="220" y2="130" stroke="#ca8a04" stroke-width="5"/>
+        <rect x="60" y="55" width="20" height="68" rx="8" fill="#eab308" stroke="#854d0e" stroke-width="2"/>
+        <line x1="65" y1="55" x2="60" y2="20" stroke="#854d0e" stroke-width="2"/>
+        <line x1="70" y1="55" x2="70" y2="15" stroke="#854d0e" stroke-width="2"/>
+        <line x1="75" y1="55" x2="80" y2="20" stroke="#854d0e" stroke-width="2"/>
+        <rect x="65" y="185" width="10" height="6" fill="#713f12"/>
+        <rect x="65" y="245" width="10" height="6" fill="#713f12"/>
+        <path d="M70,185 Q30,165 20,195 Q45,180 70,190" fill="#65a30d"/>
+        <path d="M70,245 Q110,220 120,250 Q95,235 70,250" fill="#65a30d"/>
+        <path d="M220,130 L195,105 M220,130 L245,105 M220,105 L195,80 M220,105 L245,80 M220,80 L220,50" stroke="#854d0e" stroke-width="2"/>
+        <ellipse cx="195" cy="108" rx="4" ry="7" fill="#eab308"/><ellipse cx="245" cy="108" rx="4" ry="7" fill="#eab308"/>
+        <ellipse cx="195" cy="83" rx="4" ry="7" fill="#eab308"/><ellipse cx="245" cy="83" rx="4" ry="7" fill="#eab308"/>
+        <ellipse cx="220" cy="50" rx="4" ry="7" fill="#eab308"/>
+        <circle cx="95" cy="30" r="12" fill="#d97706"/><text x="95" y="34" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+        <circle cx="98" cy="88" r="12" fill="#d97706"/><text x="98" y="92" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+        <circle cx="170" cy="95" r="12" fill="#d97706"/><text x="170" y="99" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+        <circle cx="90" cy="150" r="12" fill="#d97706"/><text x="90" y="154" text-anchor="middle" fill="#fff" font-weight="bold">4</text>
+        <circle cx="30" cy="175" r="12" fill="#d97706"/><text x="30" y="179" text-anchor="middle" fill="#fff" font-weight="bold">5</text>
+        <circle cx="92" cy="248" r="12" fill="#d97706"/><text x="92" y="252" text-anchor="middle" fill="#fff" font-weight="bold">6</text>
+        <circle cx="98" cy="315" r="12" fill="#d97706"/><text x="98" y="319" text-anchor="middle" fill="#fff" font-weight="bold">7</text>
+      </svg>
+      ${numberedFields(["Grannen", "Ähre", "Rispe", "Halm", "Blätter", "Stängelknoten", "Wurzeln"])}
+    </div>`;
+  } else if (st.type === "cloze_text") {
+    const f = a => field(a, "...", true);
+    html += renderWordBank(st.words);
+    html += `<div class="cloze">
+      Im Spätsommer ist das ${f("Getreide")} reif und kann geerntet werden. Früher war diese ${f("Arbeit")} für die Bauern sehr mühsam. Sie schnitten das Getreide mit einer ${f("Sense")} ab. Die Halme wurden mit einem ${f("Rechen")} zusammengeharkt und zu ${f("Garben")} gebunden. Anschließend wurden sie auf einen ${f("Wagen")} geladen und in die Scheune gebracht. Die gedroschenen Körner wurden in ${f("Säcke")} gefüllt. Nun brachte der Bauer sein Korn zur ${f("Mühle")}. Bald konnte der Bauer sein ${f("Mehl")} abholen.
+    </div>`;
+  } else if (st.type === "fill_list") {
+    html += renderWordBank(st.words);
+    st.items.forEach(item => { html += `<div class="q-card"><div>${item.q}</div>${field(item.a, "Antwort...")}</div>`; });
+  } else if (st.type === "order_list") {
+    html += `<p class="note" style="text-align:left;">${tapMode ? "👆 Tippe links auf das Kästchen, um die Zahlen 1 bis 5 durchzuschalten:" : "⌨️ Schreibe die Zahlen 1 bis 5 in die Kästchen:"}</p>`;
+    st.steps.forEach(step => {
+      const ctrl = tapMode
+        ? `<button type="button" class="num-tap-btn ans-field" data-answer="${step.order}" data-value="">?</button>`
+        : `<input type="text" inputmode="numeric" maxlength="1" class="num-input ans-field" data-answer="${step.order}" placeholder="?">`;
+      html += `<div class="sort-row">${ctrl}<span>${step.text}</span></div>`;
+    });
+  } else if (st.type === "work_table") {
+    html += renderWordBank(st.words);
+    html += `<table class="work-table"><tr><th>Arbeitsschritt</th><th>früher</th><th>heute</th></tr>`;
+    st.rows.forEach(r => {
+      const early = r.missing === "early" ? field(r.early) : r.early;
+      const late = r.missing === "late" ? field(r.late) : r.late;
+      html += `<tr><td><strong>${r.step}</strong></td><td>${early}</td><td>${late}</td></tr>`;
+    });
+    html += `</table>`;
+  }
+  $('q-body').innerHTML = html;
+}
+
+/* Vergleich ohne Rücksicht auf Groß-/Kleinschreibung, doppelte Leerzeichen und ae/ä, ss/ß. */
+function norm(s) {
+  return String(s).trim().toLowerCase().replace(/\s+/g, ' ')
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+}
+
+function checkCurrentStation() {
+  const fields = document.querySelectorAll('#q-body .ans-field');
+  let correctCount = 0;
+  fields.forEach(f => {
+    const actual = f.tagName === "INPUT" ? f.value : (f.dataset.value || "");
+    f.classList.remove('is-correct', 'is-wrong');
+    if (norm(actual) === norm(f.dataset.answer)) { f.classList.add('is-correct'); correctCount++; }
+    else f.classList.add('is-wrong');
+  });
+  const fb = $('feedback');
+  if (correctCount === fields.length) {
+    fb.style.color = "#15803d";
+    fb.textContent = "🎉 Super gemacht! Alles richtig!";
+    $('tip-box').textContent = "📖 Merke: " + stationsData[currentStation.qIndex].tip;
+    show('tip-box', true);
+    show('tip-btn', false); show('check-btn', false); show('mode-btn', false); show('next-btn', true);
+    fields.forEach(f => { f.disabled = true; });
+    document.querySelectorAll('#q-body .chip').forEach(c => { c.disabled = true; });
+    if (!currentStation.solved) markSolved(currentStation, true);
+    $('next-btn').focus();
+  } else {
+    if (!currentStation.solved) { fehler++; dirty = true; }
+    fb.style.color = "#b91c1c";
+    fb.textContent = `Fast! Du hast ${correctCount} von ${fields.length} richtig. Schau dir die roten Felder noch einmal an!`;
+  }
+}
+
+$('q-body').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (chip) return selectChip(chip);
+  const slot = e.target.closest('.touch-slot'); if (slot) return handleSlotClick(slot);
+  const num = e.target.closest('.num-tap-btn'); if (num) return cycleNumber(num);
+});
+$('q-body').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') checkCurrentStation(); });
+$('check-btn').addEventListener('click', checkCurrentStation);
+$('tip-btn').addEventListener('click', () => show('tip-box', true));
+$('mode-btn').addEventListener('click', () => { tapMode = !tapMode; renderStationContent(stationsData[currentStation.qIndex]); });
+$('close-btn').addEventListener('click', closeQuiz);
+$('next-btn').addEventListener('click', closeQuiz);
+
+/* ---------- Start-Bildschirm ohne 3D vorbereiten ---------- */
+$('start-controls').textContent = isTouch
+  ? 'Laufen: Steuerknüppel links · Mähen: grüner Knopf rechts · Schubkarren: hinlaufen, mit dem grünen Knopf abstellen'
+  : 'Laufen: Pfeiltasten · Mähen: Leertaste · Schubkarren: hinlaufen, mit der Leertaste abstellen';
+
+function loadSave() {
+  try { const s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 ? s : null; } catch (e) { return null; }
+}
+function resetSave() { try { localStorage.removeItem(SAVE); } catch (e) {} }
+
+/* ---------- 3D-Welt ---------- */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  show('start-error', true); show('startBtn', false);
+  return;
+}
+const container = $('canvas-container');
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+container.appendChild(renderer.domElement);
+
+const SKY = 0x9fd3f5;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.Fog(SKY, 45, 130);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xa08a55, 0.72));
+const sun = new THREE.DirectionalLight(0xfff4d6, 0.45);
+sun.position.set(30, 60, -20);
+scene.add(sun);
+
+/* Zufall mit festem Startwert: Die Welt sieht bei jedem Laden gleich aus (wichtig für den Speicherstand). */
+function rng(seed) {
+  return function () {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rnd = rng(1909);
+
+const mats = {};
+const mat = color => mats[color] || (mats[color] = new THREE.MeshLambertMaterial({ color }));
+function add(geo, color, x, y, z, parent) {
+  const m = new THREE.Mesh(geo, mat(color));
+  m.position.set(x, y, z);
+  parent.add(m);
+  return m;
+}
+const box = (w, h, d, color, x, y, z, p) => add(new THREE.BoxGeometry(w, h, d), color, x, y, z, p);
+const cyl = (rt, rb, h, color, x, y, z, p, seg) => add(new THREE.CylinderGeometry(rt, rb, h, seg || 10), color, x, y, z, p);
+const ball = (r, color, x, y, z, p) => add(new THREE.SphereGeometry(r, 10, 8), color, x, y, z, p);
+const UP = new THREE.Vector3(0, 1, 0);
+function stick(ax, ay, az, bx, by, bz, r, color, p) {
+  const a = new THREE.Vector3(ax, ay, az), d = new THREE.Vector3(bx, by, bz).sub(a);
+  const m = add(new THREE.CylinderGeometry(r, r, d.length(), 6), color, 0, 0, 0, p);
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(UP, d.normalize());
+  return m;
+}
+/* Mehrere Formen zu einer verschmelzen, jede mit eigener Farbe. */
+function merge(parts) {
+  const pos = [], nor = [], col = [];
+  parts.forEach(p => {
+    const g = p.geo.toNonIndexed();
+    if (p.matrix) g.applyMatrix4(p.matrix);
+    const P = g.attributes.position.array, N = g.attributes.normal.array, c = new THREE.Color(p.color);
+    for (let i = 0; i < P.length; i += 3) { pos.push(P[i], P[i + 1], P[i + 2]); nor.push(N[i], N[i + 1], N[i + 2]); col.push(c.r, c.g, c.b); }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
+}
+const vertexMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+
+/* Wiese, Hügel, Bäume, Wolken, Zaun */
+const grass = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), mat(0x6aa33a));
+grass.rotation.x = -Math.PI / 2; grass.position.y = -0.06; scene.add(grass);
+for (let i = 0; i < 9; i++) {
+  const a = i / 9 * Math.PI * 2 + rnd(), r = 120 + rnd() * 40;
+  const h = ball(1, 0x5c9632, Math.sin(a) * r, -4, Math.cos(a) * r, scene);
+  h.scale.set(40 + rnd() * 30, 12 + rnd() * 10, 40 + rnd() * 30);
+}
+for (let i = 0; i < 34; i++) {
+  const a = rnd() * Math.PI * 2, r = 47 + rnd() * 40, s = 0.8 + rnd() * 0.9;
+  const t = new THREE.Group();
+  cyl(0.3, 0.4, 2.4, 0x7a5230, 0, 1.2, 0, t, 6);
+  ball(1.7, rnd() < 0.5 ? 0x3f8f3a : 0x4fa043, 0, 3.4, 0, t);
+  t.position.set(Math.sin(a) * r, 0, Math.cos(a) * r); t.scale.setScalar(s); scene.add(t);
+}
+for (let i = 0; i < 9; i++) {
+  const c = ball(1, 0xffffff, (rnd() - 0.5) * 220, 38 + rnd() * 14, (rnd() - 0.5) * 220, scene);
+  c.material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+  c.scale.set(9 + rnd() * 8, 2.5, 5 + rnd() * 4);
+}
+const HALF = 40;
+(function fence() {
+  const e = HALF + 0.7;
+  for (let k = -e; k <= e + 0.01; k += e / 10) {
+    [[k, -e], [k, e], [-e, k], [e, k]].forEach(p => box(0.18, 1.2, 0.18, 0x8a5a2b, p[0], 0.6, p[1], scene));
+  }
+  [0.45, 0.95].forEach(y => {
+    box(2 * e, 0.1, 0.08, 0x9b6b3a, 0, y, -e, scene); box(2 * e, 0.1, 0.08, 0x9b6b3a, 0, y, e, scene);
+    box(0.08, 0.1, 2 * e, 0x9b6b3a, -e, y, 0, scene); box(0.08, 0.1, 2 * e, 0x9b6b3a, e, y, 0, scene);
+  });
+})();
+
+/* ---------- Stationen als Orte auf dem Feld ---------- */
+function badgeTexture(text, color) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = color; x.beginPath(); x.arc(64, 64, 56, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 8; x.strokeStyle = '#fff'; x.stroke();
+  x.fillStyle = '#fff'; x.font = 'bold 68px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(text, 64, 68);
+  return new THREE.CanvasTexture(c);
+}
+
+const places = [
+  { x: -12, z: -12, r: 1.6, build(g) {                       /* 1 Getreidekorn */
+      cyl(1.2, 1.4, 0.8, 0x9ca3af, 0, 0.4, 0, g, 12);
+      ball(1, 0xd9902b, 0, 2.2, 0, g).scale.set(0.85, 1.35, 0.7);
+      box(0.08, 2.0, 0.1, 0x8a5a14, 0, 2.2, 0.68, g);
+      ball(0.3, 0x65a30d, -0.3, 1.25, 0.45, g);
+    } },
+  { x: 12, z: -12, r: 3.0, build(g) {                        /* 2 Mähdrescher */
+      box(2.4, 1.5, 3.4, 0x4d9a2a, 0, 1.75, -0.4, g);
+      box(1.6, 1.3, 1.2, 0xbae6fd, 0, 2.6, 1.0, g);
+      box(2.0, 0.7, 1.6, 0xeab308, 0, 2.85, -0.8, g);
+      box(1.2, 0.5, 1.5, 0x3b7a1f, 0, 0.95, 1.8, g).rotation.x = 0.35;
+      cyl(0.55, 0.55, 4.2, 0xfacc15, 0, 0.65, 2.7, g, 12).rotation.z = Math.PI / 2;
+      [[1.4, 0.85, 0.7, 0.85], [-1.4, 0.85, 0.7, 0.85], [1.25, 0.5, -1.6, 0.5], [-1.25, 0.5, -1.6, 0.5]].forEach(w => {
+        cyl(w[3], w[3], 0.5, 0x1f2937, w[0], w[1], w[2], g, 14).rotation.z = Math.PI / 2;
+      });
+      stick(1.0, 3.0, -0.8, 2.5, 3.5, -0.8, 0.14, 0x4d9a2a, g);
+    } },
+  { x: -20, z: 4, r: 1.3, build(g) {                         /* 3 Getreidepflanze */
+      cyl(0.1, 0.13, 3.6, 0xca8a04, 0, 1.8, 0, g, 6);
+      ball(0.36, 0xeab308, 0, 4.2, 0, g).scale.set(1, 2.4, 1);
+      for (let i = -1; i <= 1; i++) stick(i * 0.12, 4.9, 0, i * 0.4, 5.9, 0, 0.025, 0x854d0e, g);
+      box(1.3, 0.06, 0.3, 0x65a30d, 0.6, 1.7, 0, g).rotation.z = 0.5;
+      box(1.3, 0.06, 0.3, 0x65a30d, -0.6, 2.5, 0, g).rotation.z = -0.5;
+      cyl(0.16, 0.16, 0.14, 0x713f12, 0, 1.4, 0, g, 6); cyl(0.16, 0.16, 0.14, 0x713f12, 0, 2.2, 0, g, 6);
+    } },
+  { x: 20, z: 4, r: 2.1, build(g, st) {                      /* 4 Windmühle */
+      cyl(1.15, 1.75, 4.6, 0xe6d9bd, 0, 2.3, 0, g, 10);
+      add(new THREE.ConeGeometry(1.45, 1.3, 10), 0x7c5832, 0, 5.25, 0, g);
+      box(0.7, 1.3, 0.1, 0x7c5832, 0, 0.65, 1.68, g);
+      const hub = new THREE.Group(); hub.position.set(0, 4.3, 1.4); g.add(hub);
+      cyl(0.2, 0.2, 0.5, 0x5b3a1a, 0, 0, 0, hub, 8).rotation.x = Math.PI / 2;
+      for (let i = 0; i < 4; i++) {
+        const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; hub.add(arm);
+        box(0.12, 3.0, 0.08, 0x5b3a1a, 0, 1.5, 0.2, arm);
+        box(0.6, 2.2, 0.04, 0xfdfaf2, 0.33, 1.85, 0.2, arm);
+      }
+      st.spin = hub;
+    } },
+  { x: -14, z: 20, r: 1.2, build(g) {                        /* 5 Vogelscheuche */
+      cyl(0.08, 0.08, 3.0, 0x7a5230, 0, 1.5, 0, g, 6);
+      cyl(0.07, 0.07, 2.6, 0x7a5230, 0, 2.2, 0, g, 6).rotation.z = Math.PI / 2;
+      box(1.0, 1.1, 0.4, 0xc0392b, 0, 2.0, 0, g);
+      box(0.7, 0.3, 0.3, 0xc0392b, 0.85, 2.2, 0, g); box(0.7, 0.3, 0.3, 0xc0392b, -0.85, 2.2, 0, g);
+      ball(0.2, 0xe9c46a, 1.3, 2.2, 0, g); ball(0.2, 0xe9c46a, -1.3, 2.2, 0, g);
+      ball(0.38, 0xe8d3a0, 0, 2.95, 0, g);
+      ball(0.05, 0x1f2937, 0.13, 3.0, 0.34, g); ball(0.05, 0x1f2937, -0.13, 3.0, 0.34, g);
+      cyl(0.62, 0.62, 0.06, 0x5b3a1a, 0, 3.25, 0, g, 12);
+      add(new THREE.ConeGeometry(0.36, 0.6, 10), 0x5b3a1a, 0, 3.55, 0, g);
+    } },
+  { x: 14, z: 20, r: 2.5, build(g) {                         /* 6 Scheune */
+      box(3.6, 2.4, 3.0, 0xa63d2f, 0, 1.2, 0, g);
+      const tri = new THREE.Shape(); tri.moveTo(-2.1, 0); tri.lineTo(2.1, 0); tri.lineTo(0, 1.5); tri.closePath();
+      add(new THREE.ExtrudeGeometry(tri, { depth: 3.4, bevelEnabled: false }), 0x5b3a1a, 0, 2.4, -1.7, g);
+      box(1.3, 1.7, 0.1, 0x4a2c14, 0, 0.85, 1.52, g);
+      box(0.1, 1.7, 0.12, 0xf5efe0, -0.68, 0.85, 1.54, g); box(0.1, 1.7, 0.12, 0xf5efe0, 0.68, 0.85, 1.54, g);
+    } },
+  { x: 0, z: -26, r: 1.5, build(g) {                         /* 7 Apfelbaum */
+      cyl(0.35, 0.5, 2.6, 0x7a5230, 0, 1.3, 0, g, 8);
+      ball(1.7, 0x3f8f3a, 0, 3.7, 0, g); ball(1.2, 0x4fa043, 1.2, 3.2, 0.3, g); ball(1.2, 0x4fa043, -1.1, 3.3, -0.3, g);
+      [[0.9, 3.1, 1.3], [-0.5, 4.2, 1.5], [1.9, 3.3, 0.9], [-1.6, 3.2, 0.7], [0.2, 2.6, 1.4], [-0.9, 2.7, 1.1]].forEach(a => ball(0.17, 0xdc2626, a[0], a[1], a[2], g));
+    } },
+  { x: 0, z: 30, r: 2.3, build(g) {                          /* 8 Leiterwagen */
+      box(1.5, 0.15, 3.2, 0x8a5a2b, 0, 0.95, 0, g);
+      [-0.85, 0.85].forEach(x => {
+        const side = new THREE.Group(); side.position.set(x, 1.0, 0); side.rotation.z = x > 0 ? -0.3 : 0.3; g.add(side);
+        box(0.07, 0.07, 3.3, 0x7a4a20, 0, 0.1, 0, side); box(0.07, 0.07, 3.3, 0x7a4a20, 0, 0.9, 0, side);
+        for (let k = -1.5; k <= 1.5; k += 0.5) box(0.05, 0.85, 0.05, 0x7a4a20, 0, 0.5, k, side);
+      });
+      [[0.95, 1.1], [-0.95, 1.1], [0.95, -1.1], [-0.95, -1.1]].forEach(w => {
+        const wheel = cyl(0.6, 0.6, 0.12, 0x5b3a1a, w[0], 0.6, w[1], g, 14); wheel.rotation.z = Math.PI / 2;
+        cyl(0.15, 0.15, 0.16, 0xeab308, w[0], 0.6, w[1], g, 8).rotation.z = Math.PI / 2;
+      });
+      stick(0, 0.8, 1.6, 0, 0.35, 3.4, 0.05, 0x7a4a20, g);
+      [[0, -0.9], [0.2, 0], [-0.1, 0.9]].forEach(s => add(new THREE.ConeGeometry(0.5, 1.3, 7), 0xe9c46a, s[0], 1.7, s[1], g));
+    } },
+  { x: -32, z: -18, r: 1.6, build(g) {                       /* 9 Mehlsäcke */
+      [[-0.6, 0.5, 0], [0.6, 0.5, 0.1], [0, 0.5, -0.8], [0, 1.4, -0.2]].forEach(s => {
+        ball(0.6, 0xf3ead7, s[0], s[1], s[2], g).scale.set(1, 0.85, 0.9);
+        cyl(0.12, 0.2, 0.25, 0xe4d7ba, s[0], s[1] + 0.55, s[2], g, 6);
+      });
+      box(0.5, 0.35, 0.02, 0x8a5a2b, -0.6, 0.55, 0.56, g); box(0.5, 0.35, 0.02, 0x8a5a2b, 0.6, 0.55, 0.66, g);
+    } },
+  { x: 32, z: -18, r: 2.0, build(g) {                        /* 10 Backofen */
+      box(2.6, 0.9, 2.4, 0x9ca3af, 0, 0.45, 0, g);
+      const dome = add(new THREE.SphereGeometry(1.25, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0xb5523b, 0, 0.9, -0.1, g);
+      dome.scale.set(1, 1.05, 0.95);
+      box(0.9, 0.6, 0.1, 0x2b1a12, 0, 1.2, 1.08, g);
+      box(0.5, 1.6, 0.5, 0x8f3f2d, 0.5, 2.6, -0.6, g);
+      box(0.9, 0.06, 0.6, 0x8a5a2b, 0, 0.95, 1.5, g);
+      ball(0.3, 0xa0622a, 0, 1.12, 1.5, g).scale.set(1.3, 0.6, 0.9);
+    } }
+];
+
+const stations = places.map((p, idx) => {
+  const st = { x: p.x, z: p.z, r: p.r, qIndex: idx, solved: false, armed: true, spin: null };
+  const g = new THREE.Group();
+  g.position.set(p.x, 0, p.z);
+  g.rotation.y = Math.atan2(-p.x, -p.z);               /* Vorderseite zeigt zur Feldmitte */
+  p.build(g, st);
+  scene.add(g);
+  st.beacon = new THREE.Mesh(new THREE.CylinderGeometry(p.r + 0.9, p.r + 0.9, 11, 24, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
+  st.beacon.position.set(p.x, 5.5, p.z);
+  scene.add(st.beacon);
+  st.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTexture(String(idx + 1), '#d97706'), fog: false }));
+  st.sprite.scale.set(2.4, 2.4, 1);
+  st.sprite.position.set(p.x, 8.2, p.z);
+  scene.add(st.sprite);
+  return st;
+});
+
+/* ---------- Bauernhof in der Ecke des Feldes: Hier wird der Schubkarren geleert ---------- */
+const FARM = { x: -31, z: 31 };
+const inFarm = (x, z) => Math.hypot(x + HALF, z - HALF) < 21;   /* Wiese rund um den Hof, ohne Getreide */
+
+/* ---------- Getreidefeld: 80 × 80 Felder, jedes kann gemäht werden ---------- */
+const N = 80, CH = 10, CELLS = N * N;
+const state = new Uint8Array(CELLS);                    /* 0 = kein Getreide, 1 = steht, 2 = gemäht */
+const jit = new Float32Array(CELLS * 4);                /* Versatz x, Versatz z, Drehung, Größe */
+const cellX = i => -HALF + i + 0.5;
+function cellAt(x, z) {
+  const i = Math.floor(x + HALF), j = Math.floor(z + HALF);
+  return (i < 0 || j < 0 || i >= N || j >= N) ? -1 : j * N + i;
+}
+for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+  const idx = j * N + i, x = cellX(i), z = cellX(j);
+  let grain = Math.hypot(x, z) > 3.6 && !inFarm(x, z);
+  stations.forEach(st => { if (Math.hypot(x - st.x, z - st.z) < st.r + 1.9) grain = false; });
+  state[idx] = grain ? 1 : 0;
+  jit[idx * 4] = (rnd() - 0.5) * 0.4; jit[idx * 4 + 1] = (rnd() - 0.5) * 0.4;
+  jit[idx * 4 + 2] = rnd() * Math.PI * 2; jit[idx * 4 + 3] = 0.85 + rnd() * 0.35;
+}
+
+/* Ein Büschel aus drei Halmen mit Ähren. Bewusst wenige Dreiecke (flacher Halm, dreikantige Ähre),
+   damit das ganze Feld auch auf älteren Tablets flüssig läuft. */
+const tuftGeo = (function () {
+  const pos = [], nor = [], col = [], r = rng(7), m = new THREE.Matrix4(), e = new THREE.Euler();
+  const low = new THREE.Color(0xa87c14), high = new THREE.Color(0xd9a91f), ear = new THREE.Color(0xf2c94c);
+  [[-0.3, -0.18], [0.3, -0.12], [0.02, 0.32]].forEach(o => {
+    e.set((r() - 0.5) * 0.3, r() * 3, (r() - 0.5) * 0.3);
+    m.makeRotationFromEuler(e).setPosition(o[0], 0, o[1]);
+    const stalk = new THREE.PlaneGeometry(0.075, 1.15).translate(0, 0.575, 0).toNonIndexed().applyMatrix4(m);
+    const P = stalk.attributes.position.array;
+    for (let i = 0; i < P.length; i += 3) {
+      const c = stalk.attributes.uv.array[i / 3 * 2 + 1] > 0.5 ? high : low;
+      pos.push(P[i], P[i + 1], P[i + 2]); nor.push(0, 1, 0); col.push(c.r, c.g, c.b);
+    }
+    const head = new THREE.CylinderGeometry(0.025, 0.085, 0.55, 3, 1, true).translate(0, 1.36, 0).toNonIndexed().applyMatrix4(m);
+    const H = head.attributes.position.array, HN = head.attributes.normal.array;
+    for (let i = 0; i < H.length; i += 3) {
+      pos.push(H[i], H[i + 1], H[i + 2]); nor.push(HN[i] * 0.5, 0.85, HN[i + 2] * 0.5); col.push(ear.r, ear.g, ear.b);
+    }
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.7, 0), 8.5);
+  return g;
+})();
+const grainMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+const chunks = [];
+for (let c = 0; c < (N / CH) * (N / CH); c++) {
+  const mesh = new THREE.InstancedMesh(tuftGeo, grainMat, CH * CH);
+  mesh.frustumCulled = true;                             /* Feldteile außerhalb des Bildes überspringen */
+  mesh.position.set(-HALF + (c % (N / CH)) * CH + CH / 2, 0, -HALF + Math.floor(c / (N / CH)) * CH + CH / 2);
+  scene.add(mesh);
+  chunks.push(mesh);
+}
+const dummy = new THREE.Object3D();
+function setCellMatrix(idx) {
+  const i = idx % N, j = (idx - i) / N;
+  const mesh = chunks[Math.floor(j / CH) * (N / CH) + Math.floor(i / CH)];
+  const s = state[idx], size = jit[idx * 4 + 3];
+  dummy.position.set(cellX(i) - mesh.position.x + jit[idx * 4], 0, cellX(j) - mesh.position.z + jit[idx * 4 + 1]);
+  dummy.rotation.set(0, jit[idx * 4 + 2], 0);
+  dummy.scale.set(s ? size : 0, s === 1 ? size : s === 2 ? 0.09 : 0, s ? size : 0);   /* gemäht = kurze Stoppeln */
+  dummy.updateMatrix();
+  mesh.setMatrixAt((j % CH) * CH + (i % CH), dummy.matrix);
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
+/* Boden: ein Bildpunkt pro Feld, gemähte Felder werden heller */
+const groundCanvas = document.createElement('canvas'); groundCanvas.width = groundCanvas.height = N;
+const gctx = groundCanvas.getContext('2d');
+const groundTex = new THREE.CanvasTexture(groundCanvas);
+function paintCell(idx) {
+  const i = idx % N, j = (idx - i) / N, v = (jit[idx * 4 + 2] / 6.3 - 0.5) * 14;
+  const c = state[idx] === 1 ? [176, 128, 28] : state[idx] === 2 ? [214, 190, 132] : inFarm(cellX(i), cellX(j)) ? [104, 156, 58] : [168, 134, 88];
+  gctx.fillStyle = `rgb(${c[0] + v | 0},${c[1] + v | 0},${c[2] + v | 0})`;
+  gctx.fillRect(i, j, 1, 1);
+  groundTex.needsUpdate = true;
+}
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALF, 2 * HALF), new THREE.MeshLambertMaterial({ map: groundTex }));
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+/* ---------- Garben, Schubkarren und Bauernhof ----------
+   Aus je 14 gemähten Feldern entsteht eine Garbe. Sie bleibt liegen, bis Bauer Franz sie mit dem
+   Schubkarren einsammelt. Der Schubkarren fasst 6 Garben und wird am Bauernhof geleert.
+   Liegen schon 6 Garben auf dem Feld, mäht die Sense erst weiter, wenn sie eingeladen sind. */
+const CELLS_PER_SHEAF = 14, CAP = 6, MAX_LYING = 6, CART_D = 1.75;
+const sheafGeo = merge([
+  { geo: new THREE.LatheGeometry([new THREE.Vector2(0.4, 0), new THREE.Vector2(0.2, 0.6), new THREE.Vector2(0.46, 1.2), new THREE.Vector2(0.001, 1.3)], 7), color: 0xe2b84a },
+  { geo: new THREE.CylinderGeometry(0.23, 0.23, 0.1, 7).translate(0, 0.6, 0), color: 0x8a5a2b }
+]);
+const sheafMesh = new THREE.InstancedMesh(sheafGeo, vertexMat, Math.ceil(CELLS / CELLS_PER_SHEAF) + 2);
+sheafMesh.count = 0; sheafMesh.frustumCulled = false;
+scene.add(sheafMesh);
+const lying = [];                                        /* Felder, auf denen eine Garbe liegt */
+let load = 0, loadShown = 0, farmCount = 0, farmShown = 0, loadsFlying = 0;
+const cellPos = idx => { const i = idx % N; return { x: cellX(i), z: cellX((idx - i) / N) }; };
+function drawLying() {
+  lying.forEach((idx, k) => {
+    const p = cellPos(idx);
+    dummy.position.set(p.x, 0, p.z);
+    dummy.rotation.set((jit[idx * 4] * 0.3), jit[idx * 4 + 2], jit[idx * 4 + 1] * 0.3);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    sheafMesh.setMatrixAt(k, dummy.matrix);
+  });
+  sheafMesh.count = Math.min(lying.length, sheafMesh.instanceMatrix.count);
+  sheafMesh.instanceMatrix.needsUpdate = true;
+}
+function updateCounters() {
+  $('karre').textContent = load;
+  $('karre-max').textContent = CAP;
+  $('garben').textContent = farmCount;
+}
+function addSheaf(idx) {
+  lying.push(idx);
+  drawLying();
+  if (!seen.garbe) { seen.garbe = 1; toast('🌾 Eine Garbe! Hol den Schubkarren und lade sie ein.'); }
+}
+
+/* Bauernhof: Wohnhaus mit Fachwerk, Platz für die Garben, Schild und gelber Ring zum Abladen */
+const farmGroup = new THREE.Group();
+farmGroup.position.set(FARM.x, 0, FARM.z);
+farmGroup.rotation.y = Math.atan2(-FARM.x, -FARM.z);    /* Vorderseite zeigt zur Feldmitte */
+scene.add(farmGroup);
+(function buildFarm(g) {
+  box(4.4, 2.8, 5, 0xf5efe0, 0, 1.4, -2.5, g);
+  const tri = new THREE.Shape(); tri.moveTo(-2.6, 0); tri.lineTo(2.6, 0); tri.lineTo(0, 2.0); tri.closePath();
+  add(new THREE.ExtrudeGeometry(tri, { depth: 5.5, bevelEnabled: false }), 0xb3412e, 0, 2.8, -5.25, g);
+  box(4.5, 0.14, 0.08, 0x5b3a1a, 0, 2.75, 0.02, g); box(4.5, 0.14, 0.08, 0x5b3a1a, 0, 1.45, 0.02, g);
+  box(0.14, 2.8, 0.08, 0x5b3a1a, -2.16, 1.4, 0.02, g); box(0.14, 2.8, 0.08, 0x5b3a1a, 2.16, 1.4, 0.02, g);
+  box(1.0, 1.75, 0.1, 0x6b4226, 0, 0.88, 0.04, g);
+  [-1.35, 1.35].forEach(x => { box(0.8, 0.7, 0.1, 0x9fd3f5, x, 2.05, 0.04, g); box(0.8, 0.7, 0.1, 0x9fd3f5, x, 0.85, 0.04, g); });
+  box(0.5, 1.4, 0.5, 0x8f3f2d, 1.0, 4.2, -3.6, g);
+  /* Holzböden für die Garben links und rechts vom Haus */
+  [-1, 1].forEach(sd => box(4.0, 0.12, 4.0, 0x9b6b3a, sd * 5.0, 0.06, -2.2, g));
+  /* Schild „Bauernhof“ */
+  cyl(0.07, 0.07, 2.0, 0x7a5230, 2.9, 1.0, 3.0, g, 6);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fef3c7'; x.fillRect(0, 0, 256, 96); x.lineWidth = 10; x.strokeStyle = '#7a5230'; x.strokeRect(5, 5, 246, 86);
+  x.fillStyle = '#7c2d12'; x.font = 'bold 44px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('Bauernhof', 128, 50);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.68), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide }));
+  sign.position.set(2.9, 2.1, 3.05); g.add(sign);
+})(farmGroup);
+farmGroup.updateMatrixWorld(true);
+const farmPoint = (x, y, z) => farmGroup.localToWorld(new THREE.Vector3(x, y, z));
+const UNLOAD = farmPoint(0, 0, 4.2);
+const unloadRing = new THREE.Mesh(new THREE.RingGeometry(2.3, 2.8, 36),
+  new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }));
+unloadRing.rotation.x = -Math.PI / 2; unloadRing.position.set(UNLOAD.x, 0.05, UNLOAD.z);
+scene.add(unloadRing);
+const farmSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: (function () {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#b3412e'; x.beginPath(); x.arc(64, 64, 56, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 8; x.strokeStyle = '#fff'; x.stroke();
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(30, 62); x.lineTo(64, 32); x.lineTo(98, 62); x.closePath(); x.fill();
+  x.fillRect(40, 60, 48, 36); x.fillStyle = '#b3412e'; x.fillRect(58, 74, 13, 22);
+  return new THREE.CanvasTexture(c);
+})(), fog: false }));
+farmSprite.scale.set(2.6, 2.6, 1);
+const farmSpriteBase = farmPoint(0, 6.6, -2.5);
+farmSprite.position.copy(farmSpriteBase);
+scene.add(farmSprite);
+/* Hindernisse: Haus und die beiden Garbenplätze */
+const blockers = [];
+[[0, -2.5, 2.7], [-5.0, -2.2, 2.1], [5.0, -2.2, 2.1]].forEach(b => { const p = farmPoint(b[0], 0, b[1]); blockers.push({ x: p.x, z: p.z, r: b[2] }); });
+
+/* Garben auf dem Hof: 4 × 4 je Lage, erst links, dann rechts vom Haus */
+const farmMesh = new THREE.InstancedMesh(sheafGeo, vertexMat, 480);
+farmMesh.count = 0; farmMesh.frustumCulled = false;
+scene.add(farmMesh);
+function farmSlot(k) {
+  let side, w;
+  if (k < 160) { side = k < 80 ? -1 : 1; w = k % 80; } else { side = k % 2 ? 1 : -1; w = 80 + Math.floor((k - 160) / 2); }
+  const layer = Math.floor(w / 16), cell = w % 16;
+  return farmPoint(side * (3.6 + (cell % 4) * 0.95), 0.12 + layer * 1.15, -0.8 - Math.floor(cell / 4) * 0.95);
+}
+function drawFarm() {
+  const n = Math.min(farmShown, farmMesh.instanceMatrix.count);
+  for (let k = 0; k < n; k++) {
+    dummy.position.copy(farmSlot(k));
+    dummy.rotation.set(0, k * 2.4, 0); dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    farmMesh.setMatrixAt(k, dummy.matrix);
+  }
+  farmMesh.count = n;
+  farmMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* Schubkarren aus Holz: Wanne, ein Rad vorne, zwei Griffe hinten */
+const cart = { g: new THREE.Group(), x: 2.4, z: -1.2, rot: 0, held: false, armed: true, wheel: new THREE.Group(), slots: [] };
+(function buildCart(g) {
+  box(0.85, 0.07, 1.15, 0x1d4ed8, 0, 0.62, 0.05, g);
+  [-1, 1].forEach(sd => { box(0.07, 0.4, 1.2, 0x2563eb, sd * 0.47, 0.82, 0.05, g).rotation.z = -sd * 0.28; });
+  box(1.0, 0.42, 0.07, 0x2563eb, 0, 0.82, 0.68, g).rotation.x = 0.35;
+  box(0.95, 0.32, 0.07, 0x2563eb, 0, 0.78, -0.55, g);
+  [-1, 1].forEach(sd => {
+    stick(sd * 0.3, 0.6, 0.75, sd * 0.36, 0.8, -1.08, 0.04, 0x7a4a20, g);
+    stick(sd * 0.1, 0.3, 0.85, sd * 0.3, 0.62, 0.62, 0.03, 0x4b5563, g);
+    box(0.06, 0.48, 0.06, 0x7a4a20, sd * 0.3, 0.34, -0.45, g);
+  });
+  cart.wheel.position.set(0, 0.3, 0.85); g.add(cart.wheel);
+  cyl(0.3, 0.3, 0.1, 0x5b3a1a, 0, 0, 0, cart.wheel, 14).rotation.z = Math.PI / 2;
+  box(0.12, 0.5, 0.06, 0xeab308, 0, 0, 0, cart.wheel); box(0.12, 0.06, 0.5, 0xeab308, 0, 0, 0, cart.wheel);
+  [[-0.24, 0.8], [0.24, 0.8], [0, 1.0], [-0.26, 1.18], [0.26, 1.18], [0, 1.38]].forEach(p => {
+    const m = new THREE.Mesh(sheafGeo, vertexMat);
+    m.position.set(p[0], p[1], -0.6); m.rotation.x = Math.PI / 2; m.scale.setScalar(0.8); m.visible = false;
+    g.add(m); cart.slots.push(m);
+  });
+})(cart.g);
+cart.g.scale.setScalar(1.35);
+scene.add(cart.g);
+function placeCart() { cart.g.position.set(cart.x, 0, cart.z); cart.g.rotation.y = cart.rot; cart.g.updateMatrixWorld(true); }
+function showLoad() { cart.slots.forEach((m, i) => { m.visible = i < loadShown; }); }
+
+/* Fliegende Garben: vom Feld in den Schubkarren und vom Schubkarren auf den Hof */
+const flights = [];
+function fly(from, to, delay, onStart, onEnd) {
+  const m = new THREE.Mesh(sheafGeo, vertexMat);
+  m.visible = false; scene.add(m);
+  flights.push({ m, from, to, t: -delay, onStart, onEnd, started: false });
+}
+function updateFlights(dt) {
+  for (let k = flights.length - 1; k >= 0; k--) {
+    const f = flights[k];
+    f.t += dt / 0.42;
+    if (f.t < 0) continue;
+    if (!f.started) { f.started = true; f.m.visible = true; if (f.onStart) f.onStart(); }
+    const to = typeof f.to === 'function' ? f.to() : f.to, q = Math.min(1, f.t);
+    f.m.position.lerpVectors(f.from, to, q);
+    f.m.position.y += Math.sin(q * Math.PI) * 1.6;
+    f.m.rotation.x = q * Math.PI / 2;
+    if (q >= 1) { scene.remove(f.m); flights.splice(k, 1); if (f.onEnd) f.onEnd(); }
+  }
+}
+
+/* ---------- Feldblumen ---------- */
+const FLOWERS = {
+  mohn: { text: '🌺 Klatschmohn! Er blüht leuchtend rot im Feld.', color: 0xe11d1d, mid: 0x1f2937 },
+  korn: { text: '💙 Eine Kornblume! Sie wächst gern zwischen dem Getreide.', color: 0x2f5fe0, mid: 0x9db8ff }
+};
+const flowers = [], flowerAt = {};
+const seen = {};                                         /* was schon einmal entdeckt wurde (Blumen- und Tierarten) */
+(function () {
+  let guard = 0;
+  while (flowers.length < 24 && guard++ < 5000) {
+    const idx = Math.floor(rnd() * CELLS);
+    if (state[idx] !== 1 || flowerAt[idx] !== undefined) continue;
+    const i = idx % N, j = (idx - i) / N, kind = flowers.length % 2 ? 'korn' : 'mohn', F = FLOWERS[kind];
+    const g = new THREE.Group();
+    cyl(0.03, 0.03, 1.6, 0x4d8f2a, 0, 0.8, 0, g, 5);
+    ball(0.26, F.color, 0, 1.66, 0, g).scale.set(1, 0.45, 1);
+    ball(0.1, F.mid, 0, 1.74, 0, g);
+    g.position.set(cellX(i), 0, cellX(j));
+    scene.add(g);
+    flowerAt[idx] = flowers.length;
+    flowers.push({ kind, g, idx, x: cellX(i), z: cellX(j), got: false, pop: 0 });
+  }
+  $('blumen-max').textContent = flowers.length;
+})();
+let flowerCount = 0;
+function collectFlower(f, quiet) {
+  if (f.got) return;
+  f.got = true; flowerCount++;
+  $('blumen').textContent = flowerCount;
+  if (quiet) { f.g.visible = false; return; }
+  f.pop = 0.001;
+  if (!seen[f.kind]) { seen[f.kind] = 1; toast(FLOWERS[f.kind].text); }
+  dirty = true;
+}
+
+/* ---------- Feldtiere: sitzen im Getreide und huschen weg ---------- */
+const ANIMALS = {
+  hase: { text: '🐇 Ein Feldhase! Er versteckt sich gern im Getreide.', speed: 10, time: 3 },
+  hamster: { text: '🐹 Ein Feldhamster! Er sammelt Körner in seinen Backentaschen.', speed: 5.5, time: 3 },
+  maus: { text: '🐭 Eine Feldmaus! Sie knabbert gern an Getreidekörnern.', speed: 6.5, time: 3 },
+  lerche: { text: '🐦 Eine Feldlerche! Sie baut ihr Nest am Boden im Feld.', speed: 7, time: 4 }
+};
+function buildAnimal(kind) {
+  const g = new THREE.Group();
+  if (kind === 'hase') {
+    ball(0.3, 0x9a7448, 0, 0.33, 0, g).scale.set(0.8, 0.85, 1.3);
+    ball(0.2, 0x9a7448, 0, 0.6, 0.36, g);
+    box(0.07, 0.42, 0.1, 0x86623a, -0.08, 0.93, 0.3, g); box(0.07, 0.42, 0.1, 0x86623a, 0.08, 0.93, 0.3, g);
+    ball(0.1, 0xffffff, 0, 0.38, -0.4, g);
+  } else if (kind === 'hamster') {
+    ball(0.26, 0xd9a05b, 0, 0.24, 0, g).scale.set(1, 0.85, 1.2);
+    ball(0.17, 0xd9a05b, 0, 0.3, 0.3, g);
+    ball(0.09, 0xffffff, 0.11, 0.24, 0.38, g); ball(0.09, 0xffffff, -0.11, 0.24, 0.38, g);
+    ball(0.05, 0x8a5a2b, 0.1, 0.44, 0.28, g); ball(0.05, 0x8a5a2b, -0.1, 0.44, 0.28, g);
+  } else if (kind === 'maus') {
+    ball(0.18, 0x8b8b8b, 0, 0.16, 0, g).scale.set(0.8, 0.8, 1.3);
+    ball(0.11, 0x8b8b8b, 0, 0.2, 0.24, g);
+    ball(0.06, 0xf0b6b6, 0.08, 0.3, 0.22, g); ball(0.06, 0xf0b6b6, -0.08, 0.3, 0.22, g);
+    stick(0, 0.12, -0.2, 0, 0.1, -0.6, 0.015, 0xf0b6b6, g);
+  } else {
+    ball(0.16, 0x8a6a45, 0, 0.18, 0, g).scale.set(0.8, 0.8, 1.5);
+    ball(0.1, 0x8a6a45, 0, 0.27, 0.22, g);
+    add(new THREE.ConeGeometry(0.03, 0.12, 5), 0xd9902b, 0, 0.27, 0.36, g).rotation.x = Math.PI / 2;
+    g.userData.wings = [box(0.42, 0.03, 0.22, 0x6f5435, 0.26, 0.22, 0, g), box(0.42, 0.03, 0.22, 0x6f5435, -0.26, 0.22, 0, g)];
+  }
+  g.scale.setScalar(1.6);
+  g.visible = false;
+  scene.add(g);
+  return g;
+}
+const animals = [];
+function hideAnimal(a) {                                 /* neues Versteck suchen, weit weg vom Bauern */
+  a.g.visible = false; a.state = 'gone';
+  for (let k = 0; k < 60; k++) {
+    const idx = Math.floor(Math.random() * CELLS), i = idx % N, j = (idx - i) / N;
+    if (state[idx] !== 1 || Math.hypot(cellX(i) - farmer.position.x, cellX(j) - farmer.position.z) < 12) continue;
+    a.idx = idx; a.x = cellX(i); a.z = cellX(j); a.state = 'hide';
+    return;
+  }
+}
+function startle(a) {
+  a.state = 'startle'; a.t = 0.45;
+  a.g.visible = true;
+  a.g.position.set(a.x, 0, a.z);
+  const away = Math.atan2(a.x - farmer.position.x, a.z - farmer.position.z) + (Math.random() - 0.5) * 0.9;
+  a.dir = away; a.g.rotation.y = away;
+  if (!seen[a.kind]) { seen[a.kind] = 1; toast(ANIMALS[a.kind].text); dirty = true; }
+}
+
+/* ---------- Bauer Franz ---------- */
+const farmer = new THREE.Group();
+const legs = [-0.2, 0.2].map(x => {
+  const leg = new THREE.Group(); leg.position.set(x, 0.92, 0); farmer.add(leg);
+  box(0.26, 0.8, 0.28, 0x5b4636, 0, -0.4, 0, leg);
+  box(0.28, 0.16, 0.42, 0x2b1a12, 0, -0.84, 0.06, leg);
+  return leg;
+});
+const torso = new THREE.Group(); torso.position.y = 0.9; farmer.add(torso);
+box(0.78, 0.82, 0.44, 0xf1ead8, 0, 0.42, 0, torso);                                     /* Leinenhemd */
+box(0.8, 0.6, 0.46, 0x7a5230, 0, 0.36, -0.01, torso).scale.set(1, 1, 0.9);              /* Weste */
+box(0.3, 0.62, 0.05, 0xf1ead8, 0, 0.42, 0.21, torso);
+ball(0.27, 0xf2c29b, 0, 1.1, 0, torso);
+ball(0.045, 0x1f2937, 0.1, 1.14, 0.24, torso); ball(0.045, 0x1f2937, -0.1, 1.14, 0.24, torso);
+box(0.22, 0.05, 0.05, 0x6b4a2a, 0, 1.02, 0.26, torso);                                   /* Schnurrbart */
+cyl(0.56, 0.56, 0.05, 0xe9c46a, 0, 1.3, 0, torso, 14);                                   /* Strohhut */
+cyl(0.26, 0.3, 0.24, 0xe9c46a, 0, 1.43, 0, torso, 12);
+cyl(0.305, 0.305, 0.07, 0xb91c1c, 0, 1.35, 0, torso, 12);
+/* Arme und Sense drehen sich beim Mähen gemeinsam */
+const upper = new THREE.Group(); upper.position.y = 1.5; farmer.add(upper);
+[-1, 1].forEach(s => {
+  stick(s * 0.44, 0.12, 0, s * 0.14, -0.38, 0.52, 0.1, 0xf1ead8, upper);
+  ball(0.1, 0xf2c29b, s * 0.14, -0.4, 0.55, upper);
+});
+stick(0, -0.2, 0.35, 0, -1.36, 2.25, 0.04, 0x8a5a2b, upper);
+(function blade() {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0.09); s.quadraticCurveTo(0.62, -0.34, 1.25, -0.02); s.quadraticCurveTo(0.62, -0.14, 0, -0.09); s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.03, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  add(geo, 0xcbd5e1, 0, -1.38, 2.25, upper);
+})();
+/* Arme zum Schieben: Hände an den Griffen des Schubkarrens */
+const pushArms = new THREE.Group(); pushArms.visible = false; farmer.add(pushArms);
+[-1, 1].forEach(s => {
+  stick(s * 0.44, 1.62, 0, s * 0.47, 1.05, 0.28, 0.1, 0xf1ead8, pushArms);
+  ball(0.1, 0xf2c29b, s * 0.47, 1.05, 0.3, pushArms);
+});
+const blob = new THREE.Mesh(new THREE.CircleGeometry(0.75, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
+blob.rotation.x = -Math.PI / 2; blob.position.y = 0.04; farmer.add(blob);
+scene.add(farmer);
+
+['hase', 'hamster', 'maus', 'lerche', 'hase', 'hamster', 'maus', 'lerche'].forEach(kind => {
+  const a = { kind, g: buildAnimal(kind), state: 'hide', t: 0, dir: 0, x: 0, z: 0, idx: -1 };
+  animals.push(a);
+});
+
+/* ---------- Spielzustand ---------- */
+let mode = 'start';                                      /* start | play | quiz | win */
+let solvedCount = 0, mownCount = 0, batch = 0, dirty = false, saveTimer = 0, winShown = false;
+/* Game-Test: Fehlversuche und Spielzeit für die Bestenliste (im Speicherstand, auch über mehrere Besuche) */
+let fehler = 0, sekVorher = 0, sekStart = 0, gemeldet = false;
+function spielSekunden() { return Math.min(86400, Math.round(sekVorher + (sekStart ? (Date.now() - sekStart) / 1000 : 0))); }
+let speed = 0, swing = -1, phi = -0.6, walkPhase = 0, clock = 0;
+const SWING_A = 1.3, REACH = 2.9;
+const keys = { up: false, down: false, left: false, right: false, mow: false, mowBtn: false };
+const joy = { x: 0, y: 0, id: null };
+let testInput = null, timeScale = 1;
+let prevMow = false, mowLatch = false, hintGrab = false, fullToast = -9, blockToast = -9;
+
+function toast(text) {
+  const t = $('toast');
+  t.textContent = text; t.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('show'), 4200);
+}
+
+function grabCart() {
+  cart.held = true; cart.armed = false;
+  upper.visible = false; pushArms.visible = true; torso.rotation.set(0.12, 0, 0);
+  setMowBtn();
+  if (!hintGrab) {
+    hintGrab = true;
+    toast(isTouch ? 'Du schiebst den Schubkarren. Fahr über die Garben! Zum Mähen: „Abstellen“ drücken.'
+                  : 'Du schiebst den Schubkarren. Fahr über die Garben! Zum Mähen: Leertaste drücken.');
+  }
+  dirty = true;
+}
+function dropCart() {
+  cart.held = false;
+  upper.visible = true; pushArms.visible = false; torso.rotation.set(0, 0, 0);
+  setMowBtn();
+  dirty = true;
+}
+function setMowBtn() {
+  $('mow-icon').textContent = cart.held ? '✋' : '🌾';
+  $('mow-label').textContent = cart.held ? 'Abstellen' : 'Mähen';
+}
+const cartSlot = i => cart.g.localToWorld(cart.slots[Math.min(i, CAP - 1)].position.clone());
+function loadSheaf(k) {
+  const idx = lying.splice(k, 1)[0], p = cellPos(idx), slot = load;
+  load++; loadsFlying++;
+  drawLying(); updateCounters();
+  fly(new THREE.Vector3(p.x, 0, p.z), () => cartSlot(slot), 0, null, () => { loadsFlying--; loadShown++; showLoad(); });
+  if (load >= CAP) { toast('Der Schubkarren ist voll! Fahr ihn zum Bauernhof. 🏡'); fullToast = clock; }
+  dirty = true;
+}
+function unloadCart() {
+  const n = load;
+  for (let i = 0; i < n; i++) {
+    const from = cartSlot(n - 1 - i), k = farmCount + i;
+    fly(from, farmSlot(k), i * 0.16, () => { loadShown = Math.max(0, loadShown - 1); showLoad(); }, () => { farmShown++; drawFarm(); });
+  }
+  load = 0; farmCount += n;
+  updateCounters();
+  toast(`🏡 Super! ${n} ${n === 1 ? 'Garbe ist' : 'Garben sind'} jetzt auf dem Hof.`);
+  save();
+}
+
+function mowCell(idx) {
+  if (state[idx] !== 1) return;
+  state[idx] = 2; mownCount++;
+  setCellMatrix(idx); paintCell(idx);
+  if (++batch >= CELLS_PER_SHEAF) { batch = 0; addSheaf(idx); }
+  if (flowerAt[idx] !== undefined) collectFlower(flowers[flowerAt[idx]]);
+  animals.forEach(a => { if (a.state === 'hide' && a.idx === idx) startle(a); });
+  dirty = true;
+}
+
+function markSolved(st, fresh) {
+  st.solved = true; solvedCount++;
+  $('score').textContent = solvedCount;
+  st.beacon.material.color.setHex(0x22c55e); st.beacon.material.opacity = 0.16;
+  st.sprite.material.map = badgeTexture('✓', '#16a34a');
+  if (fresh) { dirty = true; save(); }
+}
+
+/* Speicherstand: gelöste Stationen, gemähte Felder, Garben, Blumen, entdeckte Arten, Standort */
+function save() {
+  const bytes = new Uint8Array(CELLS / 8);
+  for (let i = 0; i < CELLS; i++) if (state[i] === 2) bytes[i >> 3] |= 1 << (i & 7);
+  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
+  const data = {
+    v: 1, solved: stations.map(s => s.solved ? 1 : 0), mown: btoa(bin), sheaves: lying, batch, load, hof: farmCount,
+    karre: { x: +cart.x.toFixed(2), z: +cart.z.toFixed(2), rot: +cart.rot.toFixed(3), held: cart.held },
+    flowers: flowers.map((f, i) => f.got ? i : -1).filter(i => i >= 0), seen,
+    fehler, sek: spielSekunden(), gemeldet,
+    x: +farmer.position.x.toFixed(2), z: +farmer.position.z.toFixed(2), rot: +farmer.rotation.y.toFixed(3)
+  };
+  try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {}
+  dirty = false; saveTimer = 0;
+}
+function applySave(s) {
+  try {
+    const bin = atob(s.mown || '');
+    for (let i = 0; i < CELLS; i++) if (state[i] === 1 && (bin.charCodeAt(i >> 3) & (1 << (i & 7)))) { state[i] = 2; mownCount++; }
+    (Array.isArray(s.sheaves) ? s.sheaves : []).forEach(idx => { if (Number.isInteger(idx) && idx >= 0 && idx < CELLS) lying.push(idx); });
+    batch = Math.max(0, Math.min(CELLS_PER_SHEAF - 1, s.batch | 0));
+    load = loadShown = Math.max(0, Math.min(CAP, s.load | 0));
+    farmCount = farmShown = Math.max(0, Math.min(100000, s.hof | 0));
+    const k = s.karre;
+    if (k && isFinite(k.x) && isFinite(k.z)) {
+      cart.x = Math.max(-HALF + 1, Math.min(HALF - 1, +k.x)); cart.z = Math.max(-HALF + 1, Math.min(HALF - 1, +k.z));
+      cart.rot = +k.rot || 0; cart.held = k.held === true;
+    }
+    (s.flowers || []).forEach(i => { if (flowers[i]) collectFlower(flowers[i], true); });
+    Object.assign(seen, s.seen || {});
+    fehler = Math.max(0, s.fehler | 0); sekVorher = Math.max(0, Math.min(86400, +s.sek || 0)); gemeldet = s.gemeldet === true;
+    (s.solved || []).forEach((v, i) => { if (v && stations[i]) markSolved(stations[i], false); });
+    if (isFinite(s.x) && isFinite(s.z)) { farmer.position.set(s.x, 0, s.z); farmer.rotation.y = +s.rot || 0; }
+  } catch (e) {}
+}
+
+const saved = loadSave();
+if (saved) applySave(saved);
+for (let i = 0; i < CELLS; i++) { setCellMatrix(i); paintCell(i); }
+animals.forEach(hideAnimal);
+drawLying(); drawFarm(); showLoad(); updateCounters();
+if (cart.held) { grabCart(); hintGrab = false; dirty = false; }
+placeCart();
+if (saved && (solvedCount > 0 || mownCount > 0 || farmCount > 0)) {
+  $('startBtn').textContent = '▶ Weiterspielen';
+  show('resetBtn', true);
+}
+
+/* ---------- Eingaben ---------- */
+const KEYMAP = { ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', ArrowLeft: 'left', a: 'left', A: 'left',
+  ArrowRight: 'right', d: 'right', D: 'right', ' ': 'mow' };
+window.addEventListener('keydown', e => {
+  const k = KEYMAP[e.key];
+  if (mode === 'play' && k) {
+    if (k === 'mow' && !e.repeat) tapDrop();
+    keys[k] = true; e.preventDefault(); show('hint', false);
+  }
+});
+window.addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k) keys[k] = false; });
+window.addEventListener('blur', () => { Object.keys(keys).forEach(k => { keys[k] = false; }); });
+
+const joyEl = $('joy'), knob = $('joy-knob');
+function joyMove(e) {
+  const r = joyEl.getBoundingClientRect();
+  let dx = (e.clientX - r.left - r.width / 2) / (r.width / 2), dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
+  const l = Math.hypot(dx, dy);
+  if (l > 1) { dx /= l; dy /= l; }
+  joy.x = dx; joy.y = dy;
+  knob.style.transform = `translate(${dx * 38}px, ${dy * 38}px)`;
+}
+function joyEnd(e) {
+  if (e.pointerId !== joy.id) return;
+  joy.id = null; joy.x = joy.y = 0; knob.style.transform = '';
+}
+joyEl.addEventListener('pointerdown', e => { joy.id = e.pointerId; try { joyEl.setPointerCapture(e.pointerId); } catch (err) {} joyMove(e); e.preventDefault(); });
+joyEl.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
+joyEl.addEventListener('pointerup', joyEnd);
+joyEl.addEventListener('pointercancel', joyEnd);
+const mowBtn = $('mow-btn');
+/* Kurzes Antippen soll den Schubkarren sicher abstellen, auch zwischen zwei Bildern */
+function tapDrop() { if (mode === 'play' && cart.held) { dropCart(); mowLatch = true; prevMow = true; } }
+const mowOn = e => { tapDrop(); keys.mowBtn = true; mowBtn.classList.add('pressed'); e.preventDefault(); };
+const mowOff = () => { keys.mowBtn = false; mowBtn.classList.remove('pressed'); };
+mowBtn.addEventListener('pointerdown', mowOn);
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => mowBtn.addEventListener(n, mowOff));
+mowBtn.addEventListener('contextmenu', e => e.preventDefault());
+const dead = v => Math.abs(v) < 0.18 ? 0 : v;
+
+/* ---------- Bildschirme ---------- */
+function setPlayUi(on) {
+  show('hud', mode !== 'start');
+  show('touch-controls', on && isTouch);
+  show('compass', on && solvedCount < stations.length);
+  if (!on) { show('hint', false); Object.keys(keys).forEach(k => { keys[k] = false; }); joy.x = joy.y = 0; knob.style.transform = ''; mowBtn.classList.remove('pressed'); }
+  prevMow = false; mowLatch = false;
+}
+function startGame() {
+  mode = 'play';
+  if (!gemeldet) sekStart = Date.now();
+  show('start-screen', false);
+  if (document.activeElement) document.activeElement.blur();
+  setPlayUi(true);
+  show('hint', !isTouch);
+  snapCamera();
+  if (solvedCount === stations.length) showWin();
+}
+function openQuiz(st) {
+  mode = 'quiz'; currentStation = st; st.armed = false;
+  setPlayUi(false);
+  renderStationContent(stationsData[st.qIndex]);
+  show('quiz-modal', true);
+  document.querySelector('#quiz-modal .modal-card').scrollTop = 0;
+}
+function closeQuiz() {
+  show('quiz-modal', false);
+  mode = 'play';
+  setPlayUi(true);
+  if (solvedCount === stations.length && !winShown) showWin();
+}
+function showWin() {
+  mode = 'win'; winShown = true;
+  setPlayUi(false);
+  const kinds = Object.keys(ANIMALS).filter(k => seen[k]).length;
+  $('win-stats').textContent = `🌾 ${farmCount} Garben auf den Hof gebracht · 🌺 ${flowerCount} von ${flowers.length} Blumen gepflückt · 🐾 ${kinds} von 4 Tierarten entdeckt`;
+  if (!gemeldet) { sekVorher = spielSekunden(); sekStart = 0; }
+  const sek = Math.round(sekVorher);
+  $('win-result').textContent = `Fehlversuche: ${fehler} · Zeit: ${sek >= 60 ? `${Math.floor(sek / 60)} min ${sek % 60} s` : `${sek} s`}`;
+  if (!gemeldet) {
+    gemeldet = true;
+    if (window.GameTest) GameTest.reportScore({ points: fehler, seconds: sek });
+  }
+  show('win-screen', true);
+  save();
+}
+$('startBtn').addEventListener('click', startGame);
+$('resetBtn').addEventListener('click', () => { resetSave(); location.reload(); });
+$('againBtn').addEventListener('click', () => { resetSave(); location.hash = 'neu'; location.reload(); });
+$('moreBtn').addEventListener('click', () => { show('win-screen', false); mode = 'play'; setPlayUi(true); });
+window.addEventListener('pagehide', () => { if (mode !== 'start' && dirty) save(); });
+
+/* ---------- Spielschleife ---------- */
+const camOff = new THREE.Vector3(), camGoal = new THREE.Vector3(), look = new THREE.Vector3();
+function cameraGoal() {
+  const r = farmer.rotation.y;
+  /* Beim Schieben etwas höher und seitlich, damit man den Schubkarren vor dem Bauern sieht */
+  if (cart.held) camOff.set(-2.2, 9.6, -6.6); else camOff.set(0, 6.6, -9);
+  camOff.applyAxisAngle(UP, r);
+  camGoal.copy(farmer.position).add(camOff);
+  const ahead = cart.held ? 3.2 : 2.5;
+  look.set(farmer.position.x + Math.sin(r) * ahead, 1.4, farmer.position.z + Math.cos(r) * ahead);
+}
+function snapCamera() { cameraGoal(); camera.position.copy(camGoal); camera.lookAt(look); }
+
+/* Hindernisse: Zaun, Stationen, Bauernhof und der abgestellte Schubkarren */
+function collide(x, z, rad, withCart) {
+  const lim = HALF - rad - 0.15;
+  x = Math.max(-lim, Math.min(lim, x)); z = Math.max(-lim, Math.min(lim, z));
+  const push = (bx, bz, r) => {
+    const dx = x - bx, dz = z - bz, d = Math.hypot(dx, dz) || 0.001, min = r + rad;
+    if (d < min) { x = bx + dx / d * min; z = bz + dz / d * min; }
+  };
+  stations.forEach(st => push(st.x, st.z, st.r));
+  blockers.forEach(b => push(b.x, b.z, b.r));
+  if (withCart) push(cart.x, cart.z, 0.95);
+  return [x, z];
+}
+const angleTo = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+
+function mowArc() {
+  if (lying.length >= MAX_LYING) {
+    if (clock - blockToast > 5) { blockToast = clock; toast('Hier liegen schon 6 Garben. Lade sie erst in den Schubkarren!'); }
+    return;
+  }
+  const px = farmer.position.x, pz = farmer.position.z, sin = Math.sin(farmer.rotation.y), cos = Math.cos(farmer.rotation.y);
+  for (let z = Math.floor(pz - REACH); z <= pz + REACH; z++) for (let x = Math.floor(px - REACH); x <= px + REACH; x++) {
+    const idx = cellAt(x + 0.5, z + 0.5);
+    if (idx < 0 || state[idx] !== 1) continue;
+    const dx = Math.floor(x) + 0.5 - px, dz = Math.floor(z) + 0.5 - pz, d = Math.hypot(dx, dz);
+    if (d > REACH) continue;
+    const a = Math.atan2(dx * cos - dz * sin, dx * sin + dz * cos);       /* Winkel zur Blickrichtung */
+    if (d < 0.9 || (a >= -SWING_A - 0.15 && a <= phi)) mowCell(idx);
+  }
+}
+
+function updatePlay(dt) {
+  let fwd = (keys.up ? 1 : 0) - (keys.down ? 1 : 0) - dead(joy.y);
+  let turn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0) - dead(joy.x);
+  let mow = keys.mow || keys.mowBtn;
+  if (testInput) { fwd = testInput.fwd || 0; turn = testInput.turn || 0; mow = !!testInput.mow; }
+  fwd = Math.max(-1, Math.min(1, fwd)); turn = Math.max(-1, Math.min(1, turn));
+  /* Mähen-Taste beim Schieben: Schubkarren abstellen. Danach erst wieder mähen, wenn die Taste losgelassen wurde. */
+  if (mow && !prevMow && cart.held) { dropCart(); mowLatch = true; }
+  prevMow = mow;
+  if (!mow) mowLatch = false;
+  if (cart.held || mowLatch) mow = false;
+
+  farmer.rotation.y += turn * (cart.held ? 1.9 : 2.3) * dt;
+  const sin = Math.sin(farmer.rotation.y), cos = Math.cos(farmer.rotation.y), sign = fwd < 0 ? -1 : 1;
+  const reach = cart.held ? CART_D + 0.8 : 0.6;
+  const ahead = cellAt(farmer.position.x + sin * reach * sign, farmer.position.z + cos * reach * sign);
+  const inGrain = ahead >= 0 && state[ahead] === 1;            /* im hohen Getreide kommt man nur langsam voran */
+  const target = fwd * (fwd > 0 ? (cart.held ? 5.5 : 6.5) : (cart.held ? 3 : 4)) * (inGrain ? 0.4 : 1);
+  speed += (target - speed) * Math.min(1, dt * 10);
+  let [nx, nz] = collide(farmer.position.x + sin * speed * dt, farmer.position.z + cos * speed * dt, 0.45, !cart.held);
+  if (cart.held) {                                        /* der Schubkarren vorne darf nirgends hineinfahren */
+    const bx = nx + sin * CART_D, bz = nz + cos * CART_D, c = collide(bx, bz, 0.95, false);
+    [nx, nz] = collide(nx + c[0] - bx, nz + c[1] - bz, 0.45, false);
+  }
+  farmer.position.set(nx, 0, nz);
+
+  const extra = cart.held ? CART_D : 0;
+  let nearest = null, nearD = 1e9, open = null;
+  stations.forEach(st => {
+    if (st.solved) return;
+    const d = Math.hypot(nx - st.x, nz - st.z) - extra;
+    if (d > st.r + 2.0) st.armed = true;
+    else if (d < st.r + 1.3 && st.armed) open = st;
+    if (d < nearD) { nearD = d; nearest = st; }
+  });
+  if (open) { openQuiz(open); return; }
+
+  /* Schubkarren: hinlaufen zum Anfassen, beim Schieben Garben einladen, am Hof abladen */
+  if (!cart.held) {
+    const d = Math.hypot(nx - cart.x, nz - cart.z);
+    if (d > 2.8) cart.armed = true;
+    else if (d < 1.9 && cart.armed && swing < 0) grabCart();
+  }
+  if (cart.held) {
+    const gx = nx + sin * CART_D, gz = nz + cos * CART_D, k = 1 - Math.exp(-dt * 14), ox = cart.x, oz = cart.z;
+    cart.x += (gx - cart.x) * k; cart.z += (gz - cart.z) * k;
+    cart.rot += angleTo(cart.rot, farmer.rotation.y) * k;
+    cart.wheel.rotation.x += Math.hypot(cart.x - ox, cart.z - oz) / 0.3 * (speed < 0 ? -1 : 1);
+    placeCart();
+    for (let k2 = lying.length - 1; k2 >= 0; k2--) {
+      const p = cellPos(lying[k2]);
+      if (Math.hypot(p.x - gx, p.z - gz) > 1.6 && Math.hypot(p.x - nx, p.z - nz) > 1.2) continue;
+      if (load < CAP) loadSheaf(k2);
+      else if (clock - fullToast > 5) { fullToast = clock; toast('Der Schubkarren ist voll! Fahr ihn zum Bauernhof. 🏡'); }
+    }
+    if (load > 0 && loadsFlying === 0 && Math.hypot(gx - UNLOAD.x, gz - UNLOAD.z) < 3.0) unloadCart();
+  }
+
+  /* Laufen: Beine schwingen */
+  walkPhase += Math.abs(speed) * dt * 1.9;
+  const sw = Math.sin(walkPhase) * Math.min(1, Math.abs(speed) / 3) * 0.6;
+  legs[0].rotation.x = sw; legs[1].rotation.x = -sw;
+  torso.position.y = 0.9 + Math.abs(Math.sin(walkPhase)) * 0.04 * Math.min(1, Math.abs(speed) / 3);
+
+  /* Sense: von rechts nach links schwingen und dabei mähen */
+  if (mow && swing < 0) swing = 0;
+  if (swing >= 0) {
+    swing += dt / 0.46;
+    if (swing < 0.62) { const q = swing / 0.62; phi = -SWING_A + 2 * SWING_A * (q * q * (3 - 2 * q)); mowArc(); }
+    else if (swing < 1) phi = SWING_A - (SWING_A + 0.6) * ((swing - 0.62) / 0.38);
+    else { swing = -1; phi = -0.6; }
+  } else phi += (-0.6 - phi) * Math.min(1, dt * 8);
+  upper.rotation.y = phi; if (!cart.held) torso.rotation.y = phi * 0.3;
+
+  /* Blumen pflücken */
+  flowers.forEach(f => { if (!f.got && Math.hypot(f.x - nx, f.z - nz) < 1.3) collectFlower(f); });
+
+  /* Tiere */
+  animals.forEach(a => {
+    if (a.state === 'hide') { if (Math.hypot(a.x - nx, a.z - nz) < 2.2) startle(a); return; }
+    if (a.state === 'startle') {
+      a.t -= dt; a.g.position.y = Math.sin((0.45 - a.t) / 0.45 * Math.PI) * 0.5;
+      if (a.t <= 0) { a.state = 'flee'; a.t = ANIMALS[a.kind].time; }
+      return;
+    }
+    if (a.state !== 'flee') return;
+    const A = ANIMALS[a.kind];
+    a.t -= dt;
+    a.x += Math.sin(a.dir) * A.speed * dt; a.z += Math.cos(a.dir) * A.speed * dt;
+    let y = 0;
+    if (a.kind === 'hase') y = Math.abs(Math.sin(a.t * 9)) * 1.0;
+    if (a.kind === 'lerche') { y = (A.time - a.t) * 4.5; a.g.userData.wings.forEach((w, i) => { w.rotation.z = Math.sin(clock * 30) * 0.8 * (i ? -1 : 1); }); }
+    a.g.position.set(a.x, y, a.z);
+    if (a.t <= 0 || Math.abs(a.x) > HALF || Math.abs(a.z) > HALF) hideAnimal(a);
+  });
+
+  /* Pfeil oben: zum Hof, zum Schubkarren, zur nächsten Garbe oder zur nächsten offenen Station */
+  let goal = null, label = '', dist = 0;
+  if (cart.held && load >= CAP) { goal = UNLOAD; label = '🏡 Zum Bauernhof'; }
+  else if (!cart.held && (lying.length >= MAX_LYING || load >= CAP)) { goal = cart; label = 'Schubkarren holen'; }
+  else if (cart.held && lying.length) {
+    let best = 1e9;
+    lying.forEach(idx => { const p = cellPos(idx), d = Math.hypot(p.x - nx, p.z - nz); if (d < best) { best = d; goal = p; } });
+    label = '🌾 Garbe';
+  } else if (nearest) { goal = nearest; label = `Station ${nearest.qIndex + 1}`; dist = nearest.r + extra; }
+  if (goal) {
+    const dx = goal.x - nx, dz = goal.z - nz;
+    const a = Math.atan2(dx * cos - dz * sin, dx * sin + dz * cos);
+    $('compass-arrow').style.transform = `rotate(${(-a * 180 / Math.PI).toFixed(0)}deg)`;
+    const text = `${label} · ${Math.max(0, Math.round(Math.hypot(dx, dz) - dist))} m`;
+    if ($('compass-text').textContent !== text) $('compass-text').textContent = text;
+  }
+  if ($('compass').classList.contains('hidden') === !!goal) show('compass', !!goal);
+
+  saveTimer += dt;
+  if (saveTimer > 5 && (dirty || Math.abs(speed) > 0.5)) save();
+}
+
+function update(dt) {
+  clock += dt;
+  stations.forEach(st => {
+    if (st.spin) st.spin.rotation.z += dt * 0.7;
+    st.sprite.position.y = 8.2 + Math.sin(clock * 2 + st.qIndex) * 0.2;
+    if (!st.solved) st.beacon.material.opacity = 0.26 + Math.sin(clock * 3 + st.qIndex) * 0.07;
+  });
+  flowers.forEach(f => {
+    if (!f.pop) return;
+    f.pop += dt * 2.5;
+    f.g.position.y = f.pop * 1.5; f.g.scale.setScalar(1 + f.pop * 0.8);
+    if (f.pop >= 1) { f.pop = 0; f.g.visible = false; }
+  });
+  updateFlights(dt);
+  unloadRing.material.opacity = 0.45 + Math.sin(clock * 3) * 0.2;
+  farmSprite.position.y = farmSpriteBase.y + Math.sin(clock * 2) * 0.2;
+  if (mode === 'play') updatePlay(dt);
+  if (mode === 'start') {                                 /* Kamera kreist um den Bauern */
+    const a = clock * 0.15 + 0.5 + farmer.rotation.y;
+    const side = camera.aspect > 1.3 ? 4.6 : 0;           /* breiter Bildschirm: Bauer steht neben dem Start-Fenster */
+    camera.position.set(farmer.position.x + Math.sin(a) * 8, 4.2, farmer.position.z + Math.cos(a) * 8);
+    camera.lookAt(farmer.position.x + Math.cos(a) * side, 1.5, farmer.position.z - Math.sin(a) * side);
+  } else {
+    cameraGoal();
+    camera.position.lerp(camGoal, 1 - Math.pow(0.002, dt));
+    camera.lookAt(look);
+  }
+}
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  last = now;
+  for (let i = 0; i < timeScale; i++) update(dt);
+  renderer.render(scene, camera);
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.fov = w < h ? 74 : 60;                           /* Hochformat: weiterer Blick */
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* Zugang für den Durchspiel-Test (tools/spieltests/Sachunterricht-Getreideernte.js), nur mit ?test */
+if (TEST) {
+  window.BAUER = {
+    state: () => ({ mode, solved: solvedCount, mown: mownCount, sheaves: lying.length + load + farmCount, lying: lying.length, load, hof: farmCount,
+      held: cart.held, flying: flights.length, flowers: flowerCount, seen: Object.assign({}, seen),
+      x: farmer.position.x, z: farmer.position.z, rot: farmer.rotation.y, grain: state.reduce((n, s) => n + (s === 1 ? 1 : 0), 0) }),
+    stations: () => stations.map(s => ({ x: s.x, z: s.z, r: s.r, solved: s.solved })),
+    flowers: () => flowers.map(f => ({ x: f.x, z: f.z, got: f.got, kind: f.kind })),
+    animals: () => animals.map(a => ({ kind: a.kind, x: a.x, z: a.z, state: a.state })),
+    cart: () => ({ x: cart.x, z: cart.z, rot: cart.rot, held: cart.held }),
+    lying: () => lying.map(cellPos),
+    farm: () => ({ x: UNLOAD.x, z: UNLOAD.z, hx: FARM.x, hz: FARM.z }),
+    teleport(x, z, rot) {
+      farmer.position.set(x, 0, z); if (rot !== undefined) farmer.rotation.y = rot; speed = 0; snapCamera();
+      if (cart.held) { cart.x = x + Math.sin(farmer.rotation.y) * CART_D; cart.z = z + Math.cos(farmer.rotation.y) * CART_D; cart.rot = farmer.rotation.y; placeCart(); }
+    },
+    input(v) { testInput = v; },
+    speed(n) { timeScale = n; },
+    save
+  };
+}
+
+if (location.hash === '#neu') {                           /* „Nochmal spielen“: ohne Umweg über den Start-Bildschirm */
+  history.replaceState(null, '', location.pathname + location.search);
+  startGame();
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
