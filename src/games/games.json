@@ -87,5 +87,147 @@
       "pointsIcon": "⭐",
       "rule": "Bestes Ergebnis je Spieler: meiste Punkte in 40 Sekunden."
     }
+  },
+  {
+    "key": "europaflug",
+    "type": "html",
+    "title": "Flug über Europa",
+    "description": "Fliege über Europa und lerne Länder, Hauptstädte, Flaggen und Sehenswürdigkeiten.",
+    "age": "8–10 Jahre",
+    "emoji": "✈️🇪🇺",
+    "color": "linear-gradient(135deg, #a5d8ff, #4dabf7)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "rule": "Punkte gibt es beim ersten Besuch eines Ziels. Bestes Ergebnis je Spieler: meiste Punkte."
+    }
+  },
+  {
+    "key": "sachunterricht-getreide",
+    "type": "html",
+    "title": "Getreide-Abenteuer",
+    "description": "Fahre mit dem Traktor über das Feld und löse an 10 Stationen Aufgaben rund ums Getreide.",
+    "age": "3. Klasse",
+    "emoji": "🚜🌾",
+    "color": "linear-gradient(135deg, #ffe066, #94d82d)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Fehlversuche",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
+    }
+  },
+  {
+    "key": "deutschlandflug",
+    "type": "html",
+    "title": "Flug über Deutschland",
+    "description": "Fliege über Deutschland zu den 16 Bundesländern und lerne ihre Flaggen und Hauptstädte.",
+    "age": "3. Klasse",
+    "emoji": "✈️🇩🇪",
+    "color": "linear-gradient(135deg, #ffd43b, #fa5252)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "rule": "Punkte gibt es beim ersten Besuch eines Ziels. Bestes Ergebnis je Spieler: meiste Punkte."
+    }
+  },
+  {
+    "key": "weltflug",
+    "type": "html",
+    "title": "Flug über die Welt",
+    "description": "Fliege um die ganze Welt zu allen 193 Ländern und lerne ihre Flaggen, Hauptstädte und Sehenswürdigkeiten.",
+    "age": "3. Klasse",
+    "emoji": "✈️🌍",
+    "color": "linear-gradient(135deg, #99e9f2, #51cf66)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "rule": "Punkte gibt es beim ersten Besuch eines Ziels. Bestes Ergebnis je Spieler: meiste Punkte."
+    }
+  },
+  {
+    "key": "mathe-robi",
+    "type": "html",
+    "title": "Robi in der Zahlenfabrik",
+    "description": "Hüpfe mit Roboter Robi durch die Fabrik und löse Aufgaben zum Rechnen, zu Zahlen und zu Größen.",
+    "age": "3. Klasse",
+    "emoji": "🤖🔢",
+    "color": "linear-gradient(135deg, #ffc078, #868e96)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Fehlversuche",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
+    }
+  },
+  {
+    "key": "sachunterricht-getreideernte",
+    "type": "html",
+    "title": "Bauer Franz und die Getreideernte",
+    "description": "Mähe mit Bauer Franz und seiner Sense das Feld und löse an 10 Stationen Aufgaben rund ums Getreide.",
+    "age": "3. Klasse",
+    "emoji": "👨‍🌾🌾",
+    "color": "linear-gradient(135deg, #ffec99, #d9480f)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Fehlversuche",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
+    }
+  },
+  {
+    "key": "mathe-formen",
+    "type": "html",
+    "title": "Die Formen-Werkstatt",
+    "description": "Hilf Füchsin Tilda in ihrer Werkstatt: Erkenne Figuren und Körper, falte Würfelnetze, spiegle und zähle Kästchen.",
+    "age": "3. Klasse",
+    "emoji": "🦊🔺",
+    "color": "linear-gradient(135deg, #ffa94d, #845ef7)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Fehlversuche",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
+    }
+  },
+  {
+    "key": "deutsch-wortmonster",
+    "type": "html",
+    "title": "Die Wortmonster",
+    "description": "Füttere drei hungrige Monster mit Nomen, Verben und Adjektiven und übe für den Sprachkundetest.",
+    "age": "3. Klasse",
+    "emoji": "👾📚",
+    "color": "linear-gradient(135deg, #74c0fc, #da77f2)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Richtig",
+      "showTime": true,
+      "variants": [
+        {
+          "id": "nomen",
+          "label": "🔵 Nomen"
+        },
+        {
+          "id": "verben",
+          "label": "🟠 Verben"
+        },
+        {
+          "id": "adjektive",
+          "label": "🟣 Adjektive"
+        },
+        {
+          "id": "mix",
+          "label": "🟢 Buffet"
+        },
+        {
+          "id": "test",
+          "label": "📝 Probetest"
+        }
+      ],
+      "rule": "Zählt die Aufgaben, die gleich beim ersten Versuch richtig waren. Bestes Ergebnis je Spieler, bei Gleichstand die schnellste Zeit."
+    }
   }
 ]

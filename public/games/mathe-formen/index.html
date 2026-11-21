@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<title>Die Formen-Werkstatt</title>
+<style>
+/* Die Formen-Werkstatt – Geometrie für die 3. Klasse (Bildungsplan BW 2016, Mathe 3.2.2 Raum und Form).
+   Füchsin Tilda baut eine Rakete. Für jeden gelösten Auftrag gibt es ein Bauteil. */
+:root{--ink:#1d2b4f;--accent:#ff7a2f;--ok:#3fae5a;--bad:#e2604f;--paper:#fffaf2;--line:#e8d9c2}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+  background:radial-gradient(circle,rgba(120,82,40,.13) 2px,transparent 2.5px) 0 0/26px 26px,linear-gradient(#f6d7a7,#fbe9cc 60%,#f3d3a2)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 6px}
+.pill{background:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;font-size:16px;color:inherit;
+  text-decoration:none;box-shadow:0 3px 10px rgba(80,50,20,.22);display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:40px}
+.pill svg{width:22px;height:30px}
+main{flex:1;display:flex;padding:8px 12px calc(16px + env(safe-area-inset-bottom))}
+.card{margin:auto;background:var(--paper);border-radius:24px;padding:20px;width:100%;box-shadow:0 8px 26px rgba(80,50,20,.28);border:3px solid #fff}
+h1{margin:4px 0 8px;font-size:clamp(26px,5vw,38px);text-align:center}
+p{font-size:18px;line-height:1.4;margin:8px 0}
+.btn{display:block;width:100%;margin:10px 0 0;padding:13px 18px;min-height:52px;font:inherit;font-size:19px;font-weight:700;text-align:center;
+  color:var(--ink);background:#fff;border:3px solid var(--line);border-radius:16px;cursor:pointer;text-decoration:none}
+.btn.main{background:var(--accent);border-color:var(--accent);color:#fff}
+button,a{-webkit-tap-highlight-color:transparent}
+button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* Start */
+.start{max-width:760px}
+.hero{display:flex;align-items:center;justify-content:center;gap:14px}
+.hero svg{width:70px;height:98px;flex:none}
+.say{background:#fff;border:3px solid var(--line);border-radius:18px;padding:10px 14px;position:relative;max-width:470px}
+.say b{color:var(--accent)}
+.pick{text-align:center;font-weight:700;margin-top:14px}
+.topics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.topic{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;min-height:64px;font:inherit;color:inherit;background:#fff;
+  border:3px solid var(--line);border-radius:16px;cursor:pointer}
+.topic:hover{border-color:var(--accent)}
+.topic .ti{font-size:30px;flex:none;width:38px;text-align:center}
+.topic b{display:block;font-size:18px}
+.topic small{display:block;font-size:14px;opacity:.75}
+.topic .st{margin-left:auto;font-size:14px;white-space:nowrap}
+.topic.mix{background:#fff3e3}
+
+/* Spiel */
+.game{max-width:1060px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr);padding:14px}
+#vis{position:relative;background:#fff;border:3px solid var(--line);border-radius:18px;display:flex;align-items:center;justify-content:center;
+  min-height:160px;overflow:hidden;padding:8px}
+#vis svg.big{display:block;width:100%;height:auto;max-height:min(40vh,330px)}
+#vis.is3d{padding:0;height:min(42vh,340px);background:linear-gradient(#eef6ff,#fff)}
+#vis canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#vis canvas:active{cursor:grabbing}
+.chip{position:absolute;bottom:8px;background:rgba(255,255,255,.92);border:2px solid var(--line);border-radius:999px;padding:5px 11px;
+  font:inherit;font-size:14px;font-weight:700;color:var(--ink);pointer-events:none}
+.chip.hint{left:8px;top:8px;bottom:auto}
+.chip.again{right:8px;pointer-events:auto;cursor:pointer;font-size:15px;padding:7px 12px}
+.panel{display:flex;flex-direction:column;justify-content:center;min-width:0}
+#prompt{margin:0 0 10px;font-size:clamp(20px,3.2vw,26px);line-height:1.25;text-align:center}
+#opts{display:grid;gap:10px;grid-template-columns:repeat(3,minmax(0,1fr))}
+#opts.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+#opts.one{grid-template-columns:minmax(0,1fr)}
+.opt{min-height:62px;font:inherit;font-size:20px;font-weight:700;color:var(--ink);background:#fff;border:3px solid var(--line);border-radius:16px;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 6px;line-height:1.15}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt .num{font-size:28px}
+.opt .let{font:700 44px/1 Arial,Helvetica,sans-serif}
+.opt .oi{width:40px;height:40px}
+.opt svg.oimg{width:100%;height:auto;max-height:118px}
+.opt small{font-size:13px;font-weight:400}
+.opt.right{background:#dcf5d7;border-color:var(--ok)}
+.opt.wrong{background:#ffe3de;border-color:var(--bad);opacity:.65}
+.opt:disabled{cursor:default}
+.opt.check{background:var(--accent);border-color:var(--accent);color:#fff}
+.dot{display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:-3px;margin-right:6px;border:2px solid var(--ink)}
+#fb{min-height:52px;font-weight:700;font-size:18px;margin:10px 0 0;text-align:center}
+#fb.good{color:#23753a}
+#fb.bad{color:#a8382b}
+@media (min-width:700px) and (orientation:landscape){
+  .game{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);align-items:stretch}
+  #vis svg.big{max-height:calc(100vh - 130px);max-height:calc(100dvh - 130px)}
+  #vis.is3d{height:calc(100vh - 120px);height:calc(100dvh - 120px);max-height:480px;min-height:240px}
+}
+@media (max-height:500px) and (orientation:landscape){
+  .game{padding:10px;gap:10px} #prompt{font-size:19px;margin-bottom:6px} .opt{min-height:50px} #fb{min-height:40px;font-size:16px;margin-top:6px}
+  .btn{min-height:46px;padding:9px 14px;margin-top:6px} .opt svg.oimg{max-height:84px}
+}
+
+/* Hilfen, die nach der richtigen Antwort erscheinen */
+.corner,.axis{opacity:0;transition:opacity .4s}
+.reveal .corner,.reveal .axis{opacity:1}
+.reveal .hit{stroke:#e2604f;stroke-width:7;animation:pulse 1s ease-in-out 3}
+.reveal .rim line{stroke:#ff7a2f;stroke-width:4.5}
+@keyframes pulse{50%{opacity:.45}}
+
+/* Gitter zum Spiegeln */
+svg.grid rect{stroke:#c9d3e2;stroke-width:.35}
+svg.grid rect.off{fill:#eef1f6}
+svg.grid rect.tap{fill:#fff;cursor:pointer}
+svg.grid rect.tap:hover{fill:#fff1e2}
+svg.grid rect.giv{fill:#ff9f55}
+svg.grid rect.tap.on{fill:#4aa3df}
+svg.grid rect.miss{stroke:#e2604f;stroke-width:1.1;stroke-dasharray:1.6 1}
+svg.grid rect.extra{fill:#f3a79b}
+
+/* Gewinn */
+.win{max-width:560px;text-align:center}
+.launch{height:210px;display:flex;align-items:flex-end;justify-content:center}
+.launch svg{width:120px;height:168px;animation:hover 1.6s ease-in-out infinite}
+.launch .fl{animation:flick .18s infinite alternate;transform-origin:50px 111px}
+@keyframes hover{50%{transform:translateY(-14px)}}
+@keyframes flick{to{transform:scaleY(.8)}}
+.stars{font-size:46px;letter-spacing:6px;min-height:56px}
+.stars span{display:inline-block;animation:pop .5s backwards}
+.stars span:nth-child(2){animation-delay:.25s}.stars span:nth-child(3){animation-delay:.5s}
+@keyframes pop{from{transform:scale(0)}}
+.got{animation:pop .5s}
+</style>
+</head>
+<body>
+<div class="bar" id="bar" hidden>
+  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  <span class="pill" id="progBox"><span id="mini"></span><span id="progress"></span></span>
+  <button class="pill" id="soundBtn" aria-label="Ton an oder aus">🔊</button>
+</div>
+<main>
+  <section class="card start" id="start">
+    <h1>Die Formen-Werkstatt</h1>
+    <div class="hero">
+      <span id="heroRocket"></span>
+      <p class="say">🦊 Hallo, ich bin <b>Tilda</b>! In meiner Werkstatt baue ich eine Rakete.
+        Hilf mir bei <b>10 Aufträgen</b> rund um Formen und Körper. Für jeden Auftrag bekommst du ein Bauteil.</p>
+    </div>
+    <p class="pick">Wähle ein Thema:</p>
+    <div class="topics" id="topics"></div>
+    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </section>
+
+  <section class="card game" id="game" hidden>
+    <div id="vis"></div>
+    <div class="panel">
+      <h2 id="prompt"></h2>
+      <div id="opts"></div>
+      <p id="fb" aria-live="polite"></p>
+      <button class="btn main" id="nextBtn" hidden>Weiter ➜</button>
+    </div>
+  </section>
+
+  <section class="card win" id="win" hidden>
+    <div class="launch" id="winRocket"></div>
+    <h1>Die Rakete ist fertig!</h1>
+    <div class="stars" id="stars"></div>
+    <p id="winText"></p>
+    <p id="winResult"></p>
+    <button class="btn main" id="againBtn">🔄 Nochmal spielen</button>
+    <button class="btn" id="menuBtn">🧩 Anderes Thema</button>
+    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  </section>
+</main>
+
+<script src="../shared/vendor/three-r128.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var SAVE = 'mathe_formen_v1';
+  var TEST = /[?&]test\b/.test(location.search);
+  var TASKS = 10;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- kleine Helfer ---------- */
+  function ri(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
+  function k2(c) { return c[0] + ',' + c[1]; }
+  function setOf(cells) { var S = {}; cells.forEach(function (c) { S[k2(c)] = 1; }); return S; }
+  function bbox(cells) {
+    var b = { x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9 };
+    cells.forEach(function (c) { b.x0 = Math.min(b.x0, c[0]); b.y0 = Math.min(b.y0, c[1]); b.x1 = Math.max(b.x1, c[0]); b.y1 = Math.max(b.y1, c[1]); });
+    return b;
+  }
+  function norm(cells) { var b = bbox(cells); return cells.map(function (c) { return [c[0] - b.x0, c[1] - b.y0]; }); }
+  function cellKey(cells) { return norm(cells).map(k2).sort().join(' '); }
+  var DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16), f = function (v) { return Math.max(0, Math.min(255, v + amt)); };
+    return '#' + ((1 << 24) + (f(n >> 16) << 16) + (f((n >> 8) & 255) << 8) + f(n & 255)).toString(16).slice(1);
+  }
+  var INK = '#1d2b4f';
+  var COLORS = ['#ff9f55', '#7cc0f0', '#8fd88a', '#f6cf55', '#c59be6', '#f28fa8', '#6fd3c4'];
+  var PRAISE = ['Richtig!', 'Super!', 'Genau!', 'Klasse!', 'Prima!'];
+  var OOPS = ['Noch nicht ganz.', 'Fast!', 'Hmm, nicht ganz.'];
+
+  function svg(vb, body, cls) { return '<svg viewBox="' + vb + '" class="' + (cls || '') + '" aria-hidden="true">' + body + '</svg>'; }
+  function pts(p) { return p.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' '); }
+  function rot(p, cx, cy, deg) {
+    var a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    return p.map(function (q) { var x = q[0] - cx, y = q[1] - cy; return [cx + x * c - y * s, cy + x * s + y * c]; });
+  }
+
+  /* Antworten: Zahlen aufsteigend, sonst gemischt */
+  function numOpts(ans, cands) {
+    var out = [ans];
+    (cands || []).concat([ans + 1, ans - 1, ans + 2, ans - 2, ans + 3, ans + 4]).forEach(function (c) {
+      if (out.length < 3 && c >= 0 && out.indexOf(c) < 0) out.push(c);
+    });
+    return out.sort(function (a, b) { return a - b; }).map(function (v) { return { html: '<b class="num">' + v + '</b>', ok: v === ans, v: v }; });
+  }
+  function textOpts(right, wrongs, icon) {
+    return shuffle([right].concat(wrongs)).map(function (t) { return { html: (icon ? icon(t) : '') + '<span>' + t + '</span>', ok: t === right, v: t }; });
+  }
+  function picOpts(list) { return shuffle(list.slice()); }
+
+  /* ---------- Speicherstand ---------- */
+  function load() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    d = d && typeof d === 'object' ? d : {};
+    d.best = d.best && typeof d.best === 'object' ? d.best : {};
+    d.lvl = d.lvl && typeof d.lvl === 'object' ? d.lvl : {};
+    d.mute = !!d.mute;
+    return d;
+  }
+  var store = load();
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(store)); } catch (e) {} }
+
+  /* ---------- Töne ---------- */
+  var AC = null;
+  function beep(f, d, type, vol, delay) {
+    if (store.mute) return;
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      var t = AC.currentTime + (delay || 0), o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(vol || .14, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + .02);
+    } catch (e) {}
+  }
+  function sndRight() { beep(660, .14); beep(880, .22, 'sine', .14, .11); }
+  function sndWrong() { beep(240, .28, 'triangle', .12); }
+  function sndTap() { beep(520, .06, 'square', .04); }
+  function sndWin() { [523, 659, 784, 1046].forEach(function (f, i) { beep(f, .25, 'sine', .13, i * .14); }); }
+
+  /* ---------- Rakete (Fortschritt) ---------- */
+  var PARTS = [
+    ['polygon', 'points="32,74 12,108 32,102"', '#e2604f'],
+    ['polygon', 'points="68,74 88,108 68,102"', '#e2604f'],
+    ['rect', 'x="32" y="40" width="36" height="62" rx="2"', '#e9eef6'],
+    ['polygon', 'points="50,8 32,40 68,40"', '#e2604f'],
+    ['circle', 'cx="50" cy="58" r="9"', '#4aa3df'],
+    ['rect', 'x="43" y="76" width="14" height="14"', '#f6cf55'],
+    ['rect', 'x="38" y="102" width="24" height="9"', '#7b8794'],
+    ['polygon', 'points="38,111 62,111 50,136"', '#ff8a3d', 'fl'],
+    ['polygon', 'points="44,111 56,111 50,127"', '#ffe066', 'fl'],
+    ['circle', 'cx="50" cy="5" r="3.5"', '#f6cf55']
+  ];
+  var EARN = [2, 3, 4, 0, 1, 5, 6, 7, 8, 9];   /* Reihenfolge, in der die Teile dazukommen */
+  function rocketSVG(k, newest) {
+    var rank = {}; EARN.forEach(function (p, i) { rank[p] = i; });
+    return svg('0 0 100 140', PARTS.map(function (p, i) {
+      var have = rank[i] < k, cls = [p[3] || '', have && rank[i] === newest ? 'got' : ''].join(' ').trim();
+      return '<' + p[0] + ' ' + p[1] + (cls ? ' class="' + cls + '"' : '') + (have ? ' fill="' + p[2] + '" stroke="' + INK + '" stroke-width="2.5"' :
+        ' fill="rgba(255,255,255,.5)" stroke="#a89377" stroke-width="2" stroke-dasharray="4 3"') +
+        (have && rank[i] === newest ? ' style="transform-box:fill-box;transform-origin:center"' : '') +
+        ' stroke-linejoin="round"/>';
+    }).join(''));
+  }
+
+  /* =====================================================================
+     3D-Ansicht (Three.js r128): ein Zeichenfeld, das bei Bedarf eingeblendet wird.
+     Ziehen dreht den Körper, ohne Ziehen dreht er sich bei manchen Aufgaben langsam.
+     ===================================================================== */
+  var T3 = { ok: false };
+  function init3D() {
+    if (!window.THREE) return;
+    try {
+      var c = document.createElement('canvas');
+      var r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true });
+      r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      var scene = new THREE.Scene();
+      var cam = new THREE.PerspectiveCamera(35, 1, .1, 100);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xb8a890, .75));
+      scene.add(new THREE.AmbientLight(0xffffff, .25));
+      var dl = new THREE.DirectionalLight(0xffffff, .55); dl.position.set(3, 6, 5); scene.add(dl);
+      var pivot = new THREE.Group(); scene.add(pivot);
+      T3 = { ok: true, canvas: c, r: r, scene: scene, cam: cam, pivot: pivot, yaw: 0, pitch: .5, size: 2, auto: false, touched: false, anim: null, raf: 0, last: 0, box: null };
+      var drag = null;
+      c.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY }; T3.touched = true; try { c.setPointerCapture(e.pointerId); } catch (er) {} });
+      c.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+        T3.yaw += (e.clientX - drag.x) * .012;
+        T3.pitch = Math.max(-.15, Math.min(1.45, T3.pitch + (e.clientY - drag.y) * .009));
+        drag = { x: e.clientX, y: e.clientY };
+      });
+      ['pointerup', 'pointercancel'].forEach(function (n) { c.addEventListener(n, function () { drag = null; }); });
+      window.addEventListener('resize', resize3D);
+    } catch (e) { T3 = { ok: false }; }
+  }
+  function clear3D() {
+    var p = T3.pivot;
+    while (p.children.length) {
+      var ch = p.children.pop();
+      ch.traverse(function (o) {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      });
+    }
+  }
+  function show3D(box, v) {
+    clear3D();
+    var g = new THREE.Group(); T3.pivot.add(g); v.build(g);
+    T3.yaw = v.yaw != null ? v.yaw : .6; T3.pitch = v.pitch != null ? v.pitch : .5; T3.size = v.size || 2;
+    T3.auto = !!v.auto; T3.touched = false; T3.anim = null; T3.box = box;
+    box.classList.add('is3d');
+    box.appendChild(T3.canvas);
+    var h = document.createElement('span'); h.className = 'chip hint'; h.textContent = '👆 Ziehen zum Drehen'; box.appendChild(h);
+    resize3D();
+    if (!T3.raf) { T3.last = performance.now(); T3.raf = requestAnimationFrame(frame); }
+  }
+  function stop3D() {
+    if (!T3.ok) return;
+    if (T3.raf) cancelAnimationFrame(T3.raf);
+    T3.raf = 0; T3.anim = null; T3.box = null;
+    if (T3.canvas.parentNode) T3.canvas.parentNode.removeChild(T3.canvas);
+  }
+  function resize3D() {
+    if (!T3.ok || !T3.box) return;
+    var w = Math.max(50, T3.box.clientWidth), h = Math.max(50, T3.box.clientHeight), cam = T3.cam;
+    T3.r.setSize(w, h, false);
+    cam.aspect = w / h;
+    camFit();
+  }
+  function camFit() {
+    var cam = T3.cam;
+    var half = cam.fov * Math.PI / 360, hh = Math.atan(Math.tan(half) * cam.aspect);
+    var d = T3.size / Math.sin(Math.min(half, hh)) * 1.02;
+    cam.position.set(0, 0, d); cam.lookAt(0, 0, 0); cam.near = d / 20; cam.far = d * 4;
+    cam.updateProjectionMatrix();
+  }
+  function frame(now) {
+    T3.raf = requestAnimationFrame(frame);
+    var dt = Math.min(.05, (now - T3.last) / 1000); T3.last = now;
+    if (T3.auto && !T3.touched) T3.yaw += dt * .45;
+    if (T3.anim) T3.anim(dt);
+    T3.pivot.rotation.set(T3.pitch, T3.yaw, 0);
+    T3.r.render(T3.scene, T3.cam);
+  }
+  function mat(color, extra) {
+    var o = { color: color }; for (var k in extra || {}) o[k] = extra[k];
+    o.polygonOffset = true; o.polygonOffsetFactor = o.polygonOffsetFactor || 1; o.polygonOffsetUnits = o.polygonOffsetUnits || 1;
+    return new THREE.MeshLambertMaterial(o);
+  }
+  function lineMat() { return new THREE.LineBasicMaterial({ color: 0x1d2b4f }); }
+  function textTex(txt, bg, fg, w, h, size) {
+    var c = document.createElement('canvas'); c.width = w || 128; c.height = h || 128;
+    var x = c.getContext('2d');
+    if (bg) { x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height); }
+    x.fillStyle = fg || '#1d2b4f'; x.font = 'bold ' + (size || 80) + 'px Trebuchet MS, Arial, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, c.width / 2, c.height / 2 + 4);
+    return new THREE.CanvasTexture(c);
+  }
+  function ring(r, y) {
+    var p = []; for (var i = 0; i <= 64; i++) { var a = i / 64 * Math.PI * 2; p.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r)); }
+    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), lineMat());
+  }
+
+  /* Körper in 3D */
+  function buildBody(kind) {
+    return function (g) {
+      var col = { wuerfel: 0xff9f55, quader: 0x7cc0f0, kugel: 0xf28fa8, zylinder: 0x8fd88a, pyramide: 0xf6cf55, kegel: 0xc59be6 }[kind];
+      var geo, mesh;
+      if (kind === 'wuerfel' || kind === 'quader') {
+        geo = kind === 'wuerfel' ? new THREE.BoxGeometry(1.7, 1.7, 1.7) : new THREE.BoxGeometry(2.5, 1.2, 1.4);
+        g.add(new THREE.Mesh(geo, mat(col)));
+        g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), lineMat()));
+      } else if (kind === 'kugel') {
+        g.add(new THREE.Mesh(new THREE.SphereGeometry(1.15, 40, 24), mat(col)));
+      } else if (kind === 'zylinder') {
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(.85, .85, 1.9, 48), mat(col)));
+        g.add(ring(.85, .95)); g.add(ring(.85, -.95));
+      } else if (kind === 'kegel') {
+        g.add(new THREE.Mesh(new THREE.ConeGeometry(1, 2, 48), mat(col)));
+        g.add(ring(1, -1));
+      } else {
+        /* Pyramide mit quadratischer Grundfläche, von Hand gebaut */
+        var a = 1.25, hgt = 1.8, top = [0, hgt / 2, 0], b = [[-a, -hgt / 2, -a], [a, -hgt / 2, -a], [a, -hgt / 2, a], [-a, -hgt / 2, a]], v = [], i;
+        var tri = function (p, q, r) { v.push.apply(v, p.concat(q, r)); };
+        for (i = 0; i < 4; i++) tri(b[(i + 1) % 4], b[i], top);
+        tri(b[0], b[1], b[2]); tri(b[0], b[2], b[3]);
+        geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+        geo.computeVertexNormals();
+        mesh = new THREE.Mesh(geo, mat(col, { side: THREE.DoubleSide })); g.add(mesh);
+        var lp = [];
+        for (i = 0; i < 4; i++) { lp.push(new THREE.Vector3().fromArray(b[i]), new THREE.Vector3().fromArray(b[(i + 1) % 4])); lp.push(new THREE.Vector3().fromArray(b[i]), new THREE.Vector3().fromArray(top)); }
+        g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lp), lineMat()));
+      }
+    };
+  }
+
+  /* Würfelbauten und Quader aus Würfelchen. h[z][x] = Anzahl Würfel übereinander, z = 0 ist hinten. */
+  var LAYER = [0xffb36b, 0x7cc0f0, 0x8fd88a, 0xf6cf55];
+  function buildBlocks(h, noLabel) {
+    return function (g) {
+      var D = h.length, W = h[0].length, maxH = 1, x, z, k;
+      h.forEach(function (row) { row.forEach(function (v) { maxH = Math.max(maxH, v); }); });
+      var root = new THREE.Group(); root.position.y = -maxH / 2; g.add(root);
+      var front = noLabel ? .25 : 1.15;
+      var plate = new THREE.Mesh(new THREE.BoxGeometry(W + .5, .1, D + .25 + front), mat(0xd9c3a0));
+      plate.position.set(0, -.05, (front - .25) / 2); root.add(plate);
+      var geo = new THREE.BoxGeometry(.98, .98, .98), eg = new THREE.EdgesGeometry(geo), mats = LAYER.map(function (c) { return mat(c); }), lm = lineMat();
+      for (z = 0; z < D; z++) for (x = 0; x < W; x++) for (k = 0; k < h[z][x]; k++) {
+        var m = new THREE.Mesh(geo, mats[k % 4]), l = new THREE.LineSegments(eg, lm);
+        m.position.set(x - (W - 1) / 2, k + .5, z - (D - 1) / 2); l.position.copy(m.position);
+        root.add(m); root.add(l);
+      }
+      if (!noLabel) {
+        var lab = new THREE.Mesh(new THREE.PlaneGeometry(1.7, .85), new THREE.MeshBasicMaterial({ map: textTex('vorne', null, '#1d2b4f', 256, 128, 64), transparent: true }));
+        lab.rotation.x = -Math.PI / 2; lab.position.set(0, .01, D / 2 + .5); root.add(lab);
+      }
+    };
+  }
+  function blockSize(h) {
+    var D = h.length, W = h[0].length, m = 1;
+    h.forEach(function (r) { r.forEach(function (v) { m = Math.max(m, v); }); });
+    return Math.sqrt(W * W + (D + 1) * (D + 1) + m * m) / 2 + .15;
+  }
+
+  /* Würfelnetz falten: jedes Quadrat klappt an der Kante zu seinem Nachbarn um 90° nach unten. */
+  var PLANE = null, PLANE_EDGES = null;
+  function netBuild(cells, fills, labels, holder) {
+    return function (g) {
+      if (!PLANE) { PLANE = new THREE.PlaneGeometry(.97, .97); PLANE.rotateX(-Math.PI / 2); PLANE_EDGES = new THREE.EdgesGeometry(PLANE); }
+      var idx = {}; cells.forEach(function (c, i) { idx[k2(c)] = i; });
+      var root = netRoot(cells), inner = new THREE.Group(), hinges = [], lm = lineMat();
+      g.add(inner);
+      var face = function (i) {
+        var grp = new THREE.Group(), o = { color: labels && labels[i] ? 0xffffff : new THREE.Color(fills[i]), side: THREE.DoubleSide, polygonOffsetFactor: -i * .4, polygonOffsetUnits: -i * 3 };
+        if (labels && labels[i]) o.map = textTex(labels[i], fills[i], '#1d2b4f');
+        grp.add(new THREE.Mesh(PLANE, mat(o.color, o)));
+        grp.add(new THREE.LineSegments(PLANE_EDGES, lm));
+        return grp;
+      };
+      var made = {}; made[root] = face(root);
+      made[root].position.set(cells[root][0], 0, cells[root][1]); inner.add(made[root]);
+      var queue = [root];
+      while (queue.length) {
+        var p = queue.shift();
+        DIRS.forEach(function (d) {
+          var j = idx[(cells[p][0] + d[0]) + ',' + (cells[p][1] + d[1])];
+          if (j == null || made[j]) return;
+          var hinge = new THREE.Group(); hinge.position.set(d[0] / 2, 0, d[1] / 2); made[p].add(hinge);
+          var fg = face(j); fg.position.set(d[0] / 2, 0, d[1] / 2); hinge.add(fg); made[j] = fg;
+          hinges.push({ g: hinge, axis: new THREE.Vector3(d[1], 0, -d[0]) });
+          queue.push(j);
+        });
+      }
+      var b = bbox(cells), flat = new THREE.Vector3((b.x0 + b.x1) / 2, 0, (b.y0 + b.y1) / 2), folded = new THREE.Vector3(cells[root][0], -.5, cells[root][1]);
+      holder.set = function (t) {
+        hinges.forEach(function (hg) { hg.g.quaternion.setFromAxisAngle(hg.axis, t * Math.PI / 2); });
+        inner.position.copy(flat).lerp(folded, t).multiplyScalar(-1);
+      };
+      holder.set(0);
+    };
+  }
+  function ease(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function foldDemo(vis, cells, fills, labels) {
+    if (!T3.ok) return;
+    var holder = {}, b = bbox(cells);
+    var r = Math.sqrt(Math.pow(b.x1 - b.x0 + 1, 2) + Math.pow(b.y1 - b.y0 + 1, 2)) / 2 + .15;
+    vis.innerHTML = '';
+    show3D(vis, { build: netBuild(cells, fills, labels, holder), size: r, pitch: .95, yaw: 0, auto: false });
+    var play = function () {
+      var t0 = 0;
+      holder.set(0);
+      T3.anim = function (dt) {
+        t0 += dt;
+        var t = Math.min(1, Math.max(0, (t0 - .6) / 1.9));
+        holder.set(ease(t));
+        T3.size = r + (1.3 - r) * ease(t); camFit();
+        if (t >= 1) { T3.anim = null; T3.auto = true; T3.touched = false; }
+      };
+    };
+    play();
+    var btn = document.createElement('button'); btn.className = 'chip again'; btn.textContent = '🔁 Nochmal falten';
+    btn.addEventListener('click', function () { T3.auto = false; T3.yaw = 0; T3.pitch = .95; play(); });
+    vis.appendChild(btn);
+  }
+
+  /* =====================================================================
+     Zeichnungen (SVG)
+     ===================================================================== */
+  function figPoints(kind, cx, cy, r, v) {
+    if (kind === 'quadrat') return [[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + r], [cx - r, cy + r]];
+    if (kind === 'rechteck') return [[cx - r * 1.5, cy - r * .72], [cx + r * 1.5, cy - r * .72], [cx + r * 1.5, cy + r * .72], [cx - r * 1.5, cy + r * .72]];
+    if (v === 1) return [[cx - r, cy - r * 1.05], [cx - r, cy + r * .9], [cx + r * 1.25, cy + r * .9]];
+    if (v === 2) return [[cx - r * 1.35, cy + r * .75], [cx + r * 1.3, cy + r * .75], [cx + r * .55, cy - r * .95]];
+    return [[cx, cy - r * 1.1], [cx + r * 1.2, cy + r * .85], [cx - r * 1.2, cy + r * .85]];
+  }
+  function figEl(kind, cx, cy, r, deg, color, cls, sw, v) {
+    var c = cls ? ' class="' + cls + '"' : '', st = ' stroke="' + INK + '" stroke-width="' + (sw || 3) + '" stroke-linejoin="round"';
+    if (kind === 'kreis') return '<circle' + c + ' cx="' + cx + '" cy="' + cy + '" r="' + (r * 1.1).toFixed(1) + '" fill="' + color + '"' + st + '/>';
+    return '<polygon' + c + ' points="' + pts(rot(figPoints(kind, cx, cy, r, v || 0), cx, cy, deg)) + '" fill="' + color + '"' + st + '/>';
+  }
+  function figPic(kind, color) {
+    return svg('0 0 80 64', figEl(kind, 40, 33, kind === 'rechteck' ? 15 : 20, 0, color || pick(COLORS), '', 2.5), 'oimg');
+  }
+
+  /* Gegenstände aus dem Alltag (ebene Figuren) */
+  var S3 = ' stroke="#1d2b4f" stroke-width="3" stroke-linejoin="round"';
+  function ticks(n, cx, cy, r1, r2) { var s = ''; for (var i = 0; i < n; i++) { var a = i / n * Math.PI * 2; s += '<line x1="' + (cx + Math.cos(a) * r1).toFixed(1) + '" y1="' + (cy + Math.sin(a) * r1).toFixed(1) + '" x2="' + (cx + Math.cos(a) * r2).toFixed(1) + '" y2="' + (cy + Math.sin(a) * r2).toFixed(1) + '" stroke="#1d2b4f" stroke-width="3"/>'; } return s; }
+  function gridLines(x, y, w, h, nx, ny, col) {
+    var s = '', i;
+    for (i = 1; i < nx; i++) s += '<line x1="' + (x + w * i / nx) + '" y1="' + y + '" x2="' + (x + w * i / nx) + '" y2="' + (y + h) + '" stroke="' + col + '" stroke-width="2.5"/>';
+    for (i = 1; i < ny; i++) s += '<line x1="' + x + '" y1="' + (y + h * i / ny) + '" x2="' + (x + w) + '" y2="' + (y + h * i / ny) + '" stroke="' + col + '" stroke-width="2.5"/>';
+    return s;
+  }
+  function chess() {
+    var s = '';
+    for (var y = 0; y < 4; y++) for (var x = 0; x < 5; x++) s += '<rect x="' + (25 + x * 30) + '" y="' + (20 + y * 30) + '" width="30" height="30" fill="' + ((x + y) % 2 ? '#6b4a2f' : '#f3e2c4') + '"/>';
+    return s + '<rect x="25" y="20" width="150" height="120" fill="none"' + S3 + '/><rect x="85" y="50" width="30" height="30" fill="none" stroke="#ff7a2f" stroke-width="5"/>';
+  }
+  var FIG_OBJ = [
+    ['muenze', 'die Münze', 'kreis', '<circle cx="100" cy="80" r="58" fill="#e8b93a"' + S3 + '/><circle cx="100" cy="80" r="45" fill="none" stroke="#b8871b" stroke-width="3"/><text x="100" y="95" text-anchor="middle" font-size="42" font-weight="700" fill="#7a5410">1 €</text>', 'Eine Münze ist rund. Sie hat die Form von einem Kreis.'],
+    ['uhr', 'das Zifferblatt der Uhr', 'kreis', '<circle cx="100" cy="80" r="62" fill="#fff" stroke="#1d2b4f" stroke-width="6"/>' + ticks(12, 100, 80, 48, 56) + '<line x1="100" y1="80" x2="100" y2="40" stroke="#1d2b4f" stroke-width="5" stroke-linecap="round"/><line x1="100" y1="80" x2="128" y2="92" stroke="#1d2b4f" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="80" r="5" fill="#e2604f"/>', 'Das Zifferblatt ist rund wie ein Kreis.'],
+    ['schild', 'das Verkehrsschild', 'dreieck', '<rect x="96" y="96" width="8" height="62" fill="#8a8f99"/><polygon points="30,14 170,14 100,126" fill="#d9302c"' + S3 + '/><polygon points="57,30 143,30 100,99" fill="#fff"/>', 'Das Schild „Vorfahrt achten“ ist ein Dreieck. Es steht auf der Spitze.'],
+    ['geo', 'das Geodreieck', 'dreieck', '<polygon points="18,132 182,132 100,50" fill="#bfe6f5" fill-opacity=".9"' + S3 + '/>' + range(17).map(function (i) { return '<line x1="' + (28 + i * 9) + '" y1="132" x2="' + (28 + i * 9) + '" y2="' + (i % 2 ? 125 : 120) + '" stroke="#1d2b4f" stroke-width="2"/>'; }).join('') + '<path d="M70,132 A30,30 0 0 1 130,132" fill="none" stroke="#1d2b4f" stroke-width="2"/>', 'Das Geodreieck heißt so, weil es ein Dreieck ist.'],
+    ['tuer', 'die Tür', 'rechteck', '<rect x="60" y="10" width="80" height="142" rx="3" fill="#b5703a"' + S3 + '/><rect x="72" y="24" width="56" height="48" fill="none" stroke="#8a5226" stroke-width="3"/><rect x="72" y="86" width="56" height="54" fill="none" stroke="#8a5226" stroke-width="3"/><circle cx="127" cy="80" r="5" fill="#f6cf55" stroke="#1d2b4f" stroke-width="2"/>', 'Eine Tür ist ein Rechteck: 4 rechte Winkel, zwei lange und zwei kurze Seiten.'],
+    ['brief', 'der Briefumschlag', 'rechteck', '<rect x="22" y="32" width="156" height="98" rx="4" fill="#fff"' + S3 + '/><polyline points="22,32 100,88 178,32" fill="none"' + S3 + '/><rect x="146" y="42" width="20" height="24" fill="#f28fa8" stroke="#1d2b4f" stroke-width="2"/>', 'Der Briefumschlag ist ein Rechteck.'],
+    ['schoko', 'die Tafel Schokolade', 'rechteck', '<rect x="22" y="36" width="156" height="88" rx="4" fill="#6b3d22"' + S3 + '/>' + gridLines(22, 36, 156, 88, 6, 3, '#8f5a36'), 'Die Tafel Schokolade ist ein Rechteck.'],
+    ['zettel', 'der Notizzettel', 'quadrat', '<rect x="52" y="32" width="100" height="100" fill="#ffe066"' + S3 + '/><path d="M66,58 h70 M66,78 h60 M66,98 h66" stroke="#9a7b14" stroke-width="3" stroke-linecap="round"/>', 'Der Notizzettel hat 4 gleich lange Seiten und 4 rechte Winkel. Er ist ein Quadrat.'],
+    ['schach', 'das orange markierte Feld vom Schachbrett', 'quadrat', chess(), 'Jedes Feld vom Schachbrett ist ein Quadrat.']
+  ];
+
+  /* Körper als kleine Bilder */
+  function bodyIcon(kind, c) {
+    var s = ' stroke="#1d2b4f" stroke-width="2" stroke-linejoin="round"';
+    c = c || { wuerfel: '#ff9f55', quader: '#7cc0f0', kugel: '#f28fa8', zylinder: '#8fd88a', pyramide: '#f6cf55', kegel: '#c59be6' }[kind];
+    switch (kind) {
+      case 'wuerfel': return '<polygon points="10,24 36,24 36,50 10,50" fill="' + c + '"' + s + '/><polygon points="10,24 21,13 47,13 36,24" fill="' + shade(c, 35) + '"' + s + '/><polygon points="36,24 47,13 47,39 36,50" fill="' + shade(c, -35) + '"' + s + '/>';
+      case 'quader': return '<polygon points="4,30 42,30 42,50 4,50" fill="' + c + '"' + s + '/><polygon points="4,30 14,20 52,20 42,30" fill="' + shade(c, 35) + '"' + s + '/><polygon points="42,30 52,20 52,40 42,50" fill="' + shade(c, -35) + '"' + s + '/>';
+      case 'kugel': return '<circle cx="30" cy="31" r="21" fill="' + c + '"' + s + '/><path d="M9,31 A21,7 0 0 0 51,31" fill="none" stroke="#1d2b4f" stroke-width="1.3"/><ellipse cx="22" cy="22" rx="6" ry="4" fill="#fff" opacity=".6"/>';
+      case 'zylinder': return '<path d="M13,15 V45 A17,6 0 0 0 47,45 V15" fill="' + c + '"' + s + '/><ellipse cx="30" cy="15" rx="17" ry="6" fill="' + shade(c, 35) + '"' + s + '/>';
+      case 'pyramide': return '<polygon points="7,46 35,53 30,7" fill="' + c + '"' + s + '/><polygon points="35,53 54,41 30,7" fill="' + shade(c, -35) + '"' + s + '/>';
+      default: return '<path d="M30,6 L10,46 A20,7 0 0 0 50,46 Z" fill="' + c + '"' + s + '/>';
+    }
+  }
+  function bodyPic(kind) { return svg('0 0 60 60', bodyIcon(kind), 'oi'); }
+  function isoBox(x, y, w, h, d, c) {
+    var dx = d * .7, dy = d * .5;
+    return '<polygon points="' + [x, y, x + w, y, x + w, y + h, x, y + h] + '" fill="' + c + '"' + S3 + '/>' +
+      '<polygon points="' + [x, y, x + dx, y - dy, x + w + dx, y - dy, x + w, y] + '" fill="' + shade(c, 30) + '"' + S3 + '/>' +
+      '<polygon points="' + [x + w, y, x + w + dx, y - dy, x + w + dx, y + h - dy, x + w, y + h] + '" fill="' + shade(c, -30) + '"' + S3 + '/>';
+  }
+  function cyl(cx, top, bot, rx, ry, c, cTop) {
+    return '<path d="M' + (cx - rx) + ',' + top + ' V' + bot + ' A' + rx + ',' + ry + ' 0 0 0 ' + (cx + rx) + ',' + bot + ' V' + top + '" fill="' + c + '"' + S3 + '/>' +
+      '<ellipse cx="' + cx + '" cy="' + top + '" rx="' + rx + '" ry="' + ry + '" fill="' + cTop + '"' + S3 + '/>';
+  }
+  var BODY_OBJ = [
+    ['dose', 'die Dose', 'zylinder', 1, cyl(100, 30, 130, 45, 13, '#d9302c', '#c9ced6') + '<path d="M55,64 A45,13 0 0 0 145,64 V96 A45,13 0 0 1 55,96 Z" fill="#fff3d6"/><text x="100" y="94" text-anchor="middle" font-size="20" font-weight="700" fill="#8a2a1c">Bohnen</text>', 'Die Dose ist ein Zylinder: oben und unten rund, an der Seite gekrümmt.'],
+    ['kerze', 'die Kerze', 'zylinder', 1, cyl(100, 56, 142, 30, 9, '#fff5dc', '#ffeec0') + '<line x1="100" y1="56" x2="100" y2="42" stroke="#1d2b4f" stroke-width="3"/><path d="M100,14 C112,30 110,42 100,44 C90,42 88,30 100,14 Z" fill="#ffb636" stroke="#e2604f" stroke-width="2"/>', 'Die Kerze hat die Form von einem Zylinder.'],
+    ['ball', 'der Ball', 'kugel', 1, '<circle cx="100" cy="80" r="62" fill="#4aa3df"' + S3 + '/><path d="M100,18 C70,50 70,110 100,142" fill="none" stroke="#fff" stroke-width="7"/><path d="M100,18 C130,50 130,110 100,142" fill="none" stroke="#f6cf55" stroke-width="7"/><circle cx="100" cy="80" r="62" fill="none"' + S3 + '/><ellipse cx="78" cy="52" rx="14" ry="9" fill="#fff" opacity=".5"/>', 'Ein Ball ist eine Kugel. Er kann in alle Richtungen rollen.'],
+    ['orange', 'die Orange', 'kugel', 1, '<circle cx="100" cy="84" r="58" fill="#f39a1e"' + S3 + '/><path d="M100,28 C112,12 132,14 138,20 C126,30 112,32 100,28 Z" fill="#5cae4b" stroke="#1d2b4f" stroke-width="2"/><circle cx="80" cy="66" r="2.5" fill="#c77612"/><circle cx="118" cy="98" r="2.5" fill="#c77612"/><circle cx="96" cy="112" r="2.5" fill="#c77612"/>', 'Eine Orange ist fast genau eine Kugel.'],
+    ['spielwuerfel', 'der Spielwürfel', 'wuerfel', 1, isoBox(52, 58, 80, 80, 50, '#ffffff') + [[68, 74], [116, 74], [92, 98], [68, 122], [116, 122]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="7" fill="#1d2b4f"/>'; }).join('') + '<ellipse cx="109.5" cy="45.5" rx="8" ry="4.5" fill="#e2604f"/>', 'Ein Spielwürfel ist ein Würfel: 6 gleich große quadratische Flächen.'],
+    ['karton', 'der Schuhkarton', 'quader', 1, isoBox(28, 70, 118, 64, 62, '#c99a62') + '<line x1="28" y1="84" x2="146" y2="84" stroke="#1d2b4f" stroke-width="3"/><rect x="66" y="98" width="42" height="22" fill="#fff" opacity=".8"/>', 'Der Schuhkarton ist ein Quader mit rechteckigen Flächen.'],
+    ['ziegel', 'der Ziegelstein', 'quader', 1, isoBox(36, 84, 112, 44, 54, '#c4543a'), 'Der Ziegelstein ist ein Quader.'],
+    ['eis', 'die Waffel der Eistüte', 'kegel', 3, '<polygon points="62,66 138,66 100,154" fill="#e8b766"' + S3 + '/><path d="M74,80 L120,128 M90,70 L130,96 M110,70 L72,96 M126,76 L86,124" stroke="#b9853a" stroke-width="2.5"/><circle cx="100" cy="52" r="36" fill="#f7a8c4"' + S3 + '/>', 'Die Waffel der Eistüte ist ein Kegel: unten rund, oben eine Spitze – nur umgedreht.'],
+    ['hut', 'der Partyhut', 'kegel', 3, '<path d="M100,16 L54,134 A46,12 0 0 0 146,134 Z" fill="#7cc0f0"' + S3 + '/><path d="M86,52 L114,52 M75,82 L125,82 M64,110 L136,110" stroke="#fff" stroke-width="6"/><circle cx="100" cy="16" r="10" fill="#f6cf55"' + S3 + '/>', 'Der Partyhut hat die Form von einem Kegel.'],
+    ['pyramide', 'die Pyramide in Ägypten', 'pyramide', 3, '<circle cx="164" cy="34" r="15" fill="#f6c945"/><polygon points="22,140 104,24 124,150" fill="#e7c27d"' + S3 + '/><polygon points="124,150 104,24 184,128" fill="#c9a15c"' + S3 + '/>', 'Die Pyramiden in Ägypten haben ein Quadrat als Grundfläche und 4 Dreiecke als Seiten.']
+  ];
+
+  /* Kästchengitter mit Figur */
+  function gridFig(cells, W, H, opt) {
+    opt = opt || {};
+    var cs = 20, S = setOf(cells), s = '<rect x="0" y="0" width="' + W * cs + '" height="' + H * cs + '" fill="#fff"/>', i;
+    for (i = 0; i <= W; i++) s += '<line x1="' + i * cs + '" y1="0" x2="' + i * cs + '" y2="' + H * cs + '" stroke="#cfd8e6" stroke-width="1"/>';
+    for (i = 0; i <= H; i++) s += '<line x1="0" y1="' + i * cs + '" x2="' + W * cs + '" y2="' + i * cs + '" stroke="#cfd8e6" stroke-width="1"/>';
+    var color = opt.color || '#ff9f55';
+    cells.forEach(function (c) { s += '<rect x="' + c[0] * cs + '" y="' + c[1] * cs + '" width="' + cs + '" height="' + cs + '" fill="' + color + '" stroke="' + shade(color, -40) + '" stroke-width=".8"/>'; });
+    var rim = '';
+    cells.forEach(function (c) {
+      var x = c[0] * cs, y = c[1] * cs;
+      if (!S[c[0] + ',' + (c[1] - 1)]) rim += '<line x1="' + x + '" y1="' + y + '" x2="' + (x + cs) + '" y2="' + y + '"/>';
+      if (!S[c[0] + ',' + (c[1] + 1)]) rim += '<line x1="' + x + '" y1="' + (y + cs) + '" x2="' + (x + cs) + '" y2="' + (y + cs) + '"/>';
+      if (!S[(c[0] - 1) + ',' + c[1]]) rim += '<line x1="' + x + '" y1="' + y + '" x2="' + x + '" y2="' + (y + cs) + '"/>';
+      if (!S[(c[0] + 1) + ',' + c[1]]) rim += '<line x1="' + (x + cs) + '" y1="' + y + '" x2="' + (x + cs) + '" y2="' + (y + cs) + '"/>';
+    });
+    s += '<g class="rim" stroke="#1d2b4f" stroke-width="2.6" stroke-linecap="round">' + rim + '</g>' + (opt.extra || '');
+    return svg('-3 -3 ' + (W * cs + 6) + ' ' + (H * cs + 6), s, opt.cls || 'big');
+  }
+
+  /* =====================================================================
+     Formen auf Kästchenpapier: wachsen lassen, prüfen, spiegeln
+     ===================================================================== */
+  function grow(n, W, H, start) {
+    for (var tries = 0; tries < 300; tries++) {
+      var first = start ? start.slice() : [ri(0, W - 1), ri(0, H - 1)], cells = [first], S = {}, guard = 0;
+      S[k2(first)] = 1;
+      while (cells.length < n && guard++ < 800) {
+        var c = pick(cells), d = pick(DIRS), x = c[0] + d[0], y = c[1] + d[1];
+        if (x < 0 || y < 0 || x >= W || y >= H || S[x + ',' + y]) continue;
+        S[x + ',' + y] = 1; cells.push([x, y]);
+      }
+      if (cells.length === n) return cells;
+    }
+    return null;
+  }
+  function connected(cells) {
+    if (!cells.length) return false;
+    var S = setOf(cells), seen = {}, st = [cells[0]], n = 0;
+    seen[k2(cells[0])] = 1;
+    while (st.length) {
+      var c = st.pop(); n++;
+      DIRS.forEach(function (d) { var k = (c[0] + d[0]) + ',' + (c[1] + d[1]); if (S[k] && !seen[k]) { seen[k] = 1; st.push([c[0] + d[0], c[1] + d[1]]); } });
+    }
+    return n === cells.length;
+  }
+  function holeFree(cells) {
+    var b = bbox(cells), S = setOf(cells), seen = {}, st = [[b.x0 - 1, b.y0 - 1]], outside = 0;
+    seen[k2(st[0])] = 1;
+    while (st.length) {
+      var c = st.pop(); outside++;
+      DIRS.forEach(function (d) {
+        var x = c[0] + d[0], y = c[1] + d[1], k = x + ',' + y;
+        if (x < b.x0 - 1 || y < b.y0 - 1 || x > b.x1 + 1 || y > b.y1 + 1 || S[k] || seen[k]) return;
+        seen[k] = 1; st.push([x, y]);
+      });
+    }
+    return outside + cells.length === (b.x1 - b.x0 + 3) * (b.y1 - b.y0 + 3);
+  }
+  function perim(cells) {
+    var S = setOf(cells), p = 0;
+    cells.forEach(function (c) { DIRS.forEach(function (d) { if (!S[(c[0] + d[0]) + ',' + (c[1] + d[1])]) p++; }); });
+    return p;
+  }
+  function center(cells, W, H) {
+    var b = bbox(cells), ox = Math.floor((W - (b.x1 - b.x0 + 1)) / 2) - b.x0, oy = Math.floor((H - (b.y1 - b.y0 + 1)) / 2) - b.y0;
+    return cells.map(function (c) { return [c[0] + ox, c[1] + oy]; });
+  }
+  function polyFig(n, W, H) {
+    for (var i = 0; i < 200; i++) { var c = grow(n, W, H); if (c && holeFree(c)) return center(c, W, H); }
+    return center(grow(n, W, H), W, H);
+  }
+  function rowSum(cells) {
+    var b = bbox(cells), rows = [];
+    for (var y = b.y0; y <= b.y1; y++) rows.push(cells.filter(function (c) { return c[1] === y; }).length);
+    return rows;
+  }
+  /* Ist die Figur achsensymmetrisch? Eine Spiegelachse geht immer durch die Mitte des umgebenden Rechtecks. */
+  function isSym(cells) {
+    var S = setOf(cells), b = bbox(cells);
+    var ok = function (f) { return cells.every(function (c) { return S[k2(f(c))]; }); };
+    if (ok(function (c) { return [b.x0 + b.x1 - c[0], c[1]]; })) return 'v';
+    if (ok(function (c) { return [c[0], b.y0 + b.y1 - c[1]]; })) return 'h';
+    if (b.x1 - b.x0 === b.y1 - b.y0) {
+      if (ok(function (c) { return [b.x0 + c[1] - b.y0, b.y0 + c[0] - b.x0]; })) return 'd';
+      if (ok(function (c) { return [b.x0 + b.y1 - c[1], b.y0 + b.x1 - c[0]]; })) return 'd';
+    }
+    return '';
+  }
+  function symV(cells) { var S = setOf(cells), b = bbox(cells); return cells.every(function (c) { return S[(b.x0 + b.x1 - c[0]) + ',' + c[1]]; }); }
+  function symH(cells) { var S = setOf(cells), b = bbox(cells); return cells.every(function (c) { return S[c[0] + ',' + (b.y0 + b.y1 - c[1])]; }); }
+  /* Symmetrische Figur: linke Hälfte wachsen lassen (berührt die Mitte) und spiegeln */
+  function symFigure(hw, H, n) {
+    var half = grow(n, hw, H, [hw - 1, ri(1, H - 2)]);
+    return half.concat(half.map(function (c) { return [2 * hw - 1 - c[0], c[1]]; }));
+  }
+  function transpose(cells) { return cells.map(function (c) { return [c[1], c[0]]; }); }
+
+  /* =====================================================================
+     Würfelnetze: alle 35 Hexominos, davon sind 11 Würfelnetze
+     ===================================================================== */
+  var TF = [function (x, y) { return [x, y]; }, function (x, y) { return [-x, y]; }, function (x, y) { return [x, -y]; }, function (x, y) { return [-x, -y]; },
+    function (x, y) { return [y, x]; }, function (x, y) { return [-y, x]; }, function (x, y) { return [y, -x]; }, function (x, y) { return [-y, -x]; }];
+  function freeKey(cells) { return TF.map(function (f) { return cellKey(cells.map(function (c) { return f(c[0], c[1]); })); }).sort()[0]; }
+  function polyominoes(n) {
+    var level = [[[0, 0]]];
+    for (var size = 1; size < n; size++) {
+      var next = {}, list = [];
+      level.forEach(function (p) {
+        var S = setOf(p);
+        p.forEach(function (c) {
+          DIRS.forEach(function (d) {
+            var q = [c[0] + d[0], c[1] + d[1]];
+            if (S[k2(q)]) return;
+            var np = norm(p.concat([q])), k = cellKey(np);
+            if (!next[k]) { next[k] = 1; list.push(np); }
+          });
+        });
+      });
+      level = list;
+    }
+    var free = {}, out = [];
+    level.forEach(function (p) { var k = freeKey(p); if (!free[k]) { free[k] = 1; out.push(p); } });
+    return out;
+  }
+  /* Würfel über das Netz rollen: jedes Quadrat bekommt die Würfelseite, die gerade unten liegt.
+     Seiten: 0 unten, 1 oben, 2 hinten, 3 vorne, 4 links, 5 rechts – gegenüber ist immer f ^ 1. */
+  function roll(o, d) {
+    var b = o[0], t = o[1], n = o[2], s = o[3], w = o[4], e = o[5];
+    if (d[0] === 1) return [e, w, n, s, b, t];
+    if (d[0] === -1) return [w, e, n, s, t, b];
+    if (d[1] === 1) return [s, n, b, t, w, e];
+    return [n, s, t, b, w, e];
+  }
+  function rollFaces(cells) {
+    var idx = {}; cells.forEach(function (c, i) { idx[k2(c)] = i; });
+    var face = [], orient = {}, queue = [0];
+    orient[0] = [0, 1, 2, 3, 4, 5]; face[0] = 0;
+    while (queue.length) {
+      var p = queue.shift();
+      DIRS.forEach(function (d) {
+        var j = idx[(cells[p][0] + d[0]) + ',' + (cells[p][1] + d[1])];
+        if (j == null || orient[j]) return;
+        orient[j] = roll(orient[p], d); face[j] = orient[j][0]; queue.push(j);
+      });
+    }
+    return face;
+  }
+  function isNet(cells) { var f = rollFaces(cells); return new Set(f).size === 6; }
+  function netRoot(cells) {
+    var S = setOf(cells), best = 0, bn = -1;
+    cells.forEach(function (c, i) { var n = DIRS.filter(function (d) { return S[(c[0] + d[0]) + ',' + (c[1] + d[1])]; }).length; if (n > bn) { bn = n; best = i; } });
+    return best;
+  }
+  function has2x2(cells) { var S = setOf(cells); return cells.some(function (c) { return S[(c[0] + 1) + ',' + c[1]] && S[c[0] + ',' + (c[1] + 1)] && S[(c[0] + 1) + ',' + (c[1] + 1)]; }); }
+  function longLine(cells) { var b = bbox(cells); return Math.max(b.x1 - b.x0, b.y1 - b.y0) + 1 >= 5 && rowSum(cells).concat(rowSum(transpose(cells))).some(function (n) { return n >= 5; }); }
+  var HEX = polyominoes(6), NETS = HEX.filter(isNet), NONNETS = HEX.filter(function (h) { return !isNet(h); });
+  var EASY_NON = NONNETS.filter(function (h) { return has2x2(h) || longLine(h); });
+  function randTf(cells) { var f = pick(TF); return norm(cells.map(function (c) { return f(c[0], c[1]); })); }
+  var NET_COLS = ['#ff9f55', '#7cc0f0', '#8fd88a', '#f6cf55', '#c59be6', '#f28fa8'];
+  function netSVG(cells, fills, labels, cls) {
+    var b = bbox(cells), cs = 30, s = '';
+    cells.forEach(function (c, i) {
+      s += '<rect x="' + c[0] * cs + '" y="' + c[1] * cs + '" width="' + cs + '" height="' + cs + '" fill="' + fills[i] + '" stroke="#1d2b4f" stroke-width="2"/>';
+      if (labels && labels[i]) s += '<text x="' + (c[0] * cs + cs / 2) + '" y="' + (c[1] * cs + cs / 2 + 7) + '" text-anchor="middle" font-size="20" font-weight="700" fill="#1d2b4f">' + labels[i] + '</text>';
+    });
+    return svg('-3 -3 ' + ((b.x1 + 1) * cs + 6) + ' ' + ((b.y1 + 1) * cs + 6), s, cls || 'big');
+  }
+
+  /* =====================================================================
+     Würfelbauten
+     ===================================================================== */
+  function makeBuilding(s) {
+    var dims = s === 1 ? pick([[2, 2], [3, 2], [2, 3]]) : s === 2 ? pick([[3, 2], [2, 3], [3, 3]]) : [3, 3];
+    var W = dims[0], D = dims[1], maxH = s === 3 ? 3 : 2, lo = [3, 5, 7][s - 1], hi = [6, 9, 13][s - 1];
+    for (var t = 0; t < 500; t++) {
+      var h = range(D).map(function () { return range(W).map(function () { return Math.random() < .22 ? 0 : ri(1, maxH); }); });
+      var cells = [], total = 0, x, z, hs = {};
+      for (z = 0; z < D; z++) for (x = 0; x < W; x++) if (h[z][x]) { cells.push([x, z]); total += h[z][x]; hs[h[z][x]] = 1; }
+      var rowsOk = h.every(function (r) { return r.some(Boolean); }), colsOk = range(W).every(function (x) { return h.some(function (r) { return r[x]; }); });
+      if (total >= lo && total <= hi && rowsOk && colsOk && connected(cells) && Object.keys(hs).length > 1) return h;
+    }
+    return [[1, 2], [1, 1]];
+  }
+  function hFront(h) { return range(h[0].length).map(function (x) { return Math.max.apply(null, h.map(function (r) { return r[x]; })); }); }
+  function hRight(h) { return range(h.length).map(function (i) { return Math.max.apply(null, h[h.length - 1 - i]); }); }
+  function hLeft(h) { return h.map(function (r) { return Math.max.apply(null, r); }); }
+  function mirrorLR(h) { return h.map(function (r) { return r.slice().reverse(); }); }
+  function rot180(h) { return h.slice().reverse().map(function (r) { return r.slice().reverse(); }); }
+  function copyH(h) { return h.map(function (r) { return r.slice(); }); }
+  function viewSVG(cols) {
+    var cs = 20, s = '', H = 3;
+    cols.forEach(function (n, x) { for (var k = 0; k < n; k++) s += '<rect x="' + (x * cs) + '" y="' + ((H - 1 - k) * cs) + '" width="' + cs + '" height="' + cs + '" fill="' + ['#ffb36b', '#7cc0f0', '#8fd88a'][k] + '" stroke="#1d2b4f" stroke-width="1.6"/>'; });
+    s += '<line x1="-6" y1="' + H * cs + '" x2="' + (cols.length * cs + 6) + '" y2="' + H * cs + '" stroke="#8a6a44" stroke-width="3"/>';
+    return svg('-8 -4 ' + (cols.length * cs + 16) + ' ' + (H * cs + 10), s, 'oimg');
+  }
+  function planSVG(h, numbers) {
+    var cs = 22, D = h.length, W = h[0].length, s = '';
+    for (var z = 0; z < D; z++) for (var x = 0; x < W; x++) {
+      var v = h[z][x];
+      s += '<rect x="' + x * cs + '" y="' + z * cs + '" width="' + cs + '" height="' + cs + '" fill="' + (v ? (numbers ? '#fff1d6' : '#ffb36b') : '#fff') + '" stroke="#1d2b4f" stroke-width="' + (v ? 1.6 : .7) + '"' + (v ? '' : ' stroke-dasharray="2 2"') + '/>';
+      if (numbers && v) s += '<text x="' + (x * cs + cs / 2) + '" y="' + (z * cs + cs / 2 + 6) + '" text-anchor="middle" font-size="16" font-weight="700" fill="#1d2b4f">' + v + '</text>';
+    }
+    s += '<text x="' + W * cs / 2 + '" y="' + (D * cs + 14) + '" text-anchor="middle" font-size="11" fill="#6b5a44">vorne</text>';
+    return svg('-3 -3 ' + (W * cs + 6) + ' ' + (D * cs + 20), s, 'oimg');
+  }
+  function vis3DBlocks(h, noLabel) { return { three: true, build: buildBlocks(h, noLabel), size: blockSize(h), pitch: .55, yaw: .5, auto: false }; }
+
+  /* =====================================================================
+     Aufgaben. Jedes Thema hat 3 Stufen (s = 1 leicht, 2 mittel, 3 schwer).
+     Eine Aufgabe: key (gegen Wiederholung), prompt, vis ({svg} | 3D | {grid}), opts [{html, ok}], exp, tip.
+     ===================================================================== */
+  var FIG = {
+    quadrat: { n: 'Quadrat', pl: 'Quadrate', e: 'Ein Quadrat hat 4 gleich lange Seiten und 4 rechte Winkel.' },
+    rechteck: { n: 'Rechteck', pl: 'Rechtecke', e: 'Ein Rechteck hat 4 rechte Winkel. Gegenüberliegende Seiten sind gleich lang.' },
+    dreieck: { n: 'Dreieck', pl: 'Dreiecke', e: 'Ein Dreieck hat 3 Ecken und 3 Seiten.' },
+    kreis: { n: 'Kreis', pl: 'Kreise', e: 'Ein Kreis ist rund. Er hat keine Ecken.' }
+  };
+  var FIG_KINDS = ['quadrat', 'rechteck', 'dreieck', 'kreis'];
+  /* Ein Quadrat ist auch ein Rechteck – deshalb nie „Rechteck“ als falsche Antwort zum Quadrat anbieten. */
+  function figWrong(kind) { return FIG_KINDS.filter(function (k) { return k !== kind && !(kind === 'quadrat' && k === 'rechteck'); }); }
+  var ECK = { 3: 'Dreieck', 4: 'Viereck', 5: 'Fünfeck', 6: 'Sechseck', 7: 'Siebeneck', 8: 'Achteck' };
+  function polyGood(n, cx, cy, r) {
+    for (var t = 0; t < 500; t++) {
+      var a0 = Math.random() * Math.PI * 2, p = [], ok = true;
+      for (var i = 0; i < n; i++) {
+        var a = a0 + (i + (Math.random() - .5) * .5) * 2 * Math.PI / n, rr = r * (.86 + Math.random() * .22);
+        p.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+      }
+      var sign = 0;
+      for (i = 0; i < n && ok; i++) {
+        var A = p[(i + n - 1) % n], B = p[i], C = p[(i + 1) % n];
+        var ux = A[0] - B[0], uy = A[1] - B[1], vx = C[0] - B[0], vy = C[1] - B[1];
+        var lu = Math.hypot(ux, uy), lv = Math.hypot(vx, vy), ang = Math.acos((ux * vx + uy * vy) / (lu * lv)) * 180 / Math.PI;
+        var cross = (C[0] - B[0]) * (B[1] - A[1]) - (C[1] - B[1]) * (B[0] - A[0]);
+        if (ang > 150 || ang < 35 || lu < r * .5 || (sign && Math.sign(cross) !== sign)) ok = false;
+        sign = Math.sign(cross);
+      }
+      if (ok) return p;
+    }
+    return range(n).map(function (i) { var a = i * 2 * Math.PI / n - Math.PI / 2; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
+  }
+
+  var FIGT = {
+    name: function (s) {
+      var kind = pick(FIG_KINDS), deg = s === 1 ? 0 : pick(s === 2 ? [0, 15, -20, 30] : [25, 45, -35, 60, 0]), v = ri(0, 2);
+      if (kind === 'quadrat' && s === 3) deg = pick([45, 30, -25]);
+      return {
+        key: 'fn' + kind, prompt: 'Wie heißt diese Figur?',
+        vis: { svg: svg('0 0 200 160', figEl(kind, 100, 80, 46, deg, pick(COLORS), '', 4, v), 'big') },
+        opts: textOpts(FIG[kind].n, shuffle(figWrong(kind)).slice(0, 2).map(function (k) { return FIG[k].n; })),
+        exp: FIG[kind].e + (kind === 'quadrat' ? ' Auch schräg gedreht bleibt es ein Quadrat.' : ''),
+        tip: 'Tipp: Zähle die Ecken. Sind alle Seiten gleich lang?'
+      };
+    },
+    ecken: function (s) {
+      var n = s === 1 ? ri(3, 5) : s === 2 ? ri(4, 6) : ri(5, 8), p = polyGood(n, 100, 80, 60), seiten = Math.random() < .3;
+      var dots = p.map(function (q, i) {
+        return '<g class="corner"><circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="10" fill="#fff" stroke="#e2604f" stroke-width="3"/>' +
+          '<text x="' + q[0].toFixed(1) + '" y="' + (q[1] + 4.5).toFixed(1) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#e2604f">' + (i + 1) + '</text></g>';
+      }).join('');
+      return {
+        key: 'fe' + n, prompt: 'Wie viele ' + (seiten ? 'Seiten' : 'Ecken') + ' hat diese Figur?',
+        vis: { svg: svg('0 0 200 160', '<polygon points="' + pts(p) + '" fill="' + pick(COLORS) + '"' + S3 + '/>' + dots, 'big') },
+        opts: numOpts(n, [n + 1, n - 1, n + 2]),
+        exp: 'Die Figur hat ' + n + ' Ecken und ' + n + ' Seiten. Sie heißt ' + ECK[n] + '.',
+        tip: seiten ? 'Tipp: Fahre einmal außen herum und zähle jede gerade Seite.' : 'Tipp: Fang bei einer Ecke an und zähle jede Ecke genau einmal.'
+      };
+    },
+    alltag: function () {
+      var o = pick(FIG_OBJ);
+      return {
+        key: 'fa' + o[0], prompt: 'Welche Form hat ' + o[1] + '?',
+        vis: { svg: svg('0 0 200 160', o[3], 'big') },
+        opts: textOpts(FIG[o[2]].n, shuffle(figWrong(o[2])).slice(0, 2).map(function (k) { return FIG[k].n; })),
+        exp: o[4], tip: 'Tipp: Schau auf den Rand. Ist er rund? Wie viele Ecken siehst du?'
+      };
+    },
+    zaehlen: function (s) {
+      var target = pick(FIG_KINDS), n = s === 2 ? ri(6, 8) : ri(8, 11), cells = shuffle(range(12)).slice(0, n), kinds, c;
+      var pool = target === 'rechteck' ? ['rechteck', 'dreieck', 'kreis'] : FIG_KINDS;
+      do {
+        kinds = cells.map(function () { return pick(pool); });
+        c = kinds.filter(function (k) { return k === target; }).length;
+      } while (c < 2 || c > 6 || c === n);
+      var body = cells.map(function (cell, i) {
+        var k = kinds[i], cx = 40 + (cell % 4) * 80 + ri(-7, 7), cy = 34 + Math.floor(cell / 4) * 66 + ri(-4, 4);
+        return figEl(k, cx, cy, k === 'rechteck' ? 14 : 19, s === 3 ? ri(-35, 35) : 0, pick(COLORS), k === target ? 'hit' : '', 3, ri(0, 2));
+      }).join('');
+      return {
+        key: 'fz' + target + n + c, prompt: 'Wie viele ' + FIG[target].pl + ' siehst du?',
+        vis: { svg: svg('0 0 320 200', body, 'big') },
+        opts: numOpts(c, [c + 1, c - 1]),
+        exp: 'Es sind ' + c + ' ' + FIG[target].pl + '.' + (target === 'rechteck' ? '' : ' ' + FIG[target].e),
+        tip: 'Tipp: Geh Reihe für Reihe von links nach rechts. Zähle nur die ' + FIG[target].pl + '.'
+      };
+    },
+    eigen: function () {
+      var P = pick([['quadrat', '4 gleich lange Seiten und 4 rechte Winkel'], ['kreis', 'keine Ecken'], ['dreieck', 'genau 3 Ecken'], ['rechteck', '4 rechte Winkel, aber nicht 4 gleich lange Seiten']]);
+      var wr = P[0] === 'rechteck' ? ['quadrat', pick(['dreieck', 'kreis'])] : shuffle(figWrong(P[0])).slice(0, 2);
+      return {
+        key: 'fp' + P[0], prompt: 'Welche Figur hat ' + P[1] + '?', vis: { svg: tildaSVG('?') },
+        opts: picOpts([P[0]].concat(wr).map(function (k) { return { html: figPic(k), ok: k === P[0], v: k }; })),
+        exp: 'Das ist ein ' + FIG[P[0]].n + '. ' + FIG[P[0]].e, tip: 'Tipp: Zähle bei jeder Figur die Ecken. Vergleiche die Seiten.'
+      };
+    },
+    lage: function () {
+      var ty = pick(['parallel', 'senkrecht', 'senkrecht', 'keins']), deg = ri(0, 179), L;
+      var red = '#e2604f', blue = '#3b82c4', ln = function (a, b, c) { return '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '" stroke="' + c + '" stroke-width="7" stroke-linecap="round"/>'; };
+      if (ty === 'parallel') L = ln([40, 55], [160, 55], red) + ln([56, 105], [150, 105], blue);
+      else if (ty === 'senkrecht') L = pick([ln([40, 80], [160, 80], red) + ln([100, 26], [100, 134], blue), ln([50, 115], [150, 115], red) + ln([50, 115], [50, 36], blue), ln([40, 50], [160, 50], red) + ln([100, 50], [100, 134], blue)]);
+      else {
+        var a = (ri(0, 1) ? 1 : -1) * ri(30, 55) * Math.PI / 180, cx = 100 + ri(-20, 20), far = ri(0, 1);
+        L = far ? ln([40, 50], [160, 50], red) + ln([Math.round(100 - 42 * Math.cos(a)), Math.round(108 - 42 * Math.sin(a))], [Math.round(100 + 42 * Math.cos(a)), Math.round(108 + 42 * Math.sin(a))], blue)
+          : ln([40, 80], [160, 80], red) + ln([Math.round(cx - 55 * Math.cos(a)), Math.round(80 - 55 * Math.sin(a))], [Math.round(cx + 55 * Math.cos(a)), Math.round(80 + 55 * Math.sin(a))], blue);
+      }
+      var names = { parallel: 'parallel', senkrecht: 'senkrecht', keins: 'keins von beidem' };
+      return {
+        key: 'fl' + ty + deg, prompt: 'Wie liegen die rote und die blaue Linie zueinander?',
+        vis: { svg: svg('0 0 200 160', '<g transform="rotate(' + deg + ' 100 80)">' + L + '</g>', 'big') },
+        opts: ['parallel', 'senkrecht', 'keins'].map(function (k) { return { html: '<span>' + names[k] + '</span>', ok: k === ty, v: k }; }),
+        exp: ty === 'parallel' ? 'Die Linien sind parallel. Sie haben überall den gleichen Abstand.' :
+          ty === 'senkrecht' ? 'Die Linien stehen senkrecht zueinander. Sie bilden einen rechten Winkel wie die Ecke von einem Blatt.' :
+            'Die Linien sind weder parallel noch senkrecht. Sie liegen schräg zueinander.',
+        tip: 'Tipp: Parallele Linien haben überall den gleichen Abstand. Senkrechte Linien bilden einen rechten Winkel wie die Ecke von einem Blatt.'
+      };
+    }
+  };
+
+  var BODY = {
+    wuerfel: { n: 'Würfel', art: 'der', E: 8, K: 12, F: 6, e: 'Ein Würfel hat 6 gleich große quadratische Flächen.' },
+    quader: { n: 'Quader', art: 'der', E: 8, K: 12, F: 6, e: 'Ein Quader hat 6 rechteckige Flächen. Gegenüberliegende Flächen sind gleich groß.' },
+    kugel: { n: 'Kugel', art: 'die', E: 0, K: 0, e: 'Eine Kugel ist ganz rund. Sie hat keine Ecken und keine Kanten.' },
+    zylinder: { n: 'Zylinder', art: 'der', E: 0, K: 2, F: 3, e: 'Ein Zylinder hat oben und unten eine runde Fläche. Dazwischen ist eine gekrümmte Fläche.' },
+    pyramide: { n: 'Pyramide', art: 'die', E: 5, K: 8, F: 5, e: 'Diese Pyramide hat ein Quadrat als Grundfläche und 4 Dreiecke als Seiten.' },
+    kegel: { n: 'Kegel', art: 'der', e: 'Ein Kegel hat unten eine runde Fläche und oben eine Spitze.' }
+  };
+  var BASIC = ['wuerfel', 'quader', 'kugel', 'zylinder'], ALL_BODIES = BASIC.concat(['pyramide', 'kegel']);
+  /* Ein Würfel ist auch ein Quader – deshalb nie „Quader“ als falsche Antwort zum Würfel. */
+  function bodyWrong(kind, pool) { return pool.filter(function (k) { return k !== kind && !(kind === 'wuerfel' && k === 'quader'); }); }
+  function bodyNameOpts(kind, pool, icons) {
+    var w = shuffle(bodyWrong(kind, pool)).slice(0, 2);
+    return shuffle([kind].concat(w)).map(function (k) { return { html: (icons ? bodyPic(k) : '') + '<span>' + BODY[k].n + '</span>', ok: k === kind, v: k }; });
+  }
+  function visBody(kind) { return T3.ok ? { three: true, build: buildBody(kind), size: { pyramide: 2.05, quader: 1.8, wuerfel: 1.75 }[kind] || 1.6, pitch: .42, yaw: .6, auto: true } : { svg: svg('0 0 60 60', bodyIcon(kind), 'big') }; }
+  var COUNT_WORD = { E: 'Ecken', K: 'Kanten', F: 'Flächen' };
+  var COUNT_EXP = {
+    wuerfelE: 'Der Würfel hat 8 Ecken: 4 oben und 4 unten.', wuerfelK: 'Der Würfel hat 12 Kanten: 4 oben, 4 unten und 4 an den Seiten.', wuerfelF: 'Der Würfel hat 6 Flächen: oben, unten, vorne, hinten, links und rechts.',
+    quaderE: 'Der Quader hat 8 Ecken: 4 oben und 4 unten.', quaderK: 'Der Quader hat 12 Kanten: 4 oben, 4 unten und 4 an den Seiten.', quaderF: 'Der Quader hat 6 Flächen: oben, unten, vorne, hinten, links und rechts.',
+    zylinderE: 'Der Zylinder hat keine Ecken.', zylinderK: 'Der Zylinder hat 2 Kanten: den runden Rand oben und den runden Rand unten.', zylinderF: 'Der Zylinder hat 3 Flächen: 2 runde Flächen und die gekrümmte Fläche drumherum.',
+    kugelE: 'Die Kugel hat keine Ecken. Sie ist ganz rund.', kugelK: 'Die Kugel hat keine Kanten. Sie ist ganz rund.',
+    pyramideE: 'Die Pyramide hat 5 Ecken: 4 unten und die Spitze oben.', pyramideK: 'Die Pyramide hat 8 Kanten: 4 unten und 4 zur Spitze.', pyramideF: 'Die Pyramide hat 5 Flächen: das Quadrat unten und 4 Dreiecke.'
+  };
+  var COUNT_TIP = {
+    E: 'Tipp: Dreh den Körper. Zähle die Ecken oben, dann die Ecken unten.',
+    K: 'Tipp: Kanten sind die Linien, an denen zwei Flächen zusammenstoßen. Zähle oben, unten und an den Seiten.',
+    F: 'Tipp: Dreh den Körper. Denk an oben, unten und alle Seiten.'
+  };
+  var KT = {
+    name: function (s) {
+      var pool = s === 3 ? ALL_BODIES : BASIC, kind = pick(pool);
+      return { key: 'kn' + kind, prompt: 'Wie heißt dieser Körper?', vis: visBody(kind), opts: bodyNameOpts(kind, pool, false), exp: BODY[kind].e, tip: 'Tipp: Dreh den Körper. Hat er Ecken? Kann er rollen? Wie sehen die Flächen aus?' };
+    },
+    alltag: function (s) {
+      var o = pick(BODY_OBJ.filter(function (x) { return x[3] <= s; })), pool = s === 3 ? ALL_BODIES : BASIC;
+      return { key: 'ka' + o[0], prompt: 'Welche Form hat ' + o[1] + '?', vis: { svg: svg('0 0 200 160', o[4], 'big') }, opts: bodyNameOpts(o[2], pool, true), exp: o[5], tip: 'Tipp: Hat der Gegenstand Ecken? Ist er rund? Kann er rollen?' };
+    },
+    zahl: function (s) {
+      var kind = pick(s === 3 ? ['wuerfel', 'quader', 'zylinder', 'pyramide', 'pyramide', 'kugel'] : ['wuerfel', 'wuerfel', 'quader', 'zylinder', 'kugel']);
+      var what = pick(kind === 'kugel' ? ['E', 'K'] : kind === 'zylinder' ? ['K', 'F', 'E'] : ['E', 'K', 'F']), b = BODY[kind], ans = b[what];
+      var others = ['E', 'K', 'F'].map(function (k) { return b[k]; }).filter(function (v) { return v != null && v !== ans; });
+      var tip = COUNT_TIP[what];
+      if (kind === 'pyramide' && what === 'E') tip = 'Tipp: Zähle die Ecken unten. Vergiss die Spitze nicht.';
+      if (kind === 'zylinder' && what === 'F') tip = 'Tipp: Zähle oben, unten und die gekrümmte Fläche drumherum.';
+      if (kind === 'zylinder' && what === 'K') tip = 'Tipp: Eine Kante ist dort, wo zwei Flächen zusammenstoßen. Schau oben und unten.';
+      return { key: 'kz' + kind + what, prompt: 'Wie viele ' + COUNT_WORD[what] + ' hat ' + b.art + ' ' + b.n + '?', vis: visBody(kind), opts: numOpts(ans, others), exp: COUNT_EXP[kind + what], tip: tip };
+    },
+    eigen: function (s) {
+      var list = [['wuerfel', 'Welcher Körper hat 6 gleich große quadratische Flächen?', ['kugel', 'zylinder', 'pyramide']],
+        ['kugel', 'Welcher Körper hat keine Ecken und keine Kanten?', ['wuerfel', 'quader', 'zylinder']],
+        ['zylinder', 'Welcher Körper hat 2 runde Flächen und eine gekrümmte Fläche?', ['kugel', 'quader', 'wuerfel']],
+        ['kugel', 'Welcher Körper kann in alle Richtungen rollen?', ['wuerfel', 'quader', 'pyramide']],
+        ['quader', 'Welcher Körper hat 6 rechteckige Flächen, die nicht alle gleich groß sind?', ['wuerfel', 'zylinder', 'kugel']]];
+      if (s === 3) list.push(['pyramide', 'Welcher Körper hat eine Spitze und ein Quadrat als Grundfläche?', ['kegel', 'quader', 'zylinder']],
+        ['kegel', 'Welcher Körper hat eine Spitze und einen Kreis als Grundfläche?', ['pyramide', 'zylinder', 'kugel']]);
+      var P = pick(list), wr = shuffle(P[2].slice()).slice(0, 2);
+      return {
+        key: 'ke' + P[0] + P[1].length, prompt: P[1], vis: { svg: tildaSVG('?') },
+        opts: shuffle([P[0]].concat(wr)).map(function (k) { return { html: bodyPic(k) + '<span>' + BODY[k].n + '</span>', ok: k === P[0], v: k }; }),
+        exp: BODY[P[0]].e, tip: 'Tipp: Stell dir jeden Körper vor. Wie sehen seine Flächen aus? Hat er Ecken?'
+      };
+    }
+  };
+
+  var LETTERS = ['A', 'B', 'C'];
+  var NT = {
+    janein: function (s) {
+      var yes = Math.random() < .5, cells = randTf(pick(yes ? NETS : (s === 1 ? EASY_NON : NONNETS))), fills = shuffle(NET_COLS.slice());
+      return {
+        key: 'nj' + freeKey(cells), prompt: 'Kann man aus diesem Netz einen Würfel falten?',
+        vis: { svg: netSVG(cells, fills) },
+        opts: [{ html: '<span>👍 Ja</span>', ok: yes, v: 'ja' }, { html: '<span>👎 Nein</span>', ok: !yes, v: 'nein' }],
+        exp: yes ? 'Ja! Die 6 Quadrate werden die 6 Flächen vom Würfel. Schau zu, wie es gefaltet wird.' :
+          'Nein. Beim Falten liegen zwei Quadrate aufeinander, und eine Seite vom Würfel bleibt offen. Schau zu!',
+        tip: 'Tipp: Stell dir vor, ein Quadrat ist der Deckel. Klappe die anderen in Gedanken nach unten. Liegen zwei aufeinander?',
+        onRight: function (vis) { foldDemo(vis, cells, fills); }
+      };
+    },
+    waehle: function (s) {
+      var net = randTf(pick(NETS)), wrong = shuffle((s === 2 ? [pick(EASY_NON), pick(NONNETS)] : shuffle(NONNETS.slice()).slice(0, 2)).slice());
+      while (freeKey(wrong[0]) === freeKey(wrong[1])) wrong[1] = pick(NONNETS);
+      var col = pick(COLORS), list = [{ c: net, ok: true }].concat(wrong.map(function (w) { return { c: randTf(w), ok: false }; }));
+      return {
+        key: 'nw' + freeKey(net), prompt: 'Aus welchem Netz kann man einen Würfel falten?', vis: { svg: tildaSVG('📦') },
+        opts: picOpts(list.map(function (o) { return { html: netSVG(o.c, o.c.map(function () { return col; }), null, 'oimg'), ok: o.ok }; })),
+        exp: 'Richtig! Aus diesem Netz wird ein Würfel. Bei den anderen liegen beim Falten zwei Flächen aufeinander.',
+        tip: 'Tipp: Ein Würfelnetz hat nie 4 Quadrate als Block und nie 5 Quadrate in einer Reihe. Falte in Gedanken.',
+        onRight: function (vis) { foldDemo(vis, net, shuffle(NET_COLS.slice())); }
+      };
+    },
+    gegen: function () {
+      var cells = randTf(pick(NETS)), face = rollFaces(cells), red = ri(0, 5), opp = face.indexOf(face[red] ^ 1);
+      var rest = shuffle(range(6).filter(function (i) { return i !== red && i !== opp; })).slice(0, 2), lab = shuffle([opp].concat(rest));
+      var labels = range(6).map(function () { return ''; }), fills = range(6).map(function () { return '#dfe9f5'; });
+      fills[red] = '#e2604f';
+      lab.forEach(function (i, n) { labels[i] = LETTERS[n]; fills[i] = '#ffe6a8'; });
+      var L = labels[opp];
+      return {
+        key: 'ng' + freeKey(cells) + red, prompt: 'Welche Fläche liegt beim Würfel gegenüber vom roten Quadrat?',
+        vis: { svg: netSVG(cells, fills, labels) },
+        opts: LETTERS.map(function (l) { return { html: '<b class="num">' + l + '</b>', ok: l === L, v: l }; }),
+        exp: 'Richtig! ' + L + ' liegt gegenüber vom roten Quadrat. Die beiden berühren sich beim Würfel nicht.',
+        tip: 'Tipp: Gegenüberliegende Flächen berühren sich nie. Bei drei Quadraten in einer Reihe liegen das erste und das dritte gegenüber.',
+        onRight: function (vis) { foldDemo(vis, cells, fills, labels); }
+      };
+    }
+  };
+
+  function viewOpts(right, cands) {
+    var seen = {}, out = [];
+    [right].concat(cands).forEach(function (v) { var k = v.join(','); if (!seen[k] && out.length < 3) { seen[k] = 1; out.push(v); } });
+    return out;
+  }
+  function changeOne(arr, max) {
+    var a = arr.slice(), i = ri(0, a.length - 1);
+    a[i] = a[i] >= max ? a[i] - 1 : a[i] <= 1 ? a[i] + 1 : a[i] + pick([-1, 1]);
+    return a;
+  }
+  var BT = {
+    zaehlen: function (s, h) {
+      var towers = []; h.forEach(function (r) { r.forEach(function (v) { if (v) towers.push(v); }); });
+      var total = towers.reduce(function (a, b) { return a + b; }, 0);
+      return {
+        key: 'bz' + JSON.stringify(h), prompt: 'Aus wie vielen Würfeln ist das Gebäude gebaut?', vis: vis3DBlocks(h),
+        opts: numOpts(total, [total - 1, total + 1, towers.length]),
+        exp: 'Es sind ' + total + ' Würfel: ' + towers.join(' + ') + ' = ' + total + '.',
+        tip: 'Tipp: Dreh das Gebäude. Zähle Turm für Turm, wie viele Würfel übereinander stehen.'
+      };
+    },
+    oben: function (s, h) {
+      var fp = h.map(function (r) { return r.map(function (v) { return v ? 1 : 0; }); }), cands = [mirrorLR(fp), rot180(fp)];
+      for (var i = 0; i < 12; i++) {
+        var c = copyH(fp), z = ri(0, c.length - 1), x = ri(0, c[0].length - 1);
+        c[z][x] = c[z][x] ? 0 : 1;
+        if (c.some(function (r) { return r.some(Boolean); })) cands.push(c);
+      }
+      var keyOf = function (a) { return JSON.stringify(a); }, seen = {}, list = [];
+      [fp].concat(cands).forEach(function (c) { var k = keyOf(c); if (!seen[k] && list.length < 3) { seen[k] = 1; list.push(c); } });
+      return {
+        key: 'bo' + JSON.stringify(h), prompt: 'Wie sieht das Gebäude von oben aus?', vis: vis3DBlocks(h),
+        opts: picOpts(list.map(function (c, i) { return { html: planSVG(c, false), ok: i === 0 }; })),
+        exp: 'Von oben siehst du nur, wo Würfel stehen – aber nicht, wie hoch die Türme sind.',
+        tip: 'Tipp: Dreh das Gebäude so, dass du von oben draufschaust. Achte darauf, wo „vorne“ ist.'
+      };
+    },
+    vorne: function (s, h) {
+      var f = hFront(h), back = f.slice().reverse(), cands = [hRight(h), back, hLeft(h)];
+      for (var i = 0; i < 8; i++) cands.push(changeOne(f, s === 3 ? 3 : 2));
+      var list = viewOpts(f, cands);
+      return {
+        key: 'bv' + JSON.stringify(h), prompt: 'Wie sieht das Gebäude von vorne aus?', vis: vis3DBlocks(h),
+        opts: picOpts(list.map(function (c, i) { return { html: viewSVG(c), ok: i === 0 }; })),
+        exp: 'Von vorne siehst du in jeder Spalte den höchsten Turm: ' + f.join(', ') + ' Würfel hoch.',
+        tip: 'Tipp: Dreh das Gebäude so, dass „vorne“ zu dir zeigt. Wie hoch ist es links, in der Mitte und rechts?'
+      };
+    },
+    plan: function (s, h) {
+      var cands = [mirrorLR(h), rot180(h)];
+      for (var i = 0; i < 12; i++) {
+        var c = copyH(h), z = ri(0, c.length - 1), x = ri(0, c[0].length - 1);
+        if (!c[z][x]) continue;
+        c[z][x] = c[z][x] >= (s === 3 ? 3 : 2) ? c[z][x] - 1 : c[z][x] + 1;
+        cands.push(c);
+      }
+      var seen = {}, list = [];
+      [h].concat(cands).forEach(function (c) { var k = JSON.stringify(c); if (!seen[k] && list.length < 3) { seen[k] = 1; list.push(c); } });
+      return {
+        key: 'bp' + JSON.stringify(h), prompt: 'Welcher Bauplan passt zum Gebäude?', vis: vis3DBlocks(h),
+        opts: picOpts(list.map(function (c, i) { return { html: planSVG(c, true), ok: i === 0 }; })),
+        exp: 'Im Bauplan steht auf jedem Feld, wie viele Würfel dort übereinander stehen.',
+        tip: 'Tipp: Fang vorne links an. Wie viele Würfel stehen dort übereinander? Achte auf „vorne“.'
+      };
+    }
+  };
+
+  var SYM_L = 'AHMOTUVWXY'.split(''), NOSYM_L = 'FGJLNPRSZ'.split('');
+  function letterExp(l) { return 'Beim ' + l + ' kannst du eine Spiegelachse ' + ('HOX'.indexOf(l) >= 0 ? 'senkrecht oder waagerecht' : 'senkrecht') + ' durch die Mitte legen. Beide Hälften sind gleich.'; }
+  function butterfly() {
+    return svg('0 0 200 160', '<line x1="100" y1="6" x2="100" y2="154" stroke="#e2604f" stroke-width="3" stroke-dasharray="8 6"/>' +
+      '<path d="M100,70 C70,10 20,20 30,62 C36,86 70,82 100,80 Z" fill="#c59be6"' + S3 + '/><path d="M100,70 C130,10 180,20 170,62 C164,86 130,82 100,80 Z" fill="#c59be6"' + S3 + '/>' +
+      '<path d="M100,84 C76,96 50,124 72,134 C88,140 98,112 100,96 Z" fill="#7cc0f0"' + S3 + '/><path d="M100,84 C124,96 150,124 128,134 C112,140 102,112 100,96 Z" fill="#7cc0f0"' + S3 + '/>' +
+      '<circle cx="62" cy="50" r="9" fill="#f6cf55"/><circle cx="138" cy="50" r="9" fill="#f6cf55"/><ellipse cx="100" cy="88" rx="6" ry="30" fill="#1d2b4f"/>', 'big');
+  }
+  var ST = {
+    buchstabe: function (s) {
+      var not = s === 3, right = pick(not ? NOSYM_L : SYM_L), wrong = shuffle((not ? SYM_L : NOSYM_L).slice()).slice(0, 2);
+      return {
+        key: 'sb' + right + not, prompt: not ? 'Welcher Buchstabe ist NICHT achsensymmetrisch?' : 'Welcher Buchstabe ist achsensymmetrisch?',
+        vis: { svg: butterfly() },
+        opts: textOpts(right, wrong, null).map(function (o) { o.html = '<b class="let">' + o.v + '</b>'; return o; }),
+        exp: not ? 'Das ' + right + ' hat keine Spiegelachse. Wenn du es faltest, passen die Hälften nicht aufeinander.' : letterExp(right),
+        tip: 'Tipp: Stell dir einen Spiegel in der Mitte vom Buchstaben vor. Sehen beide Hälften gleich aus?'
+      };
+    },
+    janein: function (s) {
+      var yes = Math.random() < .5, W = 10, H = 7, hw = ri(3, 4), fig, i;
+      for (i = 0; i < 300; i++) {
+        fig = symFigure(hw, 5, ri(4, 7));
+        if (!yes) {
+          var c = fig.slice(), S = setOf(c);
+          if (Math.random() < .5 && c.length > 7) c.splice(ri(0, c.length - 1), 1);
+          else { var b = pick(c), d = pick(DIRS), n = [b[0] + d[0], b[1] + d[1]]; if (S[k2(n)] || n[0] < 0 || n[1] < 0 || n[1] > 4) continue; c.push(n); }
+          if (!connected(c) || isSym(c)) continue;
+          fig = c;
+        }
+        break;
+      }
+      yes = !!isSym(fig);
+      fig = center(fig, W, H);
+      var bb = bbox(fig), ax = (bb.x0 + bb.x1 + 1) / 2 * 20;
+      return {
+        key: 'sj' + cellKey(fig), prompt: 'Ist diese Figur achsensymmetrisch?',
+        vis: { svg: gridFig(fig, W, H, { color: pick(COLORS), extra: yes && symV(fig) ? '<line class="axis" x1="' + ax + '" y1="-3" x2="' + ax + '" y2="' + (H * 20 + 3) + '" stroke="#e2604f" stroke-width="3" stroke-dasharray="7 5"/>' : '' }) },
+        opts: [{ html: '<span>👍 Ja</span>', ok: yes, v: 'ja' }, { html: '<span>👎 Nein</span>', ok: !yes, v: 'nein' }],
+        exp: yes ? 'Ja! In der Mitte liegt eine Spiegelachse. Beide Hälften sind genau gleich.' : 'Nein. Egal wo du faltest: Die Hälften passen nicht genau aufeinander.',
+        tip: 'Tipp: Such die Mitte der Figur. Zähle links und rechts die Kästchen. Sind beide Seiten gleich?'
+      };
+    },
+    achse: function (s) {
+      var horiz = s === 3 && Math.random() < .5, fig, i;
+      for (i = 0; i < 1000; i++) { fig = symFigure(ri(2, 3), 5, ri(4, 7)); if (!symH(fig)) break; }
+      var W = 10, H = 8;
+      fig = center(fig, W, H);
+      var b = bbox(fig), axis = (b.x0 + b.x1 + 1) / 2, other = (b.y0 + b.y1 + 1) / 2, shift = axis + (axis + 1 < W ? 1 : -1);
+      if (horiz) { fig = transpose(fig); var t = W; W = H; H = t; }
+      var lines = shuffle([{ ok: true, v: axis, vert: !horiz }, { ok: false, v: other, vert: horiz }, { ok: false, v: shift, vert: !horiz }]);
+      var cols = ['#e2604f', '#3b82c4', '#2f9c4c'], dash = ['', '9 5', '3 4'], extra = '';
+      lines.forEach(function (l, n) {
+        var p = l.v * 20, a = l.vert ? [p, -3, p, H * 20 + 3] : [-3, p, W * 20 + 3, p];
+        extra += '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + a[2] + '" y2="' + a[3] + '" stroke="' + cols[n] + '" stroke-width="3.5"' + (dash[n] ? ' stroke-dasharray="' + dash[n] + '"' : '') + '/>' +
+          '<circle cx="' + (l.vert ? p : 12) + '" cy="' + (l.vert ? 12 : p) + '" r="10" fill="#fff" stroke="' + cols[n] + '" stroke-width="3"/><text x="' + (l.vert ? p : 12) + '" y="' + ((l.vert ? 12 : p) + 5) + '" text-anchor="middle" font-size="14" font-weight="700" fill="' + cols[n] + '">' + LETTERS[n] + '</text>';
+      });
+      var right = LETTERS[lines.findIndex(function (l) { return l.ok; })];
+      return {
+        key: 'sa' + cellKey(fig), prompt: 'Welche Linie ist die Spiegelachse?',
+        vis: { svg: gridFig(fig, W, H, { color: '#ffd08a', extra: extra }) },
+        opts: LETTERS.map(function (l, n) { return { html: '<span><i class="dot" style="background:' + cols[n] + '"></i>Linie ' + l + '</span>', ok: l === right, v: l }; }),
+        exp: 'Richtig! Wenn du die Figur an Linie ' + right + ' faltest, liegen beide Hälften genau aufeinander.',
+        tip: 'Tipp: Stell dir vor, du faltest die Figur an der Linie. Passen beide Seiten genau aufeinander?'
+      };
+    },
+    ergaenzen: function (s) {
+      var horiz = s === 3 && Math.random() < .5, hw = s === 2 ? 4 : 5, H = s === 2 ? 6 : 7, n = s === 2 ? ri(4, 7) : ri(6, 10);
+      var half = grow(n, hw, H, [hw - 1, ri(1, H - 2)]), W = hw * 2;
+      var given = half, need = half.map(function (c) { return [W - 1 - c[0], c[1]]; });
+      if (horiz) { given = transpose(half); need = transpose(need); var t = W; W = H; H = t; }
+      var sp = { W: W, H: H, axis: horiz ? 'h' : 'v', given: setOf(given), need: setOf(need), user: {} };
+      return {
+        key: 'se' + cellKey(given), prompt: horiz ? 'Spiegle die Figur nach unten! Tippe die Kästchen an.' : 'Spiegle die Figur nach rechts! Tippe die Kästchen an.',
+        vis: { grid: sp }, grid: sp,
+        exp: 'Super gespiegelt! Jedes Kästchen hat auf der anderen Seite den gleichen Abstand zur Spiegelachse.',
+        tip: 'Tipp: Zähle bei jedem Kästchen, wie weit es von der roten Linie weg ist. Auf der anderen Seite gleich weit.'
+      };
+    }
+  };
+
+  var AT = {
+    flaeche: function (s) {
+      var fig, W, H, n, exp, rows;
+      if (s === 3 && Math.random() < .6) {
+        var a = ri(3, 5), b = ri(4, 7), rect = [];
+        for (var y = 0; y < a; y++) for (var x = 0; x < b; x++) rect.push([x, y]);
+        if (Math.random() < .5) { var cw = ri(1, b - 2), ch = ri(1, a - 1); rect = rect.filter(function (c) { return !(c[0] >= b - cw && c[1] < ch); }); }
+        W = 9; H = 7; fig = center(rect, W, H); n = fig.length; rows = rowSum(fig);
+        exp = rows.every(function (r) { return r === rows[0]; }) ? rows.length + ' Reihen mit je ' + rows[0] + ' Kästchen: ' + rows.length + ' · ' + rows[0] + ' = ' + n + '.' : 'Reihe für Reihe: ' + rows.join(' + ') + ' = ' + n + '.';
+      } else {
+        W = s === 1 ? 6 : 8; H = s === 1 ? 5 : 6; n = s === 1 ? ri(4, 8) : ri(7, 12); fig = polyFig(n, W, H); rows = rowSum(fig);
+        exp = 'Die Figur ist ' + n + ' Kästchen groß. Reihe für Reihe: ' + rows.join(' + ') + ' = ' + n + '.';
+      }
+      return { key: 'af' + cellKey(fig), prompt: 'Wie viele Kästchen ist die Fläche groß?', vis: { svg: gridFig(fig, W, H, { color: pick(COLORS) }) }, opts: numOpts(n, [n + 1, n - 1, n + 2]), exp: exp, tip: 'Tipp: Zähle Reihe für Reihe und rechne zusammen.' };
+    },
+    umfang: function (s) {
+      var W = s === 1 ? 6 : 8, H = s === 1 ? 5 : 6, n = s === 1 ? ri(3, 5) : s === 2 ? ri(4, 8) : ri(7, 11), fig = polyFig(n, W, H), p = perim(fig);
+      var b = bbox(fig), rect = n === (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1), w = b.x1 - b.x0 + 1, hh = b.y1 - b.y0 + 1;
+      return {
+        key: 'au' + cellKey(fig), prompt: 'Wie lang ist der Umfang? Zähle die Kästchenseiten am Rand.', vis: { svg: gridFig(fig, W, H, { color: pick(COLORS) }) },
+        opts: numOpts(p, [p + 2, p - 2, n]),
+        exp: rect ? 'Einmal rundherum: ' + w + ' + ' + hh + ' + ' + w + ' + ' + hh + ' = ' + p + ' Kästchenseiten.' : 'Einmal rundherum sind es ' + p + ' Kästchenseiten.',
+        tip: 'Tipp: Fang an einer Ecke an. Fahre einmal außen herum und zähle jede Kästchenseite.'
+      };
+    },
+    vergleich: function (s) {
+      var big = Math.random() < .6, ns, figs;
+      do { ns = s === 1 ? shuffle(range(6).map(function (i) { return i + 3; })).slice(0, 3) : [ri(6, 12), ri(6, 12), ri(6, 12)]; } while (new Set(ns).size < 3);
+      figs = ns.map(function (n) { return polyFig(n, 5, 4); });
+      var target = big ? Math.max.apply(null, ns) : Math.min.apply(null, ns), col = pick(COLORS);
+      return {
+        key: 'av' + ns.join('-'), prompt: 'Welche Figur hat die ' + (big ? 'größte' : 'kleinste') + ' Fläche?', vis: { svg: tildaSVG('📏') },
+        opts: figs.map(function (f, i) { return { html: gridFig(f, 5, 4, { color: col, cls: 'oimg' }), ok: ns[i] === target, v: ns[i] }; }),
+        exp: 'Die Figuren sind ' + ns.join(', ') + ' Kästchen groß. ' + target + ' ist am ' + (big ? 'meisten.' : 'wenigsten.'),
+        tip: 'Tipp: Zähle bei jeder Figur die Kästchen.'
+      };
+    },
+    gleich: function () {
+      var n = ri(6, 8), figs = [], ps = [];
+      for (var t = 0; t < 400 && figs.length < 3; t++) { var f = polyFig(n, 5, 4), p = perim(f); if (ps.indexOf(p) < 0) { figs.push(f); ps.push(p); } }
+      var max = Math.max.apply(null, ps), col = pick(COLORS);
+      return {
+        key: 'ag' + ps.join('-'), prompt: 'Alle Figuren sind ' + n + ' Kästchen groß. Welche hat den längsten Umfang?', vis: { svg: tildaSVG('📏') },
+        opts: figs.map(function (f, i) { return { html: gridFig(f, 5, 4, { color: col, cls: 'oimg' }), ok: ps[i] === max, v: ps[i] }; }),
+        exp: 'Der Umfang ist ' + ps.join(', ') + ' Kästchenseiten. Gleiche Fläche heißt nicht gleicher Umfang!',
+        tip: 'Tipp: Zähle bei jeder Figur die Kästchenseiten am Rand. Lange, dünne Figuren haben einen längeren Rand.'
+      };
+    },
+    wuerfel: function (s) {
+      var a = s === 2 ? ri(2, 3) : ri(2, 4), b = s === 2 ? 2 : ri(2, 3), c = s === 2 ? ri(1, 2) : ri(2, 3), layer = a * b, n = layer * c;
+      var h = range(b).map(function () { return range(a).map(function () { return c; }); });
+      return {
+        key: 'aw' + a + b + c, prompt: 'Aus wie vielen Würfelchen besteht der Quader?', vis: vis3DBlocks(h, true),
+        opts: numOpts(n, [n - layer, n + layer, layer + c]),
+        exp: c === 1 ? 'Es ist eine Schicht: ' + a + ' · ' + b + ' = ' + n + ' Würfelchen.' : 'Eine Schicht hat ' + a + ' · ' + b + ' = ' + layer + ' Würfelchen. ' + c + ' Schichten: ' + range(c).map(function () { return layer; }).join(' + ') + ' = ' + n + '.',
+        tip: 'Tipp: Zähle die Würfelchen in der obersten Schicht. Wie viele Schichten liegen übereinander?'
+      };
+    }
+  };
+
+  /* Tilda als Bild für Aufgaben, bei denen die Antworten Bilder sind */
+  function tildaSVG(sym) {
+    return svg('0 0 200 140', '<text x="78" y="104" text-anchor="middle" font-size="86">🦊</text><circle cx="150" cy="46" r="34" fill="#fff" stroke="#e8d9c2" stroke-width="4"/><path d="M122,66 L106,82 L132,72 Z" fill="#fff" stroke="#e8d9c2" stroke-width="4" stroke-linejoin="round"/><text x="150" y="60" text-anchor="middle" font-size="38">' + sym + '</text>', 'big tilda');
+  }
+
+  var GEN = {
+    figuren: function (s) { return FIGT[pick(s === 1 ? ['name', 'name', 'ecken', 'alltag'] : s === 2 ? ['name', 'ecken', 'alltag', 'zaehlen', 'eigen'] : ['name', 'ecken', 'zaehlen', 'eigen', 'lage', 'lage'])](s); },
+    koerper: function (s) { return KT[pick(s === 1 ? ['name', 'alltag'] : ['name', 'alltag', 'zahl', 'zahl', 'eigen'])](s); },
+    netze: function (s) { return NT[pick(s === 1 ? ['janein'] : s === 2 ? ['janein', 'waehle', 'waehle'] : ['janein', 'waehle', 'gegen', 'gegen'])](s); },
+    bauten: function (s) { var h = makeBuilding(s); return BT[pick(s === 1 ? ['zaehlen', 'zaehlen', 'oben'] : s === 2 ? ['zaehlen', 'oben', 'vorne', 'plan'] : ['zaehlen', 'vorne', 'plan', 'plan'])](s, h); },
+    spiegel: function (s) { return ST[pick(s === 1 ? ['buchstabe', 'janein'] : s === 2 ? ['janein', 'ergaenzen', 'achse', 'buchstabe'] : ['ergaenzen', 'ergaenzen', 'achse', 'buchstabe'])](s); },
+    flaeche: function (s) {
+      var list = s === 1 ? ['flaeche', 'flaeche', 'vergleich', 'umfang'] : s === 2 ? ['flaeche', 'umfang', 'umfang', 'vergleich', 'wuerfel'] : ['flaeche', 'umfang', 'gleich', 'wuerfel', 'wuerfel'];
+      if (!T3.ok) list = list.filter(function (t) { return t !== 'wuerfel'; });
+      return AT[pick(list)](s);
+    }
+  };
+  var TOPICS = [
+    { id: 'figuren', icon: '🔺', name: 'Ebene Figuren', sub: 'Quadrat, Dreieck, Ecken, parallel' },
+    { id: 'koerper', icon: '🧊', name: 'Körper', sub: 'Würfel, Kugel, Ecken und Kanten' },
+    { id: 'netze', icon: '📦', name: 'Würfelnetze', sub: 'In Gedanken falten' },
+    { id: 'bauten', icon: '🧱', name: 'Würfelbauten', sub: 'Zählen, Ansichten, Baupläne', need3d: true },
+    { id: 'spiegel', icon: '🦋', name: 'Spiegeln', sub: 'Achsensymmetrie' },
+    { id: 'flaeche', icon: '📐', name: 'Fläche und Umfang', sub: 'Kästchen zählen' },
+    { id: 'mix', icon: '🎲', name: 'Bunt gemischt', sub: 'Aus allen Themen' }
+  ];
+  function availTopics() { return TOPICS.filter(function (t) { return t.id !== 'mix' && (!t.need3d || T3.ok); }).map(function (t) { return t.id; }); }
+
+  /* =====================================================================
+     Spielablauf
+     ===================================================================== */
+  var G = { screen: 'start', topic: null, n: 0, first: 0, task: null, tries: 0, solved: false, recent: [], lvl: {} };
+  function stage(t) { return Math.max(1, Math.min(3, Math.floor(G.lvl[t] || 1))); }
+  function show(screen) {
+    G.screen = screen;
+    ['start', 'game', 'win'].forEach(function (id) { $(id).hidden = id !== screen; });
+    $('bar').hidden = screen !== 'game';
+    if (screen !== 'game') stop3D();
+    window.scrollTo(0, 0);
+  }
+  function starsText(n) { return n ? '⭐'.repeat(n) + '☆'.repeat(3 - n) : ''; }
+  function renderTopics() {
+    $('topics').innerHTML = '';
+    TOPICS.forEach(function (t) {
+      if (t.need3d && !T3.ok) return;
+      var b = document.createElement('button');
+      b.className = 'topic' + (t.id === 'mix' ? ' mix' : ''); b.setAttribute('data-topic', t.id);
+      b.innerHTML = '<span class="ti">' + t.icon + '</span><span><b>' + t.name + '</b><small>' + t.sub + '</small></span><span class="st">' + starsText(store.best[t.id] || 0) + '</span>';
+      b.addEventListener('click', function () { startGame(t.id); });
+      $('topics').appendChild(b);
+    });
+  }
+  function startGame(topic) {
+    G.topic = topic; G.n = 0; G.first = 0; G.recent = []; G.lvl = {};
+    G.fehler = 0; G.start = Date.now();   /* Game-Test: Fehlversuche und Zeit für die Bestenliste */
+    availTopics().forEach(function (t) { G.lvl[t] = Math.max(1, (Number(store.lvl[t]) || 1) - .5); });
+    show('game');
+    nextTask();
+  }
+  function nextTask() {
+    if (G.n >= TASKS) { win(); return; }
+    var t = G.topic === 'mix' ? pick(availTopics()) : G.topic, s = stage(t), task, i = 0;
+    do { task = GEN[t](s); i++; } while (G.recent.indexOf(task.key) >= 0 && i < 30);
+    task.topic = t; task.stage = s;
+    G.recent.push(task.key); G.task = task; G.tries = 0; G.solved = false;
+    render(task);
+  }
+  function render(task) {
+    stop3D();
+    var vis = $('vis');
+    vis.className = ''; vis.innerHTML = '';
+    if (task.vis.three && T3.ok) show3D(vis, task.vis);
+    else if (task.vis.grid) renderGrid(vis, task.vis.grid);
+    else vis.innerHTML = task.vis.svg;
+    $('prompt').textContent = task.prompt;
+    var box = $('opts');
+    box.innerHTML = '';
+    if (task.grid) {
+      box.className = 'one';
+      var cb = document.createElement('button'); cb.className = 'opt check'; cb.innerHTML = '<span>✓ Fertig – prüfen</span>';
+      cb.addEventListener('click', checkGrid); box.appendChild(cb);
+    } else {
+      box.className = task.opts.length === 2 ? 'two' : '';
+      task.opts.forEach(function (o, i) {
+        var b = document.createElement('button'); b.className = 'opt'; b.innerHTML = o.html; b.setAttribute('data-i', i);
+        b.addEventListener('click', function () { choose(i); });
+        box.appendChild(b);
+      });
+    }
+    $('fb').textContent = ''; $('fb').className = '';
+    $('nextBtn').hidden = true;
+    $('progress').textContent = 'Auftrag ' + (G.n + 1) + ' / ' + TASKS;
+    $('mini').innerHTML = rocketSVG(G.n);
+  }
+  function choose(i) {
+    if (G.solved || !G.task.opts) return;
+    var b = $('opts').children[i], o = G.task.opts[i];
+    if (!b || b.disabled) return;
+    if (o.ok) solved(b); else wrong(b, '');
+  }
+  function adjust(right) {
+    var t = G.task.topic;
+    G.lvl[t] = right ? Math.min(3.5, G.lvl[t] + .5) : Math.max(1, G.lvl[t] - 1);
+    store.lvl[t] = G.lvl[t]; save();
+  }
+  function wrong(b, extra) {
+    if (G.tries === 0) adjust(false);
+    G.tries++; G.fehler++;
+    if (b && !G.task.grid) { b.classList.add('wrong'); b.disabled = true; }
+    $('fb').className = 'bad';
+    $('fb').textContent = '🤔 ' + pick(OOPS) + ' ' + (extra ? extra + ' ' : '') + G.task.tip;
+    sndWrong();
+  }
+  function solved(b) {
+    G.solved = true;
+    if (G.tries === 0) { G.first++; adjust(true); }
+    b.classList.add('right');
+    [].forEach.call($('opts').children, function (x) { x.disabled = true; });
+    $('fb').className = 'good';
+    $('fb').textContent = '✅ ' + pick(PRAISE) + ' ' + G.task.exp;
+    $('vis').classList.add('reveal');
+    if (G.task.onRight) G.task.onRight($('vis'));
+    $('mini').innerHTML = rocketSVG(G.n + 1, G.n);
+    $('nextBtn').hidden = false;
+    $('nextBtn').textContent = G.n + 1 >= TASKS ? 'Zur Rakete 🚀' : 'Weiter ➜';
+    try { $('nextBtn').focus({ preventScroll: true }); } catch (e) {}
+    sndRight();
+  }
+
+  /* Gitter zum Spiegeln */
+  function renderGrid(vis, sp) {
+    var cs = 10, s = '', x, y;
+    for (y = 0; y < sp.H; y++) for (x = 0; x < sp.W; x++) {
+      var k = x + ',' + y, side = sp.axis === 'v' ? x >= sp.W / 2 : y >= sp.H / 2;
+      s += '<rect data-c="' + k + '" x="' + x * cs + '" y="' + y * cs + '" width="' + cs + '" height="' + cs + '" class="' + (sp.given[k] ? 'giv' : side ? 'tap' + (sp.user[k] ? ' on' : '') : 'off') + '"/>';
+    }
+    s += sp.axis === 'v' ? '<line x1="' + sp.W * cs / 2 + '" y1="-1" x2="' + sp.W * cs / 2 + '" y2="' + (sp.H * cs + 1) + '"' : '<line x1="-1" y1="' + sp.H * cs / 2 + '" x2="' + (sp.W * cs + 1) + '" y2="' + sp.H * cs / 2 + '"';
+    s += ' stroke="#e2604f" stroke-width="1.3" stroke-dasharray="3 2" pointer-events="none"/>';
+    vis.innerHTML = svg('-1.5 -1.5 ' + (sp.W * cs + 3) + ' ' + (sp.H * cs + 3), s, 'big grid');
+    vis.firstChild.addEventListener('click', function (e) {
+      var r = e.target, k = r.getAttribute && r.getAttribute('data-c');
+      if (!k || G.solved || !r.classList.contains('tap')) return;
+      sp.user[k] = !sp.user[k];
+      r.classList.toggle('on', !!sp.user[k]);
+      [].forEach.call(vis.querySelectorAll('.miss,.extra'), function (m) { m.classList.remove('miss', 'extra'); });
+      sndTap();
+    });
+  }
+  function gridDiff(sp) {
+    var miss = Object.keys(sp.need).filter(function (k) { return !sp.user[k]; }), extra = Object.keys(sp.user).filter(function (k) { return sp.user[k] && !sp.need[k]; });
+    return { miss: miss, extra: extra };
+  }
+  function checkGrid() {
+    if (G.solved) return;
+    var sp = G.task.grid, d = gridDiff(sp), n = d.miss.length + d.extra.length, btn = $('opts').firstChild;
+    if (!n) { solved(btn); return; }
+    wrong(null, n === 1 ? 'Ein Kästchen stimmt noch nicht.' : n + ' Kästchen stimmen noch nicht.');
+    if (G.tries >= 2) {
+      d.miss.forEach(function (k) { var r = $('vis').querySelector('[data-c="' + k + '"]'); if (r) r.classList.add('miss'); });
+      d.extra.forEach(function (k) { var r = $('vis').querySelector('[data-c="' + k + '"]'); if (r) r.classList.add('extra'); });
+      $('fb').textContent += ' Die markierten Kästchen musst du ändern.';
+    }
+  }
+
+  function win() {
+    var stars = G.first >= 9 ? 3 : G.first >= 6 ? 2 : 1;
+    store.best[G.topic] = Math.max(store.best[G.topic] || 0, stars); save();
+    show('win');
+    $('winRocket').innerHTML = rocketSVG(TASKS);
+    $('stars').innerHTML = '<span>' + starsText(stars).split('').join('</span><span>') + '</span>';
+    var topic = TOPICS.filter(function (t) { return t.id === G.topic; })[0];
+    $('winText').textContent = 'Du hast alle 10 Aufträge geschafft – ' + G.first + ' davon gleich beim ersten Versuch. Tilda sagt Danke! 🦊' +
+      (G.topic !== 'mix' ? ' Thema „' + topic.name + '“: Stufe ' + stage(G.topic) + ' von 3.' : '');
+    /* Game-Test: Ergebnis zeigen und an die Bestenliste melden */
+    var sek = Math.min(86400, Math.round((Date.now() - G.start) / 1000));
+    $('winResult').textContent = 'Fehlversuche: ' + G.fehler + ' · Zeit: ' + (sek >= 60 ? Math.floor(sek / 60) + ' min ' + (sek % 60) + ' s' : sek + ' s');
+    if (window.GameTest) GameTest.reportScore({ points: G.fehler, seconds: sek });
+    sndWin();
+  }
+
+  /* ---------- Bedienung ---------- */
+  $('nextBtn').addEventListener('click', function () { G.n++; nextTask(); });
+  $('againBtn').addEventListener('click', function () { startGame(G.topic); });
+  $('menuBtn').addEventListener('click', function () { renderTopics(); show('start'); });
+  function soundLabel() { $('soundBtn').textContent = store.mute ? '🔇' : '🔊'; }
+  $('soundBtn').addEventListener('click', function () { store.mute = !store.mute; save(); soundLabel(); });
+  document.addEventListener('keydown', function (e) {
+    if (G.screen !== 'game' || e.altKey || e.ctrlKey || e.metaKey) return;
+    var n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 4 && G.task && G.task.opts) { choose(n - 1); e.preventDefault(); }
+  });
+
+  init3D();
+  soundLabel();
+  $('heroRocket').innerHTML = rocketSVG(TASKS);
+  renderTopics();
+  show('start');
+
+  if (TEST) {
+    window.FORMEN = {
+      GEN: GEN, HEX: HEX, NETS: NETS, NONNETS: NONNETS, EASY_NON: EASY_NON, isNet: isNet, rollFaces: rollFaces, isSym: isSym, perim: perim,
+      has3D: function () { return T3.ok; }, state: function () { return G.screen; }, game: function () { return G; }, task: function () { return G.task; },
+      right: function () { return G.task.opts ? G.task.opts.findIndex(function (o) { return o.ok; }) : -1; },
+      fillGrid: function (correct) {
+        var sp = G.task.grid; sp.user = {};
+        Object.keys(sp.need).forEach(function (k) { sp.user[k] = true; });
+        if (!correct) { var k = Object.keys(sp.need)[0]; delete sp.user[k]; }
+        renderGrid($('vis'), sp);
+      },
+      store: function () { return store; },
+      render: function (task, topic) { task.topic = topic || task.topic || 'figuren'; G.task = task; G.tries = 0; G.solved = false; render(task); },
+      choose: choose
+    };
+  }
+})();
+</script>
+</body>
+</html>

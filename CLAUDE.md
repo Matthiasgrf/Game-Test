@@ -15,9 +15,11 @@ src/games/HtmlGame.tsx        zeigt HTML-Spiele im iframe, nimmt deren Ergebniss
 src/games/<key>/index.tsx     React-Spiel (export default), wird automatisch als Route #/spiele/<key> geladen
 public/games/<key>/           pro Spiel: readme.md, thumbnail.jpg (900×600), bei HTML-Spielen index.html
 public/games/shared/          zoom-schutz.js, game-test.js (Verbindung HTML-Spiel ↔ App)
+public/games/shared/vendor/   gemeinsame Bibliotheken für HTML-Spiele (Three.js r128, flag-icons 7.6.0, mit Lizenz)
 supabase/migrations/          Datenbank; jedes Spiel braucht eine Zeile in der Tabelle games
 tools/                        neues-spiel.js, check.js, smoke.js, spieltest.js, thumbnail.js, lib.js
 tools/spieltests/<key>.js     Durchspiel-Test pro Spiel
+tools/flugtest.js             gemeinsamer Durchspiel-Test der Flugspiele (europaflug, deutschlandflug, weltflug)
 tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz, readme, Migration, Tests)
 .github/workflows/pruefen.yml „Spiele prüfen“: tsc, check.js, smoke.js, spieltest.js bei jedem Push
 ```
