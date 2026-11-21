@@ -17,6 +17,7 @@ public/games/<key>/           pro Spiel: readme.md, thumbnail.jpg (900×600), be
 public/games/shared/          zoom-schutz.js, game-test.js (Verbindung HTML-Spiel ↔ App)
 public/games/shared/vendor/   gemeinsame Bibliotheken für HTML-Spiele (Three.js r128, flag-icons 7.6.0, mit Lizenz)
 supabase/migrations/          Datenbank; jedes Spiel braucht eine Zeile in der Tabelle games
+                              Kategorien der Übersicht (Schulfächer): Tabellen categories, game_categories (pflegt der Admin)
 tools/                        neues-spiel.js, check.js, smoke.js, spieltest.js, thumbnail.js, lib.js
 tools/spieltests/<key>.js     Durchspiel-Test pro Spiel
 tools/flugtest.js             gemeinsamer Durchspiel-Test der Flugspiele (europaflug, deutschlandflug, weltflug)
@@ -48,7 +49,7 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 
 | Befehl | Zweck |
 | --- | --- |
-| `node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "…"] [--gruppe "…"] [--emoji "…"]` | Spiel aus der Vorlage anlegen: Dateien, games.json, Migration, Durchspiel-Test. Überschreibt nichts. |
+| `node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "…"] [--gruppe "…"] [--emoji "…"] [--kategorie "…"]` | Spiel aus der Vorlage anlegen: Dateien, games.json, Migration, Durchspiel-Test. Überschreibt nichts. |
 | `node tools/thumbnail.js <key> [--klick "<css>"] [--tippen "<css>" "<text>"] [--verstecken "<css>"] [--warten <ms>]` | `thumbnail.jpg` 900×600 als Screenshot |
 | `node tools/check.js` | Regeln prüfen ohne Browser – muss ohne Fehler durchlaufen |
 | `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy – mit hoher Pixeldichte wie iPad/iPhone), Screenshots in `test-ergebnisse/` |
@@ -84,7 +85,8 @@ Neue Regeln, die sich automatisch prüfen lassen, in `tools/check.js` ergänzen 
    Er muss Gewinn-Bildschirm und gespeichertes Ergebnis prüfen (`page.scores`).
 8. **Testen**: `npm test` ohne Fehler; Screenshots in `test-ergebnisse/` (Computer, Tablet und Handy) ansehen,
    auch die Übersicht (`uebersicht-*.png`) mit der neuen Kachel.
-9. **Datenbank**: Migration aus Schritt 1 prüfen (Highscore-Art, Freigabe für Gruppen) und mit dem
+9. **Datenbank**: Migration aus Schritt 1 prüfen (Highscore-Art, Freigabe für Gruppen, Kategorie wie
+   Mathe/Deutsch/Sachkunde/Erdkunde/Religion/Freizeit – sonst steht das Spiel unter „Weitere Spiele“) und mit dem
    Supabase-MCP `apply_migration` einspielen (Projekt „Game-test“). Sie legt nur neue Zeilen an und kann vor
    dem Deploy laufen. Danach `get_advisors` (security) ansehen.
 10. **Abschluss**: committen, pushen, Pull Request nach `main` (ein Spiel pro Pull Request) mit: was neu ist,

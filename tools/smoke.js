@@ -66,6 +66,17 @@ const noOverflow = async (page, problems) => {
 async function checkOverview(page, problems) {
   const tiles = await page.locator('.game-tile').count();
   if (tiles !== all.length) problems.push(`${tiles} Kacheln sichtbar, erwartet ${all.length}.`);
+  /* Kategorien: Filter-Knöpfe und Abschnitte (mockSupabase verteilt die Spiele auf TEST_CATEGORIES). */
+  const sections = await page.locator('.category-section .category-title').count();
+  if (sections < 2) problems.push(`${sections} Kategorie-Abschnitte sichtbar, erwartet mehrere.`);
+  const filter = page.locator('.category-filter button');
+  if (await filter.count() !== sections + 1) problems.push('Filter-Knöpfe passen nicht zu den Kategorien (+ „Alle“).');
+  else {
+    await filter.nth(1).click();
+    const shown = await page.locator('.category-section').count();
+    if (shown !== 1) problems.push(`Nach Klick auf eine Kategorie ${shown} Abschnitte sichtbar, erwartet 1.`);
+    await filter.nth(0).click();
+  }
   await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {}))));
   const broken = await page.evaluate(() => [...document.images].filter((i) => !i.naturalWidth).map((i) => i.getAttribute('src')));
   broken.forEach((src) => problems.push(`Vorschaubild lädt nicht: ${src}`));

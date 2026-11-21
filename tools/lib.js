@@ -82,6 +82,13 @@ export function startServer(dir = BUILD) {
   });
 }
 
+/* Kategorien für die Übersicht im Test; die Spiele werden reihum verteilt. */
+export const TEST_CATEGORIES = [
+  { id: 1, name: 'Deutsch', emoji: '📚', sort_order: 10 },
+  { id: 2, name: 'Mathe', emoji: '🔢', sort_order: 20 },
+  { id: 3, name: 'Sachkunde', emoji: '🌱', sort_order: 30 },
+];
+
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 
 /* Supabase im Browser nachstellen. Aufruf vor page.goto(), pro Browser-Kontext.
@@ -125,6 +132,10 @@ export async function mockSupabase(context, options = {}) {
         return json([{ user_id: uid, group_id: 1 }]);
       case 'game_groups':
         return json(games.map((k) => ({ game_key: k, group_id: 1 })));
+      case 'categories':
+        return json(TEST_CATEGORIES);
+      case 'game_categories':
+        return json(games.map((k, i) => ({ game_key: k, category_id: TEST_CATEGORIES[i % TEST_CATEGORIES.length].id })));
       case 'game_highscores':
         return json(highscores);
       default:

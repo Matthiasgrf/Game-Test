@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, type Category } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import gamesJson from "./games.json";
 
@@ -93,4 +93,35 @@ export function useAllowedGames(): { games: GameInfo[] | null; error: string | n
   }, [profile]);
 
   return { games, error };
+}
+
+/**
+ * Kategorien (Schulfächer) aus Supabase – Tabellen categories und game_categories,
+ * pflegt der Admin. Klappt das Laden nicht, ist categories leer und die Übersicht
+ * zeigt die Spiele ohne Einteilung.
+ */
+export function useCategories(): { categories: Category[]; categoryOf: Map<string, number>; loaded: boolean } {
+  const [state, setState] = useState<{ categories: Category[]; categoryOf: Map<string, number>; loaded: boolean }>(
+    { categories: [], categoryOf: new Map(), loaded: false },
+  );
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const [c, gc] = await Promise.all([
+        supabase.from("categories").select("id, name, emoji, sort_order").order("sort_order").order("name"),
+        supabase.from("game_categories").select("game_key, category_id"),
+      ]);
+      if (c.error || gc.error) throw new Error((c.error ?? gc.error)!.message);
+      if (!active) return;
+      setState({
+        categories: (c.data ?? []) as Category[],
+        categoryOf: new Map((gc.data ?? []).map((r) => [r.game_key as string, r.category_id as number])),
+        loaded: true,
+      });
+    })().catch(() => active && setState((s) => ({ ...s, loaded: true })));
+    return () => { active = false; };
+  }, []);
+
+  return state;
 }
