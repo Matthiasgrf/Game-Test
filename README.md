@@ -1,7 +1,7 @@
 # Game-Test – GitHub + Supabase + Claude Code (Lernbeispiel)
 
 Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, einer
-**Spiele-Übersicht** (u. a. Labyrinth für Kinder, Zahlenraten und die Lernspiele der Klasse 3c) und **Highscores**. User können **nur vom Admin**
+**Spiele-Übersicht** (u. a. Labyrinth für Kinder und die Lernspiele der Klasse 3c) und **Highscores**. User können **nur vom Admin**
 angelegt werden – es gibt keine Selbstregistrierung.
 
 ## Architektur
@@ -86,7 +86,6 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 | Spiel | Art | Gruppe | Beschreibung |
 |---|---|---|---|
 | Labyrinth-Abenteuer | React, `src/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
-| Zahlenraten | React, `src/games/zahlenraten/` | Kindergarten | `public/games/zahlenraten/readme.md` |
 | Elisabeth von Thüringen | HTML, `public/games/elisabeth/` | Klasse-3c | `public/games/elisabeth/readme.md` |
 | Flug über Europa | HTML, `public/games/europaflug/` | Klasse-3c | `public/games/europaflug/readme.md` |
 | Getreide-Abenteuer | HTML, `public/games/sachunterricht-getreide/` | Klasse-3c | `public/games/sachunterricht-getreide/readme.md` |
