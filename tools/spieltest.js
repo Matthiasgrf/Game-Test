@@ -18,7 +18,9 @@
      t.check(text, ok, detail)   eine Prüfung melden
      t.shot(page, name)          Screenshot nach test-ergebnisse/<key>-<name>.png
      t.DESK, t.TABLET, t.PHONE   übliche Größen für Computer, Tablet (iPad quer) und Handy (iPhone),
-                                 Tablet und Handy mit hoher Pixeldichte wie die echten Geräte */
+     t.PHONE_QUER                Handy quer gehalten. Tablet und Handy mit hoher Pixeldichte wie die echten Geräte.
+                                 Von Spielen mit Spielfläche die laufende Szene auf Handy hoch und quer mit t.shot
+                                 festhalten und ansehen (smoke.js sieht nur den Start-Bildschirm). */
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -53,6 +55,7 @@ for (const key of keys) {
     DESK: { viewport: { width: 1280, height: 800 } },
     TABLET: { viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     PHONE: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    PHONE_QUER: { viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
     check,
     async newPage(options, login) {
       const context = await browser.newContext(options || {});

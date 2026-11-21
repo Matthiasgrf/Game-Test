@@ -3,7 +3,7 @@
    wie bei iPad und iPhone) mit nachgestelltem Login und meldet:
    JavaScript-Fehler, fehlende Dateien, Zugriffe auf fremde Server, Kacheln und Bilder der
    Übersicht, Seite breiter als der Bildschirm, fehlender Link „🏠 Alle Spiele“ im Spiel,
-   Spielfläche (<canvas>) größer als der Bildschirm.
+   Spielfläche (<canvas>) größer als der Bildschirm, Spielfläche auf Tablet/Handy (hoch und quer) zu klein.
    Screenshots landen in test-ergebnisse/ zum Ansehen.
 
    Aufruf:  node tools/smoke.js              Übersicht, Highscores und alle Spiele
@@ -19,7 +19,13 @@ const SIZES = [
   { name: 'computer', viewport: { width: 1280, height: 800 } },
   { name: 'tablet', viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { name: 'handy', viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  { name: 'handy-quer', viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 ];
+/* Spiele mit Spielfläche (<canvas>) sollen auf Tablet und Handy den Bildschirm nutzen: Die größte Spielfläche
+   muss mindestens so viel der Bildschirmfläche bedecken (0.6 = 60 %). Kleinere Canvas (Vorschau, Deko) zählen nicht. */
+const MIN_PLAY_AREA = 0.6;
+/* Ältere Spiele, die das noch nicht schaffen: nur Warnung statt Fehler. Nach dem Umbau hier austragen. */
+const PLAY_AREA_WARN_ONLY = ['rohr-flitzer'];
 
 const only = process.argv[2];
 const all = loadGames();
@@ -31,6 +37,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const { server, url } = await startServer();
 const browser = await chromium.launch();
 let failed = 0;
+const warnings = [];
 
 async function visit(hash, size, shot, check) {
   const problems = [];
@@ -101,10 +108,30 @@ async function checkCanvas(target, problems) {
   big.forEach((b) => problems.push(`Spielfläche größer als der Bildschirm (${b}) – canvas braucht CSS-Breite/-Höhe, devicePixelRatio beachten.`));
 }
 
-const checkGame = (g) => async (page, problems) => {
+/* Spielfläche zu klein: typischer Fehler ist ein festes Hochformat-Raster mit Rand, Anzeigen darüber und
+   Steuerkreuz darunter – auf dem Handy bleibt dann nur ein kleines Feld (vor allem quer). */
+async function checkPlayArea(target, g, size, problems) {
+  if (!size.isMobile) return;
+  const share = await target.evaluate(() => {
+    /* Nur sichtbare Spielflächen (versteckte Canvas, z. B. für ein Bonus-Spiel, haben die Größe 0). */
+    const areas = [...document.querySelectorAll('canvas')].map((c) => {
+      const r = c.getBoundingClientRect();
+      const w = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0));
+      const h = Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+      return w * h;
+    }).filter((a) => a > 0);
+    return areas.length ? Math.max(...areas) / (innerWidth * innerHeight) : null;
+  });
+  if (share !== null && share < MIN_PLAY_AREA) {
+    (PLAY_AREA_WARN_ONLY.includes(g.key) ? warnings : problems).push(`Spielfläche bedeckt nur ${Math.round(share * 100)} % des Bildschirms (mindestens ${MIN_PLAY_AREA * 100} %) – Spielszene bildschirmfüllend zeichnen, Anzeigen und Steuerung darüberlegen (siehe CLAUDE.md „Aussehen auf Handy und Tablet“).`);
+  }
+}
+
+const checkGame = (g, size) => async (page, problems) => {
   if (g.type === 'html') {
     const frame = await gameFrame(page);
     await checkCanvas(frame, problems);
+    await checkPlayArea(frame, g, size, problems);
     const links = frame.locator('a[href="../../#/"]');
     let visible = false;
     for (let i = 0; i < await links.count(); i++) if (await links.nth(i).isVisible()) visible = true;
@@ -113,6 +140,7 @@ const checkGame = (g) => async (page, problems) => {
     const link = page.locator('main a[href="#/"]', { hasText: 'Alle Spiele' });
     if (!(await link.count()) || !(await link.first().isVisible())) problems.push('Kein sichtbarer Link „🏠 Alle Spiele“ zur Übersicht.');
     await checkCanvas(page, problems);
+    await checkPlayArea(page, g, size, problems);
     await noOverflow(page, problems);
   }
 };
@@ -120,6 +148,7 @@ const checkGame = (g) => async (page, problems) => {
 const report = (label, problems) => {
   console.log(`${problems.length ? '✗' : '✓'} ${label}`);
   problems.forEach((p) => console.log(`    ${p}`));
+  warnings.splice(0).forEach((w) => console.log(`    ⚠ ${w}`));
   if (problems.length) failed++;
 };
 
@@ -128,7 +157,7 @@ for (const size of SIZES) {
     report(`Übersicht (${size.name})`, await visit('#/', size, 'uebersicht', checkOverview));
     report(`Highscores (${size.name})`, await visit('#/highscores', size, 'highscores', checkHighscores));
   }
-  for (const g of games) report(`${g.key} (${size.name})`, await visit(`#/spiele/${g.key}`, size, g.key, checkGame(g)));
+  for (const g of games) report(`${g.key} (${size.name})`, await visit(`#/spiele/${g.key}`, size, g.key, checkGame(g, size)));
 }
 
 await browser.close();
