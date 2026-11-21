@@ -47,6 +47,9 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
 - Nur Admins dürfen Zuordnungen ändern (RLS über `public.is_admin()`).
   Ergebnisse werden nur gespeichert, wenn `public.can_play('<spiel>')` stimmt.
 - Spiele stehen in `src/games/catalog.ts` (`key` = `game_groups.game_key`).
+- Highscores (`20261121120000_group_highscores.sql`): Spieler sehen nur Ergebnisse
+  von Mitspielern aus ihren Gruppen und nur für Spiele dieser Gruppen
+  (RLS über `public.can_see_score()`). Die Bestenlisten werden je Gruppe berechnet.
 
 ## Einmalige Einrichtung
 
