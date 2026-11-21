@@ -32,7 +32,12 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
   (liegt nur auf dem Supabase-Server, nie im Repo/Frontend).
 - Die Rolle wird in `app_metadata` gesetzt (vom User nicht änderbar) und vom
   Trigger `handle_new_user` in `profiles.role` übernommen.
-- RLS: `profiles` nur lesbar; `scores` lesbar, einfügen nur für den eigenen User.
+- RLS: `profiles` und `scores` für Clients nur lesbar.
+- **Spiellogik in der Datenbank** (`20261121000000_server_side_game.sql`): Die
+  Geheimzahl liegt in `games` (für Clients komplett gesperrt). Der Browser ruft
+  nur `start_game()` und `guess(game_id, n)` auf; bei einem Treffer schreibt
+  `guess` den Score selbst. Highscores lassen sich so nicht per DevTools fälschen.
+  Eine angefangene Runde wird fortgesetzt – schlechte Runden verwerfen geht nicht.
 - **GRANTs nicht vergessen** (`20261118000100_grants.sql`): RLS-Policies filtern nur
   Zeilen. Die Rolle braucht zusätzlich Tabellenrechte (`grant select ...`), sonst
   kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
