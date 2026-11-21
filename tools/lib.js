@@ -97,7 +97,10 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
      username    Name des Testkinds (Standard 'testkind')
      games       Spiele, die für die Gruppe des Kinds freigegeben sind (Standard: alle)
      highscores  Zeilen für die View game_highscores
-   Rückgabe: { scores }  – jedes gespeicherte Ergebnis (Inhalt des Inserts in game_scores). */
+     states      gespeicherte Spielstände je Spiel, z. B. { 'mathe-robi': { bank: 500 } } (Tabelle game_states)
+   Rückgabe: { scores, states }
+     scores  jedes gespeicherte Ergebnis (Inhalt des Inserts in game_scores)
+     states  jeder gespeicherte Spielstand (Inhalt des Upserts in game_states, mit game_key und data) */
 export async function mockSupabase(context, options = {}) {
   const { role = 'user', username = 'testkind', highscores = [] } = options;
   const games = options.games || loadGames().map((g) => g.key);
@@ -109,6 +112,8 @@ export async function mockSupabase(context, options = {}) {
     user: { id: uid, aud: 'authenticated', role: 'authenticated', email: `${username}@game-test.local`, app_metadata: {}, user_metadata: {} },
   };
   const scores = [];
+  const states = [];
+  const saved = { ...(options.states || {}) };
   await context.addInitScript(([key, value]) => {
     try { localStorage.setItem(key, value); } catch { /* z. B. about:blank */ }
   }, [STORAGE_KEY, JSON.stringify(session)]);
@@ -120,6 +125,11 @@ export async function mockSupabase(context, options = {}) {
     if (req.method() === 'POST' && table === 'game_scores') {
       const body = req.postDataJSON();
       scores.push(...(Array.isArray(body) ? body : [body]));
+      return route.fulfill({ status: 201, body: '' });
+    }
+    if (req.method() === 'POST' && table === 'game_states') {
+      const body = req.postDataJSON();
+      for (const row of Array.isArray(body) ? body : [body]) { states.push(row); saved[row.game_key] = row.data; }
       return route.fulfill({ status: 201, body: '' });
     }
     if (req.method() !== 'GET') return json({});
@@ -138,11 +148,17 @@ export async function mockSupabase(context, options = {}) {
         return json(games.map((k, i) => ({ game_key: k, category_id: TEST_CATEGORIES[i % TEST_CATEGORIES.length].id })));
       case 'game_highscores':
         return json(highscores);
+      case 'game_states': {
+        const key = (url.searchParams.get('game_key') || '').replace(/^eq\./, '');
+        const rows = key in saved ? [{ data: saved[key] }] : [];
+        if (/vnd\.pgrst\.object/.test(req.headers().accept || '')) return rows.length ? json(rows[0]) : json({}, 406);
+        return json(rows);
+      }
       default:
         return json([]);
     }
   });
-  return { scores };
+  return { scores, states };
 }
 
 /* Inhalt des iframes eines HTML-Spiels, sobald game-test.js geladen ist. */

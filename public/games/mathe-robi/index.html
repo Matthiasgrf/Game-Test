@@ -270,7 +270,11 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var it = shopItem(row.part, store.wear[row.part]);
     store.wear[row.part] = owns(it) ? it.id : row.items[0].id;
   });
-  function persist() { try { localStorage.setItem(SAVE, JSON.stringify(store)); } catch (e) {} }
+  /* Zusätzlich an die App melden: Sie speichert den Stand pro Spieler in Supabase (game-test.js). */
+  function persist() {
+    try { localStorage.setItem(SAVE, JSON.stringify(store)); } catch (e) {}
+    if (window.GameTest && GameTest.saveState) GameTest.saveState(store);
+  }
 
   /* ---------- Ton ---------- */
   var actx = null;

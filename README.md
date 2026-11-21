@@ -10,7 +10,7 @@ angelegt werden – es gibt keine Selbstregistrierung.
 Browser (React, GitHub Pages)
   │  Publishable Key + User-JWT
   ├──► Supabase Auth      signInWithPassword(<username>@game-test.local)
-  ├──► Postgres (REST)    profiles, games, game_scores, game_highscores  ── abgesichert per RLS
+  ├──► Postgres (REST)    profiles, games, game_scores, game_highscores, game_states  ── abgesichert per RLS
   └──► Edge Function      admin-users  ── prüft role='admin', nutzt Service-Role-Key
                                          (createUser / deleteUser / updateUserById)
 ```
@@ -20,6 +20,7 @@ Browser (React, GitHub Pages)
 | DB-Schema, RLS, Trigger | `supabase/migrations/20261118000000_init.sql` | Claude via Supabase-MCP `apply_migration` |
 | Labyrinth-Ergebnisse | `supabase/migrations/20261118210000_labyrinth_scores.sql` | Claude via Supabase-MCP `apply_migration` |
 | Highscores für alle Spiele | `supabase/migrations/20261121140000_game_scores.sql` | Claude via Supabase-MCP `apply_migration` |
+| Spielstand pro Spieler (z. B. Robis Zahnräder) | `supabase/migrations/20261121200000_game_states.sql` | Claude via Supabase-MCP `apply_migration` |
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
 | Spiele, Werkzeuge, Tests | `src/games/games.json`, `public/games/`, `tools/`, `CLAUDE.md` | `node tools/neues-spiel.js`, `npm test` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
