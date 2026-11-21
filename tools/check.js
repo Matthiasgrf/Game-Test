@@ -324,6 +324,25 @@ function main() {
     });
   });
 
+  /* Home-Bildschirm-App (PWA): Manifest und Icons */
+  const manifestFile = path.join(ROOT, 'public/manifest.webmanifest');
+  if (!fs.existsSync(manifestFile)) err('public/manifest.webmanifest', 'fehlt (Home-Bildschirm-App).');
+  else {
+    let manifest = null;
+    try { manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8')); } catch (e) { err('public/manifest.webmanifest', `kein gültiges JSON: ${e.message}`); }
+    if (manifest) {
+      if (!['standalone', 'fullscreen'].includes(manifest.display)) err('public/manifest.webmanifest', 'display muss "standalone" sein (ohne Browserleisten).');
+      if (!manifest.start_url || /^(\/|https?:)/.test(manifest.start_url)) err('public/manifest.webmanifest', 'start_url relativ angeben (./#/), die App liegt in einem Unterordner.');
+      for (const icon of manifest.icons || []) {
+        if (!fs.existsSync(path.join(ROOT, 'public', icon.src))) err('public/manifest.webmanifest', `Icon ${icon.src} fehlt (node tools/icons.js).`);
+      }
+    }
+  }
+  const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  for (const [re, text] of [[/rel=["']manifest["']/, '<link rel="manifest">'], [/apple-mobile-web-app-capable/, 'apple-mobile-web-app-capable'], [/rel=["']apple-touch-icon["']/, 'apple-touch-icon'], [/viewport-fit=cover/, 'viewport-fit=cover']]) {
+    if (!re.test(indexHtml)) err('index.html', `${text} fehlt (Home-Bildschirm-App auf iPhone/iPad).`);
+  }
+
   /* Gemeinsame Skripte (ohne Bibliotheken in vendor/) */
   const shared = path.join(PUBLIC_GAMES, 'shared');
   if (fs.existsSync(shared)) checkScripts(shared, '', 'public/games/shared');
