@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 
 // Ein Ergebnis für die gemeinsame Tabelle game_scores.
 // Ob mehr oder weniger Punkte besser sind, steht in der Tabelle games (Spalte highscore)
-// und im Katalog (src/games/catalog.ts, highscore.better).
+// und in src/games/games.json (highscore.better).
 export interface ScoreInput {
   points: number;
   maxPoints?: number | null;

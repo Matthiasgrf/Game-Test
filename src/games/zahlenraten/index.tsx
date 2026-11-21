@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { saveScore } from "../games/scores";
+import { saveScore } from "../scores";
 
 const newSecret = () => Math.floor(Math.random() * 100) + 1;
 
@@ -42,7 +42,7 @@ export default function NumberGuess() {
 
   return (
     <main className="card">
-      <Link to="/" className="back-link">← Alle Spiele</Link>
+      <Link to="/" className="back-link">🏠 Alle Spiele</Link>
       <h2>Zahlenraten</h2>
       <p className="hint" data-testid="hint">{hint}</p>
       <p className="muted">Versuche: {attempts}</p>

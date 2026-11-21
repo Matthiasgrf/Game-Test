@@ -19,11 +19,7 @@ export default function Overview() {
       <div className="game-grid">
         {games?.map((g) => (
           <Link key={g.path} to={g.path} className="game-tile">
-            {g.image ? (
-              <img className="game-tile-img" src={g.image} alt="" style={{ background: g.color }} />
-            ) : (
-              <div className="game-tile-art" style={{ background: g.color }}>{g.emoji}</div>
-            )}
+            <img className="game-tile-img" src={g.image} alt="" style={{ background: g.color }} />
             <div className="game-tile-body">
               <h3>{g.title}</h3>
               <p className="muted">{g.description}</p>

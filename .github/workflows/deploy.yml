@@ -24,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Regeln für Spiele prüfen
+        run: node tools/check.js
       - name: Check Supabase variables
         run: |
           if [ -z "${{ vars.VITE_SUPABASE_URL }}" ] || [ -z "${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}" ]; then

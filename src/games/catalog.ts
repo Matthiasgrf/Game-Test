@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
+import gamesJson from "./games.json";
 
-/** Highscore-Einstellungen eines Spiels. Muss zur Spalte games.highscore passen. */
+/*
+ * Alle Spiele stehen in games.json – Übersicht, Routen, Highscores, Admin und die
+ * Werkzeuge in tools/ lesen diese Datei. Neues Spiel: node tools/neues-spiel.js (siehe CLAUDE.md).
+ *
+ * Felder in games.json
+ *   key          Kennung, nur a-z 0-9 - _ (wie in den Tabellen games, game_groups, game_scores)
+ *   type         "react" → src/games/<key>/index.tsx · "html" → public/games/<key>/index.html (im iframe)
+ *   title, description (1 Satz), age (z. B. "3. Klasse"), emoji (Tabs/Admin), color (Hintergrund)
+ *   highscore    HighscoreConfig oder null (= Spiel ohne Highscores, in games: 'none')
+ * Abgeleitet, nicht eintragen: path (#/spiele/<key>), image (games/<key>/thumbnail.jpg), html.
+ */
+
+/** Highscore-Einstellungen eines Spiels. Muss zur Spalte games.highscore passen (prüft tools/check.js). */
 export interface HighscoreConfig {
   /** "high": mehr Punkte sind besser (Sterne) · "low": weniger sind besser (Versuche, Fehler) */
   better: "high" | "low";
@@ -18,81 +31,32 @@ export interface HighscoreConfig {
   rule: string;
 }
 
-export interface GameInfo {
-  /** Kennung in den Tabellen games, game_groups und game_scores */
+export interface GameEntry {
   key: string;
-  /** Route in der App (#/spiele/…) */
-  path: string;
+  type: "react" | "html";
   title: string;
-  emoji: string;
   description: string;
   age: string;
+  emoji: string;
   color: string;
-  /** Vorschaubild statt Emoji (relativ zur App, z. B. "games/x/thumbnail.jpg") */
-  image?: string;
-  /** Eigenständiges HTML-Spiel unter public/ – wird im iframe gezeigt (siehe HtmlGame.tsx) */
-  html?: string;
-  /** null = Spiel ohne Highscores (in games: highscore = 'none') */
   highscore: HighscoreConfig | null;
 }
 
-// Neue Spiele hier eintragen – Übersicht, Highscores und Admin bauen sich daraus auf.
-// Dazu gehört eine Zeile in der Tabelle games (Migration), siehe README.
-// Freigabe für Gruppen: Admin → Gruppen (Tabelle game_groups).
-export const GAMES: GameInfo[] = [
-  {
-    key: "labyrinth",
-    path: "/spiele/labyrinth",
-    title: "Labyrinth-Abenteuer",
-    emoji: "🐭🧀",
-    description: "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
-    age: "ab 5 Jahren",
-    color: "linear-gradient(135deg, #ffd43b, #ff922b)",
-    highscore: {
-      better: "high",
-      pointsLabel: "Sterne",
-      pointsIcon: "⭐",
-      showTime: true,
-      variants: [
-        { id: "leicht", label: "🐣 Leicht" },
-        { id: "mittel", label: "🦊 Mittel" },
-        { id: "knifflig", label: "🦁 Knifflig" },
-      ],
-      rule: "Bestes Ergebnis je Spieler: meiste Sterne, bei Gleichstand die schnellste Zeit.",
-    },
-  },
-  {
-    key: "zahlenraten",
-    path: "/spiele/zahlenraten",
-    title: "Zahlenraten",
-    emoji: "🔢",
-    description: "Errate die geheime Zahl zwischen 1 und 100.",
-    age: "ab 8 Jahren",
-    color: "linear-gradient(135deg, #74c0fc, #5c7cfa)",
-    highscore: {
-      better: "low",
-      pointsLabel: "Versuche",
-      rule: "Bestes Ergebnis je Spieler: wenigste Versuche.",
-    },
-  },
-  {
-    key: "elisabeth",
-    path: "/spiele/elisabeth",
-    title: "Elisabeth von Thüringen",
-    emoji: "🏰🌹",
-    description: "Begleite Elisabeth durch ihr Leben und beantworte an 20 Stationen Fragen für den Religionsunterricht.",
-    age: "3. Klasse",
-    color: "linear-gradient(135deg, #b2f2bb, #fcc2d7)",
-    image: "games/elisabeth/thumbnail.jpg",
-    html: "games/elisabeth/index.html",
-    highscore: {
-      better: "low",
-      pointsLabel: "Fehlversuche",
-      showTime: true,
-      rule: "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit.",
-    },
-  },
-];
+export interface GameInfo extends GameEntry {
+  /** Route in der App (#/spiele/<key>) */
+  path: string;
+  /** Vorschaubild 900×600 */
+  image: string;
+  /** nur HTML-Spiele: Adresse der Spieldatei */
+  html?: string;
+}
+
+export const GAMES: GameInfo[] = (gamesJson as GameEntry[]).map((g) => ({
+  ...g,
+  path: `/spiele/${g.key}`,
+  image: `games/${g.key}/thumbnail.jpg`,
+  html: g.type === "html" ? `games/${g.key}/index.html` : undefined,
+}));
 
 /**
  * Spiele, die der eingeloggte User sehen darf: Spiele, die mindestens einer

@@ -1,0 +1,52 @@
+[
+  {
+    "key": "labyrinth",
+    "type": "react",
+    "title": "Labyrinth-Abenteuer",
+    "description": "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
+    "age": "ab 5 Jahren",
+    "emoji": "🐭🧀",
+    "color": "linear-gradient(135deg, #ffd43b, #ff922b)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Sterne",
+      "pointsIcon": "⭐",
+      "showTime": true,
+      "variants": [
+        { "id": "leicht", "label": "🐣 Leicht" },
+        { "id": "mittel", "label": "🦊 Mittel" },
+        { "id": "knifflig", "label": "🦁 Knifflig" }
+      ],
+      "rule": "Bestes Ergebnis je Spieler: meiste Sterne, bei Gleichstand die schnellste Zeit."
+    }
+  },
+  {
+    "key": "zahlenraten",
+    "type": "react",
+    "title": "Zahlenraten",
+    "description": "Errate die geheime Zahl zwischen 1 und 100.",
+    "age": "ab 8 Jahren",
+    "emoji": "🔢",
+    "color": "linear-gradient(135deg, #74c0fc, #5c7cfa)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Versuche",
+      "rule": "Bestes Ergebnis je Spieler: wenigste Versuche."
+    }
+  },
+  {
+    "key": "elisabeth",
+    "type": "html",
+    "title": "Elisabeth von Thüringen",
+    "description": "Begleite Elisabeth durch ihr Leben und beantworte an 20 Stationen Fragen für den Religionsunterricht.",
+    "age": "3. Klasse",
+    "emoji": "🏰🌹",
+    "color": "linear-gradient(135deg, #b2f2bb, #fcc2d7)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Fehlversuche",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
+    }
+  }
+]
