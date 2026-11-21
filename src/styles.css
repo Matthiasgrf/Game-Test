@@ -68,3 +68,38 @@ td.actions { display: flex; gap: 6px; justify-content: flex-end; }
 .success { color: var(--success); }
 .hint { font-size: 1.2em; }
 .center { text-align: center; }
+
+/* ---------- Rohr-Flitzer ---------- */
+.rohr { max-width: 520px; }
+.rohr .presents { margin: 0 0 2px; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; }
+.rohr-hud { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0; font-variant-numeric: tabular-nums; font-size: 1.1em; }
+.rohr-hud .muted { font-size: 0.75em; }
+.rohr-stage { position: relative; }
+.rohr-stage canvas {
+  display: block; width: 100%; max-height: 75vh; object-fit: contain;
+  border-radius: 8px; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.rohr-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px;
+  align-items: center; justify-content: center; text-align: center; padding: 16px;
+  background: rgba(20, 22, 27, 0.55); color: #fff; border-radius: 8px;
+}
+.rohr-overlay .big { font-size: 1.6em; font-weight: 700; margin: 0; }
+.rohr-overlay p { margin: 0; }
+.rohr-overlay .muted { color: #d0d4da; }
+.rohr-overlay button { font-size: 1.1em; padding: 10px 18px; }
+.small { font-size: 0.85em; }
+.dpad {
+  display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 48px);
+  gap: 6px; justify-content: center; margin-top: 12px; touch-action: none;
+}
+.dpad button { font-size: 1.2em; padding: 0; user-select: none; -webkit-user-select: none; }
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-down { grid-column: 2; grid-row: 2; }
+.dpad-right { grid-column: 3; grid-row: 2; }
+@media (pointer: fine) { .dpad { display: none; } }
+@media (pointer: coarse) {
+  .rohr-stage canvas { max-height: 58vh; }
+  .rohr-hud .muted { display: none; }
+}

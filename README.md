@@ -1,7 +1,7 @@
 # Game-Test – GitHub + Supabase + Claude Code (Lernbeispiel)
 
-Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, einem
-**Zahlenraten-Spiel** und **Highscores**. User können **nur vom Admin**
+Kleine React-App (Vite + TypeScript) mit **Username/Passwort-Login**, den Spielen
+**Rohr-Flitzer** und **Zahlenraten** sowie **Highscores**. User können **nur vom Admin**
 angelegt werden – es gibt keine Selbstregistrierung.
 
 ## Architektur
@@ -37,6 +37,18 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
   Zeilen. Die Rolle braucht zusätzlich Tabellenrechte (`grant select ...`), sonst
   kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
   `TRUNCATE` ist für Client-Rollen entzogen, weil es RLS umgeht.
+
+## Rohr-Flitzer (Spiel der Gruppe Fisser-Flitzer)
+Eine Kackwurst 💩 muss sich in **Haus Buchhammer** durch ein Labyrinth aus
+Abflussrohren vom Klo im Dachgeschoss bis in die Kanalisation kämpfen.
+- Steuerung: Pfeiltasten/WASD, am Handy Wischen oder Steuerkreuz.
+- Schwerkraft zieht die Wurst nach unten, nach oben geht's nur langsam.
+- Im Rohr ist es dunkel: nur die nähere Umgebung ist sichtbar.
+- Verstopfte Rohre (Klopapier-Pfropfen ❌) sind unpassierbar – es gibt aber
+  immer einen Umweg. Jede Runde erzeugt ein neues Rohrsystem (`src/game/rohrMaze.ts`).
+- Rundendauer ca. 20–30 s, nach 60 s ist das Rohr „eingetrocknet“.
+- Highscore = schnellste Zeit (Tabelle `rohr_scores`,
+  Migration `supabase/migrations/20261121000000_rohr_flitzer.sql`).
 
 ## Einmalige Einrichtung
 
