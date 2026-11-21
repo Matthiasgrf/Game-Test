@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Bauer Franz und die Getreideernte</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -15,7 +16,7 @@ body { overflow: hidden; background-color: #9fd3f5; user-select: none; -webkit-u
 .hidden { display: none !important; }
 
 /* Anzeigen oben */
-#hud { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; flex-wrap: wrap;
+#hud { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 10px; right: calc(var(--gt-bar-space) + 4px); display: flex; flex-wrap: wrap;
   justify-content: space-between; align-items: center; gap: 8px; z-index: 5; pointer-events: none; }
 .hud-box { background: rgba(255, 255, 255, 0.94); border: 3px solid #d97706; border-radius: 14px; padding: 7px 14px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 1rem; font-weight: bold; color: #451a03; pointer-events: auto; white-space: nowrap; }
@@ -117,6 +118,8 @@ table.work-table th { background: #fef3c7; color: #78350f; }
   #toast { font-size: 0.98rem; }
 }
 @media (max-width: 520px) { #compass { top: calc(92px + env(safe-area-inset-top)); } }
+/* Schmale Handys: Anzeigen brauchen neben der Leiste des Kits drei Zeilen – Kompass darunter */
+@media (max-width: 520px) { #compass { top: calc(124px + env(safe-area-inset-top)); } }
 </style>
 </head>
 <body>
@@ -125,7 +128,6 @@ table.work-table th { background: #fef3c7; color: #78350f; }
 
 <!-- Anzeigen während des Spiels -->
 <div id="hud" class="hidden">
-  <a class="hud-box home-link" href="../../#/" target="_top">🏠 Alle Spiele</a>
   <div class="hud-box">📍 Stationen <span id="score">0</span> / 10</div>
   <div class="hud-box">🌾 Karren <span id="karre">0</span>/<span id="karre-max">6</span> · 🏡 <span id="garben">0</span></div>
   <div class="hud-box">🌺 Blumen <span id="blumen">0</span> / <span id="blumen-max">24</span></div>
@@ -516,6 +518,7 @@ function checkCurrentStation() {
   if (correctCount === fields.length) {
     fb.style.color = "#15803d";
     fb.textContent = "🎉 Super gemacht! Alles richtig!";
+    if (kit) kit.sound.richtig();
     $('tip-box').textContent = "📖 Merke: " + stationsData[currentStation.qIndex].tip;
     show('tip-box', true);
     show('tip-btn', false); show('check-btn', false); show('mode-btn', false); show('next-btn', true);
@@ -525,6 +528,7 @@ function checkCurrentStation() {
     $('next-btn').focus();
   } else {
     if (!currentStation.solved) { fehler++; dirty = true; }
+    if (kit) kit.sound.falsch();
     fb.style.color = "#b91c1c";
     fb.textContent = `Fast! Du hast ${correctCount} von ${fields.length} richtig. Schau dir die roten Felder noch einmal an!`;
   }
@@ -550,7 +554,7 @@ $('start-controls').textContent = isTouch
 function loadSave() {
   try { const s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 ? s : null; } catch (e) { return null; }
 }
-function resetSave() { try { localStorage.removeItem(SAVE); } catch (e) {} }
+function resetSave() { try { localStorage.removeItem(SAVE); } catch (e) {} if (window.GameTest) GameTest.saveState({ v: 0 }); }
 
 /* ---------- 3D-Welt ---------- */
 let renderer;
@@ -1248,6 +1252,7 @@ function save() {
     x: +farmer.position.x.toFixed(2), z: +farmer.position.z.toFixed(2), rot: +farmer.rotation.y.toFixed(3)
   };
   try { localStorage.setItem(SAVE, JSON.stringify(data)); } catch (e) {}
+  if (window.GameTest) GameTest.saveState(data);           /* pro Spieler in der Datenbank (saveKey) */
   dirty = false; saveTimer = 0;
 }
 function applySave(s) {
@@ -1332,7 +1337,7 @@ function setPlayUi(on) {
   prevMow = false; mowLatch = false;
 }
 function startGame() {
-  mode = 'play';
+  mode = 'play'; kitState();
   if (!gemeldet) sekStart = Date.now();
   show('start-screen', false);
   if (document.activeElement) document.activeElement.blur();
@@ -1355,7 +1360,8 @@ function closeQuiz() {
   if (solvedCount === stations.length && !winShown) showWin();
 }
 function showWin() {
-  mode = 'win'; winShown = true;
+  mode = 'win'; winShown = true; kitState();
+  if (kit) kit.sound.gewonnen();
   setPlayUi(false);
   const kinds = Object.keys(ANIMALS).filter(k => seen[k]).length;
   $('win-stats').textContent = `🌾 ${farmCount} Garben auf den Hof gebracht · 🌺 ${flowerCount} von ${flowers.length} Blumen gepflückt · 🐾 ${kinds} von 4 Tierarten entdeckt`;
@@ -1372,7 +1378,7 @@ function showWin() {
 $('startBtn').addEventListener('click', startGame);
 $('resetBtn').addEventListener('click', () => { resetSave(); location.reload(); });
 $('againBtn').addEventListener('click', () => { resetSave(); location.hash = 'neu'; location.reload(); });
-$('moreBtn').addEventListener('click', () => { show('win-screen', false); mode = 'play'; setPlayUi(true); });
+$('moreBtn').addEventListener('click', () => { show('win-screen', false); mode = 'play'; kitState(); setPlayUi(true); });
 window.addEventListener('pagehide', () => { if (mode !== 'start' && dirty) save(); });
 
 /* ---------- Spielschleife ---------- */
@@ -1566,14 +1572,39 @@ function update(dt) {
   }
 }
 
-let last = performance.now();
+let last = performance.now(), raf = 0, lastDraw = 0, paused = false, kit = null, quality = null, uhrLief = false;
 function frame(now) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  raf = 0;
+  if (paused) return;                                    /* Pause: nichts zeichnen, das Gerät bleibt kühl */
+  raf = requestAnimationFrame(frame);
+  if (mode !== 'play' && now - lastDraw < 50) return;    /* Start, Fragen, Gewinn: Szene nur mit 20 Bildern/s */
+  lastDraw = now;
+  const raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw);
   last = now;
+  if (quality && mode === 'play') quality.frame(raw);
   for (let i = 0; i < timeScale; i++) update(dt);
   renderer.render(scene, camera);
 }
+
+/* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und „Alle Spiele“,
+   Pause-Fenster, automatische Pause im Hintergrund, Klänge, Detailstufe auf schwachen Geräten ---------- */
+function kitState() { if (kit) kit.setState(mode === 'start' ? 'menu' : mode === 'win' ? 'end' : 'play'); }
+import('../shared/kit/kit.js').then((m) => {
+  kit = m.startKit({
+    key: 'sachunterricht-getreideernte', orientation: 'any',
+    pause() {
+      paused = true;
+      if (sekStart) { sekVorher = spielSekunden(); sekStart = 0; uhrLief = true; }   /* Spielzeit hält an */
+    },
+    resume() {
+      paused = false; last = performance.now();
+      if (uhrLief) { sekStart = Date.now(); uhrLief = false; }
+      if (!raf) raf = requestAnimationFrame(frame);
+    },
+  });
+  quality = m.createQuality({ renderer, maxPixelRatio: isTouch ? 1.5 : 2 });
+  kitState();
+}).catch(() => {});
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -1611,7 +1642,7 @@ if (location.hash === '#neu') {                           /* „Nochmal spielen�
   history.replaceState(null, '', location.pathname + location.search);
   startGame();
 }
-requestAnimationFrame(frame);
+raf = requestAnimationFrame(frame);
 })();
 </script>
 </body>

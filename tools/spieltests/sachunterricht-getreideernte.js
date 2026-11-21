@@ -14,7 +14,10 @@ export default async function (t) {
     t.check(`${size}: Start-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('#start-screen a[href="../../#/"][target="_top"]').isVisible());
     await game.click('#startBtn');
     await mode('play');
-    t.check(`${size}: „🏠 Alle Spiele“ während des Spiels`, await game.locator('#hud a[href="../../#/"][target="_top"]').isVisible());
+    t.check(`${size}: „🏠 Alle Spiele“ während des Spiels (Leiste des Kits)`, await game.locator('.gt-bar a[href="../../#/"][target="_top"]').isVisible());
+    await game.click('.gt-bar [aria-label="Pause"]');
+    t.check(`${size}: Pause-Fenster`, await game.locator('[data-gt="pause"]').isVisible());
+    await game.click('[data-gt="weiter"]');
 
     for (let i = 0; i < 10; i++) {
       await game.evaluate((i) => {

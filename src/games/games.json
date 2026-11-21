@@ -183,6 +183,7 @@
   {
     "key": "sachunterricht-getreideernte",
     "type": "html",
+    "saveKey": "sachunterricht_getreideernte_v1",
     "title": "Bauer Franz und die Getreideernte",
     "description": "Mähe mit Bauer Franz und seiner Sense das Feld und löse an 10 Stationen Aufgaben rund ums Getreide.",
     "age": "3. Klasse",

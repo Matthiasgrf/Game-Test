@@ -9,9 +9,8 @@
    ständiges Hin und Her wäre schlimmer als eine etwas einfachere Grafik.
    Stufen: 0 = volle Qualität … 2 = einfachste. Die erreichte Stufe gilt für die ganze Sitzung. */
 
-const RATIOS = [2, 1.5, 1];
-
-export function createQuality({ renderer = null, onChange = () => {}, minFps = 45, windowSeconds = 3 } = {}) {
+export function createQuality({ renderer = null, onChange = () => {}, minFps = 45, windowSeconds = 3, maxPixelRatio = 2 } = {}) {
+  const RATIOS = [maxPixelRatio, Math.max(1, maxPixelRatio * 0.75), 1];
   let stufe = 0;
   let frames = 0;
   let time = 0;
