@@ -42,6 +42,12 @@ export { createViewport, fitCanvas, board, createLoop, createInput, createSound,
 
 export const HOME_URL = '../../#/';
 
+/* Symbole als SVG: ⏸ und ⛶ fehlen in manchen Schriften (Android, Windows) */
+const ICON = {
+  pause: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="6" y="4" width="4.5" height="16" rx="1.5" fill="currentColor"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.5" fill="currentColor"/></svg>',
+  full: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>',
+};
+
 const el = (tag, attrs = {}, html = '') => {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
@@ -68,9 +74,9 @@ export function startKit(options = {}) {
   const buttons = {};
   if (bar) {
     const holder = bar instanceof Element ? bar : document.body.appendChild(el('nav', { class: 'gt-bar', 'aria-label': 'Spiel' }));
-    buttons.pause = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Pause', title: 'Pause (P)' }, '⏸'));
+    buttons.pause = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Pause', title: 'Pause (P)' }, ICON.pause));
     buttons.sound = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', title: 'Ton an/aus (M)' }));
-    if (fullscreen.available) buttons.full = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Vollbild', title: 'Vollbild' }, '⛶'));
+    if (fullscreen.available) buttons.full = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Vollbild', title: 'Vollbild' }, ICON.full));
     if (home) holder.appendChild(el('a', { class: 'gt-icon', href: HOME_URL, target: '_top', 'aria-label': 'Alle Spiele', title: 'Alle Spiele' }, '🏠'));
     buttons.pause.addEventListener('click', () => api.pause());
     buttons.sound.addEventListener('click', () => sound.toggle());
@@ -128,7 +134,7 @@ export function startKit(options = {}) {
       sound.suspend();
       onPause();
       updateBar();
-      pauseScreen.querySelector('[data-gt="weiter"]').focus({ preventScroll: true });
+      pauseScreen.querySelector('[data-gt="weiter"]').focus({ preventScroll: true, focusVisible: false });
     },
     resume() {
       if (!paused || orient.wrong) return;
@@ -142,7 +148,8 @@ export function startKit(options = {}) {
     show(name) {
       document.querySelectorAll('[data-screen]').forEach((s) => { s.hidden = s.dataset.screen !== name; });
       const first = name && document.querySelector(`[data-screen="${name}"] [autofocus], [data-screen="${name}"] .gt-btn`);
-      if (first) first.focus({ preventScroll: true });
+      /* Fokus für die Tastatur, ohne sichtbaren Ring bei Maus/Touch */
+      if (first) first.focus({ preventScroll: true, focusVisible: false });
     },
     toast(text, ms = 1800) {
       toastEl.textContent = text;

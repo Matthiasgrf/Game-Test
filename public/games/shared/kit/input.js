@@ -72,7 +72,12 @@ export function createInput({ keys = KEYS } = {}) {
         b.textContent = label;
         b.setAttribute('aria-label', title || action);
         const src = `touch:${action}:${Math.random()}`;
-        const down = (e) => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); b.classList.add('gt-on'); press(action, src); };
+        const down = (e) => {
+          e.preventDefault();
+          try { b.setPointerCapture(e.pointerId); } catch { /* kein echter Zeiger (z. B. Test) – egal */ }
+          b.classList.add('gt-on');
+          press(action, src);
+        };
         const up = () => { b.classList.remove('gt-on'); release(action, src); };
         b.addEventListener('pointerdown', down);
         b.addEventListener('pointerup', up);
