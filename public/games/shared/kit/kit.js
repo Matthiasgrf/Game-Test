@@ -77,7 +77,7 @@ export function startKit(options = {}) {
     const holder = bar instanceof Element ? bar : document.body.appendChild(el('nav', { class: 'gt-bar', 'aria-label': 'Spiel' }));
     buttons.pause = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Pause', title: 'Pause (P)' }, ICON.pause));
     buttons.sound = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', title: 'Ton an/aus (M)' }));
-    if (fullscreen.available) buttons.full = holder.appendChild(el('button', { type: 'button', class: 'gt-icon', 'aria-label': 'Vollbild', title: 'Vollbild' }, ICON.full));
+    if (fullscreen.available) buttons.full = holder.appendChild(el('button', { type: 'button', class: 'gt-icon gt-full', 'aria-label': 'Vollbild', title: 'Vollbild' }, ICON.full));
     if (home) holder.appendChild(el('a', { class: 'gt-icon', href: HOME_URL, target: '_top', 'aria-label': 'Alle Spiele', title: 'Alle Spiele' }, '🏠'));
     buttons.pause.addEventListener('click', () => api.pause());
     buttons.sound.addEventListener('click', () => sound.toggle());
@@ -95,12 +95,14 @@ export function startKit(options = {}) {
       </div>
       <div class="gt-row">
         <button type="button" class="gt-btn gt-alt" data-gt="ton"></button>
+        ${fullscreen.available ? `<button type="button" class="gt-btn gt-alt" data-gt="vollbild">${ICON.full} Vollbild</button>` : ''}
         <a class="gt-btn gt-alt" href="${HOME_URL}" target="_top">🏠 Alle Spiele</a>
       </div>
     </div>`);
   document.body.appendChild(pauseScreen);
   pauseScreen.querySelector('[data-gt="weiter"]').addEventListener('click', () => api.resume());
   pauseScreen.querySelector('[data-gt="ton"]').addEventListener('click', () => sound.toggle());
+  pauseScreen.querySelector('[data-gt="vollbild"]')?.addEventListener('click', () => fullscreen.toggle());
 
   function updateSoundLabels() {
     const label = sound.muted ? '🔇' : '🔊';

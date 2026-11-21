@@ -145,14 +145,16 @@ function checkHtmlGame(g, dir) {
   if (!/<script[^>]+src=["']\.\.\/shared\/zoom-schutz\.js["']/i.test(html)) err(where, 'Zoom-Schutz fehlt: <script src="../shared/zoom-schutz.js"></script> im <head>.');
   if (!/<script[^>]+src=["']\.\.\/shared\/game-test\.js["']/i.test(html)) err(where, 'Verbindung zur App fehlt: <script src="../shared/game-test.js"></script> im <head>.');
 
-  /* Link zur Übersicht: zur App (../../#/) und im ganzen Fenster (target="_top"), nicht im iframe. */
+  /* Link zur Übersicht: zur App (../../#/) und im ganzen Fenster (target="_top"), nicht im iframe.
+     Mit dem Kit kommt er aus der Leiste und dem Pause-Fenster (smoke.js prüft, dass er sichtbar ist). */
+  const usesKit = /startKit\s*\(/.test(gameCode(dir, html)) && !/home\s*:\s*false/.test(gameCode(dir, html));
   const homeLinks = [...html.matchAll(/<a\b[^>]*href=["']\.\.\/\.\.\/(#\/)?["'][^>]*>/gi)];
-  if (!homeLinks.length) err(where, 'Link zurück zur Übersicht fehlt: <a href="../../#/" target="_top">🏠 Alle Spiele</a>.');
+  if (!homeLinks.length && !usesKit) err(where, 'Link zurück zur Übersicht fehlt: <a href="../../#/" target="_top">🏠 Alle Spiele</a>.');
   homeLinks.forEach(([tag, hash]) => {
     if (!hash) err(where, `Link ${tag} → href="../../#/" verwenden (zur App-Übersicht).`);
     if (!/target=["']_top["']/i.test(tag)) err(where, `Link ${tag} braucht target="_top", sonst öffnet sich die App im Spiel.`);
   });
-  if (!/Alle Spiele/.test(html)) err(where, 'Text „🏠 Alle Spiele“ für den Link zur Übersicht fehlt.');
+  if (!/Alle Spiele/.test(html) && !usesKit) err(where, 'Text „🏠 Alle Spiele“ für den Link zur Übersicht fehlt.');
 
   const code = gameCode(dir, html);
   const reports = /GameTest\.reportScore\s*\(|\.saveScore\s*\(/.test(code);
@@ -196,7 +198,7 @@ function checkStandard(g, dir, html, code) {
     if (!/kit\/theme\.css/.test(html)) warn(where, '[Altbestand] noch nicht auf den Standard umgestellt (Kit, Pause, Ton, Vollbild, Drehen-Hinweis).');
   } else {
     if (!/<link[^>]+href=["']\.\.\/shared\/kit\/theme\.css["']/i.test(html)) report(where + 'index.html', 'Design fehlt: <link rel="stylesheet" href="../shared/kit/theme.css"> im <head>.');
-    if (!/from\s+["']\.\.\/shared\/kit\/kit\.js["']/.test(code) || !/startKit\s*\(/.test(code)) report(where, 'Kit fehlt: import { startKit } from \'../shared/kit/kit.js\' und startKit({ key, orientation, … }) aufrufen.');
+    if (!/(?:from\s+|import\s*\(\s*)["']\.\.\/shared\/kit\/kit\.js["']/.test(code) || !/startKit\s*\(/.test(code)) report(where, 'Kit fehlt: import { startKit } from \'../shared/kit/kit.js\' und startKit({ key, orientation, … }) aufrufen.');
     const key = /startKit\s*\(\s*\{[^}]*?\bkey\s*:\s*["']([^"']+)["']/.exec(code);
     if (key && key[1] !== g.key) report(where, `startKit bekommt key "${key[1]}", in games.json steht "${g.key}".`);
     if (g.orientation !== 'any' && !new RegExp(`orientation\\s*:\\s*["']${g.orientation}["']`).test(code)) {

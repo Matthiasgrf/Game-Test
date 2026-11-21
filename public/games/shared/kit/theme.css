@@ -61,19 +61,20 @@
   --gt-left: max(10px, env(safe-area-inset-left));
 }
 
-/* ---------- Grundregeln (nur mit <html class="gt">) ---------- */
-html.gt, html.gt body {
+/* ---------- Grundregeln (nur mit <html class="gt">) ----------
+   In :where(), also mit der geringsten Priorität: Eigene Stile eines Spiels gewinnen immer. */
+:where(html.gt), :where(html.gt) body {
   margin: 0; height: 100%; overflow: hidden;
   overscroll-behavior: none;                 /* kein Gummiband, kein Neuladen durch Ziehen */
 }
-html.gt * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html.gt body {
+:where(html.gt) * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:where(html.gt) body {
   font-family: var(--gt-font); color: var(--gt-ink);
   background: linear-gradient(var(--gt-sky-1) 0%, var(--gt-sky-2) 22%, var(--gt-sky-2) 100%);
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
 }
-html.gt button { font: inherit; color: inherit; }
+:where(html.gt) button { font: inherit; color: inherit; }
 html.gt [hidden] { display: none !important; }
 
 /* Die Spielfläche: genau der sichtbare Bereich, nie größer, keine Gesten des Browsers */
@@ -82,7 +83,15 @@ html.gt [hidden] { display: none !important; }
 /* Spielbrett mit festem Seitenverhältnis (viewport.js → board()) liegt mittig in der Szene */
 .gt-board { position: absolute; }
 
-/* ---------- Leiste oben rechts: Pause, Ton, Vollbild, Alle Spiele ---------- */
+/* ---------- Leiste oben rechts: Pause, Ton, Vollbild, Alle Spiele ----------
+   --gt-bar-space: so viel Platz brauchen die Knöpfe oben rechts – eigene Anzeigen oben lassen ihn frei,
+   z. B. max-width: calc(100% - var(--gt-bar-space) - 20px). */
+:root { --gt-bar-space: 230px; }
+/* Schmale Handys: Vollbild nur im Pause-Fenster, damit oben Platz für die Anzeigen bleibt */
+@media (max-width: 520px) {
+  :root { --gt-bar-space: 172px; }
+  .gt-bar .gt-full { display: none; }
+}
 .gt-bar {
   position: fixed; z-index: 60; top: var(--gt-top); right: var(--gt-right);
   display: flex; gap: 8px; align-items: center;
