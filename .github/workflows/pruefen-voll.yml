@@ -1,0 +1,155 @@
+name: Spiele prüfen (ausführlich)
+
+# Der große Test (Test-Strategie: docs/GAME_STANDARD.md): jedes Spiel in einem eigenen Job, parallel –
+# laden in allen Größen und durchspielen, beides mit echtem 3D-Zeichnen; Übersicht und Highscores;
+# iPhone und iPad mit der Safari-Engine (WebKit); Leistungsbericht. Screenshots als Artefakte.
+# Läuft nach jedem Merge auf main, jede Nacht und per Hand (Actions → „Spiele prüfen (ausführlich)“ → Run workflow).
+# Ein Pull Request, der diesen Workflow ändert, startet ihn ebenfalls.
+on:
+  push:
+    branches: [main, claude/nifty-bell-wreqt1] # VORÜBERGEHEND: Branch zum Ausprobieren, vor dem Merge entfernen
+  schedule:
+    - cron: '23 1 * * *' # nachts, 1:23 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/pruefen-voll.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruefen-voll-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  liste:
+    name: Spiele auflisten
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      spiele: ${{ steps.liste.outputs.spiele }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: liste
+        run: node tools/geaendert.js --github --alle
+
+  spiel:
+    name: ${{ matrix.spiel }}
+    needs: liste
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        spiel: ${{ fromJSON(needs.liste.outputs.spiele) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        run: npx playwright install --only-shell chromium
+      - name: Laden auf Computer, Tablet, Handy hoch und quer
+        run: node tools/smoke.js ${{ matrix.spiel }} --zeichnen
+      - name: Durchspielen (3D wird echt gezeichnet)
+        run: |
+          if [ -f "tools/spieltests/${{ matrix.spiel }}.js" ]; then
+            node tools/spieltest.js "${{ matrix.spiel }}" --zeichnen
+          else
+            echo "::warning::Kein Durchspiel-Test für ${{ matrix.spiel }} (tools/spieltests/${{ matrix.spiel }}.js)."
+          fi
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.spiel }}
+          path: test-ergebnisse/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  seiten:
+    name: Übersicht und Highscores
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        run: npx playwright install --only-shell chromium
+      - name: Übersicht und Highscores in allen Größen
+        run: node tools/smoke.js --nur-seiten
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-seiten
+          path: test-ergebnisse/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  webkit:
+    name: iPhone und iPad (WebKit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: WebKit aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-webkit-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: WebKit und Systembibliotheken installieren
+        run: npx playwright install --with-deps webkit
+      - name: Alle Seiten und Spiele auf iPhone und iPad (hoch und quer)
+        run: node tools/smoke.js --browser webkit
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-webkit
+          path: test-ergebnisse/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  leistung:
+    name: Leistung
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        run: npx playwright install --only-shell chromium
+      - name: Ladegröße, Zeichnen im Menü, 3D-Detailstufe
+        run: node tools/leistung.js

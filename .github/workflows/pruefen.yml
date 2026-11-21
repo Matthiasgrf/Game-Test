@@ -1,26 +1,37 @@
 name: Spiele prüfen
 
-# Läuft bei jedem Push und Pull Request: TypeScript, Regel-Prüfung, dann öffnet ein Browser
-# Übersicht, Highscores und jedes Spiel (Login wird nachgestellt, keine echte Datenbank).
-# Spiele mit einer Datei in tools/spieltests/ werden danach automatisch durchgespielt.
+# Bei jedem Push (Test-Strategie: docs/GAME_STANDARD.md):
+#   1. Schnelle Checks (Ziel unter 2 min): TypeScript, Regeln + Syntax (check.js), was hat sich geändert
+#      (geaendert.js) und – außer bei reiner Doku – alle Seiten und Spiele einmal auf dem Handy laden.
+#   2. Nur die geänderten Spiele durchspielen, jedes in einem eigenen Job (parallel).
+#   3. Auf main: veröffentlichen (GitHub Pages), sobald die schnellen Checks grün sind.
+# Alle Größen, WebKit (iPhone/iPad), Screenshots und Leistung: pruefen-voll.yml (main, nachts, per Hand).
+# Kein eigener pull_request-Lauf: Der Push-Lauf prüft denselben Stand und erscheint auch im Pull Request.
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Ein neuer Push bricht den alten Lauf desselben Branches ab.
 concurrency:
   group: pruefen-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  pruefen:
+  schnell:
+    name: Schnelle Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 6
+    outputs:
+      browser: ${{ steps.geaendert.outputs.browser }}
+      durchspielen: ${{ steps.geaendert.outputs.durchspielen }}
+      anzahl: ${{ steps.geaendert.outputs.anzahl }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # für den Vergleich mit main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -28,19 +39,111 @@ jobs:
       - run: npm ci
       - name: TypeScript prüfen
         run: npx tsc -b
-      - name: Regeln prüfen (games.json, Dateien, Migrationen)
+      - name: Regeln und Syntax prüfen (games.json, Dateien, Migrationen, Skripte)
         run: node tools/check.js
-      - name: Browser installieren
-        run: npx playwright install --with-deps chromium
-      - name: Übersicht und Spiele im Browser öffnen
-        run: node tools/smoke.js
-      - name: Spiele durchspielen
-        run: node tools/spieltest.js
+      - name: Was hat sich geändert?
+        id: geaendert
+        run: node tools/geaendert.js --github
+      - name: Browser aus dem Cache
+        if: steps.geaendert.outputs.browser == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        if: steps.geaendert.outputs.browser == 'true'
+        run: npx playwright install --only-shell chromium
+      - name: Alle Seiten und Spiele laden (Handy, ohne JavaScript-Fehler)
+        if: steps.geaendert.outputs.browser == 'true'
+        run: node tools/smoke.js --groesse handy
+      - name: Screenshots bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-schnell
+          path: test-ergebnisse/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  durchspielen:
+    name: Durchspielen ${{ matrix.spiel }}
+    needs: schnell
+    # auf main spielt der ausführliche Test (pruefen-voll.yml) ohnehin alle Spiele durch
+    if: needs.schnell.outputs.anzahl != '0' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        spiel: ${{ fromJSON(needs.schnell.outputs.durchspielen) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        run: npx playwright install --only-shell chromium
+      - name: Durchspielen
+        run: node tools/spieltest.js ${{ matrix.spiel }}
       - name: Screenshots hochladen
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.spiel }}
           path: test-ergebnisse/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
+
+  # ---------- Veröffentlichen (nur main) ----------
+  bauen:
+    name: Veröffentlichen – bauen
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Supabase-Variablen prüfen
+        run: |
+          if [ -z "${{ vars.VITE_SUPABASE_URL }}" ] || [ -z "${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}" ]; then
+            echo "::error::Repo-Variables VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY fehlen (Settings -> Secrets and variables -> Actions -> Variables)"
+            exit 1
+          fi
+      - run: npm run build
+        env:
+          # Repo -> Settings -> Secrets and variables -> Actions -> Variables
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  veroeffentlichen:
+    name: Veröffentlichen (GitHub Pages)
+    needs: [schnell, bauen]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
