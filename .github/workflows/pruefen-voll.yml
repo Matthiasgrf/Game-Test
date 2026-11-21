@@ -7,7 +7,7 @@ name: Spiele prüfen (ausführlich)
 # Ein Pull Request, der diesen Workflow ändert, startet ihn ebenfalls.
 on:
   push:
-    branches: [main, claude/nifty-bell-wreqt1] # VORÜBERGEHEND: Branch zum Ausprobieren, vor dem Merge entfernen
+    branches: [main]
   schedule:
     - cron: '23 1 * * *' # nachts, 1:23 UTC
   workflow_dispatch:

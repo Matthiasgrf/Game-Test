@@ -24,7 +24,7 @@ Browser (React, GitHub Pages)
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
 | Spiele, Werkzeuge, Tests | `src/games/games.json`, `public/games/`, `tools/`, `CLAUDE.md` | `node tools/neues-spiel.js`, `npm test` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
-| Deployment | `.github/workflows/deploy.yml` | GitHub Actions → GitHub Pages |
+| Checks und Deployment | `.github/workflows/pruefen.yml`, `pruefen-voll.yml` | GitHub Actions → GitHub Pages (Test-Strategie: `docs/GAME_STANDARD.md`) |
 
 ### Warum Username → Pseudo-E-Mail?
 Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
@@ -147,9 +147,15 @@ Checkliste und die Regeln für Spiele stehen in **`CLAUDE.md`**.
 | Befehl | Zweck |
 |---|---|
 | `npm run check` | Regeln ohne Browser: games.json, Dateien, Vorschaubilder, Links, fremde Server, Highscore ↔ Datenbank |
-| `npm run smoke` | Übersicht, Highscores und jedes Spiel im Browser öffnen (Computer + Handy), Screenshots in `test-ergebnisse/` |
+| `npm run smoke` | Übersicht, Highscores und jedes Spiel im Browser öffnen (Computer, Tablet, Handy hoch und quer), Screenshots in `test-ergebnisse/` |
 | `npm run spieltest` | Spiele mit Test in `tools/spieltests/` automatisch durchspielen, inkl. gespeichertem Ergebnis |
-| `npm test` | alles zusammen, wie der Workflow **„Spiele prüfen“** bei jedem Push |
+| `npm run test:schnell` | wie die schnellen Checks des Workflows **„Spiele prüfen“**: nur, was sich geändert hat |
+| `npm run leistung` | Leistungsbericht je Spiel |
+| `npm test` | alles zusammen |
+
+Auf GitHub laufen bei jedem Push die schnellen Checks (unter 2 Minuten) und nur die geänderten Spiele werden
+durchgespielt; nach dem Merge auf `main` wird veröffentlicht und der ausführliche Test läuft (auch nachts und per
+Hand). Details und Laufzeiten: `docs/GAME_STANDARD.md`.
 
 Die Browser-Tests bauen die App mit Test-Zugangsdaten und stellen Supabase im Browser nach
 (`tools/lib.js`, `mockSupabase`). Sie brauchen weder Passwort noch Datenbank und speichern nichts.

@@ -64,4 +64,19 @@ Die Browser-Werkzeuge öffnen mehrere Seiten gleichzeitig (`--parallel`, Standar
 
 ### Laufzeiten vorher / nachher
 
-Wird nach den ersten Läufen mit den neuen Workflows ergänzt.
+Gemessen auf GitHub (Läufe 49 und 51 vorher, 52 und „ausführlich“ 1 nachher; Runner `ubuntu-latest`).
+
+| | vorher | nachher |
+|---|---|---|
+| ein Push auf einen Branch mit Pull Request | 2 Läufe (push + pull_request) je 16–19 min | 1 Lauf |
+| „Spiele prüfen“, alle Spiele betroffen | 16:08 min (Lauf 49), 18:53 min (Lauf 51) | **1:47 min** (Lauf 52) |
+| davon schnelle Checks | – | 0:33 min |
+| Laden aller Seiten (Smoke) | 3:10 min (4 Größen, nacheinander) | 0:18 min (Handy, parallel) |
+| Durchspielen | 12:14 min nacheinander | parallel, längster Job 1:05 min |
+| Ski-Flitzer durchspielen | 4:17 min | 0:41 min (ausführlich mit echtem 3D: 4:28 min) |
+| Elisabeth durchspielen | 1:54 min | 0:09 min |
+| Bauer Franz durchspielen | 1:50 min | 0:08 min |
+| reine Doku-Änderung | 17:12 min (Lauf 41) | unter 30 s, ohne Browser |
+| Merge auf main bis online | ~0:30 min, ohne Tests | ~1:30 min, nach den schnellen Checks |
+| ausführlicher Test (neu) | – | 5:21 min: 13 Spiele in 4 Größen mit echtem 3D, WebKit iPhone/iPad, Leistung |
+| Zeitlimit | 20 min für alles (fast erreicht) | 6 min schnell, 10 min je Spiel, 15 min ausführlich je Job |

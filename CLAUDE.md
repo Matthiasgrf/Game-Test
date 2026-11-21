@@ -1,7 +1,7 @@
 # Game-Test – Regeln für Claude
 
 React-App (Vite + TypeScript) mit Login über Supabase, Spiele-Übersicht, Gruppen und Highscores.
-Veröffentlicht über GitHub Pages aus `main` (Workflow „Deploy to GitHub Pages“).
+Veröffentlicht über GitHub Pages aus `main` (Workflow „Spiele prüfen“, Jobs „Veröffentlichen“, nach den schnellen Checks).
 Zielgruppe der Spiele: Kinder (Kindergarten bis Grundschule), genutzt auf Computer, Tablet und Handy.
 Sprache aller Texte: Deutsch, kindgerecht, kurze Sätze.
 
@@ -21,11 +21,15 @@ public/games/shared/          zoom-schutz.js, game-test.js (Verbindung HTML-Spie
 public/games/shared/vendor/   gemeinsame Bibliotheken für HTML-Spiele (Three.js r128, flag-icons 7.6.0, mit Lizenz)
 supabase/migrations/          Datenbank; jedes Spiel braucht eine Zeile in der Tabelle games
                               Kategorien der Übersicht (Schulfächer): Tabellen categories, game_categories (pflegt der Admin)
-tools/                        neues-spiel.js, check.js, smoke.js, spieltest.js, thumbnail.js, lib.js
+tools/                        neues-spiel.js, check.js, smoke.js, spieltest.js, geaendert.js, schnell.js, leistung.js,
+                              thumbnail.js, lib.js
 tools/spieltests/<key>.js     Durchspiel-Test pro Spiel
 tools/flugtest.js             gemeinsamer Durchspiel-Test der Flugspiele (europaflug, deutschlandflug, weltflug)
 tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz, readme, Migration, Tests)
-.github/workflows/pruefen.yml „Spiele prüfen“: tsc, check.js, smoke.js, spieltest.js bei jedem Push
+.github/workflows/pruefen.yml „Spiele prüfen“ bei jedem Push: schnelle Checks, geänderte Spiele durchspielen,
+                              auf main veröffentlichen
+.github/workflows/pruefen-voll.yml  „Spiele prüfen (ausführlich)“: main, nachts, per Hand – alle Größen, WebKit, Leistung
+docs/GAME_STANDARD.md         Standard für Spiele, Test-Strategie mit Laufzeiten
 ```
 
 ## Zwei Arten von Spielen
@@ -94,14 +98,19 @@ Vorbild: `public/games/sachunterricht-getreideernte` (Bauer Franz).
 | `node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "…"] [--gruppe "…"] [--emoji "…"] [--kategorie "…"]` | Spiel aus der Vorlage anlegen: Dateien, games.json, Migration, Durchspiel-Test. Überschreibt nichts. |
 | `node tools/thumbnail.js <key> [--klick "<css>"] [--tippen "<css>" "<text>"] [--verstecken "<css>"] [--warten <ms>]` | `thumbnail.jpg` 900×600 als Screenshot |
 | `node tools/check.js` | Regeln prüfen ohne Browser – muss ohne Fehler durchlaufen |
-| `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy hoch und quer – mit hoher Pixeldichte wie iPad/iPhone), Größe der Spielfläche prüfen, Screenshots in `test-ergebnisse/` |
-| `node tools/spieltest.js [key]` | Spiele mit Testdatei in `tools/spieltests/` automatisch durchspielen |
-| `npm test` | alles zusammen (tsc, check, smoke, spieltest) |
+| `node tools/smoke.js [key …] [--groesse handy,…] [--browser webkit]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy hoch und quer – mit hoher Pixeldichte wie iPad/iPhone; mit WebKit iPhone/iPad), Größe der Spielfläche prüfen, Screenshots in `test-ergebnisse/` |
+| `node tools/spieltest.js [key …] [--zeichnen]` | Spiele mit Testdatei in `tools/spieltests/` automatisch durchspielen (mehrere gleichzeitig) |
+| `node tools/geaendert.js` | zeigt, welche Spiele von den Änderungen seit `main` betroffen sind (so wählt der Workflow aus) |
+| `npm run test:schnell` | wie die schnellen Checks im Workflow: tsc, check, Handy-Smoke, betroffene Spiele durchspielen – vor jedem Push |
+| `npm run leistung` | Ladegröße, Zeichnen im Menü, 3D-Detailstufe je Spiel |
+| `npm test` | alles zusammen (tsc, check, smoke, spieltest) – vor dem Pull Request |
 
 Die Browser-Werkzeuge bauen die App mit Test-Zugangsdaten (`.test-build/`) und stellen Supabase nach
 (`mockSupabase` in `tools/lib.js`): eingeloggt als „testkind“, alle Spiele freigegeben, gespeicherte
 Ergebnisse landen in `page.scores`. Es wird nie die echte Datenbank benutzt.
 Neue Regeln, die sich automatisch prüfen lassen, in `tools/check.js` ergänzen statt nur hier aufzuschreiben.
+Tests schnell halten (Test-Strategie in `docs/GAME_STANDARD.md`): 3D wird in Tests nicht gezeichnet (außer für
+Screenshots, `t.shot`), Wartezeiten im Spiel mit der Playwright-Uhr überspringen (`page.clock`), keine festen Pausen.
 
 ## Neues Spiel hinzufügen – Checkliste
 
