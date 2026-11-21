@@ -1,10 +1,14 @@
 /* Durchspiel-Test für „Ski-Flitzer“. Aufruf: node tools/spieltest.js ski-flitzer
-   Das Spiel bietet einen Zugang window.SPIEL (items, duration, timeScale, autopilot, state()).
-   Geprüft wird: Start-Bildschirm, Steuerung (Computer: Pfeiltasten, Handy: Knöpfe ◀ ▶),
-   ein ganzer Lauf über 40 Spielsekunden (im Test beschleunigt, Autopilot sammelt ein),
-   Gewinn-Bildschirm, gespeichertes Ergebnis und „Nochmal spielen“. */
+   Das Spiel bietet einen Zugang window.SPIEL (items, duration, timeScale, autopilot, state(), view()).
+   Geprüft wird auf Computer, Tablet (iPad quer) und Handy (iPhone), Tablet/Handy mit hoher Pixeldichte:
+   Start-Bildschirm, 3D-Bild genau so groß wie der Bildschirm, Kackwurst von hinten im Bild (auch ohne
+   Lenken), Steuerung (Pfeiltasten bzw. Knöpfe ◀ ▶), ein ganzer Lauf über 40 Spielsekunden (im Test
+   beschleunigt, Autopilot sammelt ein), Gewinn-Bildschirm, gespeichertes Ergebnis und „Nochmal spielen“. */
+const visible = (v) => Math.abs(v.player[0]) < 0.9 && Math.abs(v.player[1]) < 0.9;
+
 export default async function (t) {
-  for (const [size, options] of [['computer', t.DESK], ['handy', t.PHONE]]) {
+  for (const [size, options] of [['computer', t.DESK], ['tablet', t.TABLET], ['handy', t.PHONE]]) {
+    const touch = size !== 'computer';
     const page = await t.newPage(options);
     await page.goto(t.url, { waitUntil: 'load' });
     const game = await t.frame(page);
@@ -25,22 +29,47 @@ export default async function (t) {
     await game.evaluate(() => { SPIEL.timeScale = 4; });
     await game.waitForFunction(() => SPIEL.state().phase === 'play', null, { timeout: 60000 });
 
-    // Steuerung: nach links bzw. rechts lenken
-    const x0 = await game.evaluate(() => SPIEL.state().x);
-    if (size === 'computer') {
-      await page.keyboard.down('ArrowLeft');
-      await game.waitForFunction((x0) => SPIEL.state().x < x0 - 1, x0, { timeout: 30000 }).catch(() => {});
-      await page.keyboard.up('ArrowLeft');
-      t.check('computer: Pfeiltaste ← lenkt nach links', (await game.evaluate(() => SPIEL.state().x)) < x0 - 1);
-    } else {
-      t.check('handy: Steuerknöpfe sichtbar', await game.locator('#btnRight').isVisible());
+    // Bild füllt genau den Bildschirm (bei Pixeldichte 2–3 sonst nur ein vergrößerter Ausschnitt)
+    let view = await game.evaluate(() => SPIEL.view());
+    t.check(`${size}: 3D-Bild so groß wie der Bildschirm`, view.canvas[0] === view.screen[0] && view.canvas[1] === view.screen[1], `${view.canvas.join('×')} / ${view.screen.join('×')}`);
+
+    // Ohne zu lenken bleibt die Wurst auf der Piste und im Bild
+    await game.waitForFunction(() => SPIEL.state().timeLeft < 33, null, { timeout: 60000 });
+    view = await game.evaluate(() => SPIEL.view());
+    t.check(`${size}: Kackwurst ohne Lenken nach 7 s gut im Bild`, visible(view), view.player.map((n) => n.toFixed(2)).join(', '));
+    await t.shot(page, `fahrt-${size}`);
+
+    // Steuerung: links/rechts so, wie man es auf dem Bildschirm sieht (Abstand zur Pistenmitte im Bild)
+    const rel = () => game.evaluate(() => { const v = SPIEL.view(); return v.player[0] - v.pisteMitte[0]; });
+    if (touch) {
+      t.check(`${size}: Steuerknöpfe sichtbar`, await game.locator('#btnRight').isVisible() && await game.locator('#btnLeft').isVisible());
       const box = await game.locator('#btnRight').boundingBox();
-      t.check('handy: Steuerknöpfe groß genug', box.width >= 60 && box.height >= 60, `${box.width}×${box.height}`);
-      await game.dispatchEvent('#btnRight', 'pointerdown');
-      await game.waitForFunction((x0) => SPIEL.state().x > x0 + 1, x0, { timeout: 30000 }).catch(() => {});
-      await game.dispatchEvent('#btnRight', 'pointerup');
-      t.check('handy: Knopf ▶ lenkt nach rechts', (await game.evaluate(() => SPIEL.state().x)) > x0 + 1);
+      t.check(`${size}: Steuerknöpfe groß genug`, box.width >= 60 && box.height >= 60, `${box.width}×${box.height}`);
     }
+    for (const [dir, sign] of [['links', -1], ['rechts', 1]]) {
+      const before = await rel();
+      const label = touch ? `Knopf ${sign < 0 ? '◀' : '▶'}` : `Pfeiltaste ${sign < 0 ? '←' : '→'}`;
+      if (touch) await game.dispatchEvent(sign < 0 ? '#btnLeft' : '#btnRight', 'pointerdown');
+      else await page.keyboard.down(sign < 0 ? 'ArrowLeft' : 'ArrowRight');
+      const moved = await game.waitForFunction(([b, sg]) => {
+        const v = SPIEL.view();
+        return sg * (v.player[0] - v.pisteMitte[0] - b) > 0.12;
+      }, [before, sign], { timeout: 30000 }).then(() => true, () => false);
+      if (touch) await game.dispatchEvent(sign < 0 ? '#btnLeft' : '#btnRight', 'pointerup');
+      else await page.keyboard.up(sign < 0 ? 'ArrowLeft' : 'ArrowRight');
+      t.check(`${size}: ${label} lenkt auf dem Bildschirm nach ${dir}`, moved, `vorher ${before.toFixed(2)}, nachher ${(await rel()).toFixed(2)}`);
+    }
+    // Ganz an den Pistenrand lenken: die Wurst bleibt trotzdem im Bild
+    for (const [dir, sel, key] of [['links', '#btnLeft', 'ArrowLeft'], ['rechts', '#btnRight', 'ArrowRight']]) {
+      const until = (await game.evaluate(() => SPIEL.state().timeLeft)) - 2.5;
+      if (touch) await game.dispatchEvent(sel, 'pointerdown'); else await page.keyboard.down(key);
+      await game.waitForFunction((u) => SPIEL.state().timeLeft < u, until, { timeout: 60000 });
+      const edge = await game.evaluate(() => SPIEL.view());
+      if (touch) await game.dispatchEvent(sel, 'pointerup'); else await page.keyboard.up(key);
+      t.check(`${size}: ganz ${dir} am Pistenrand noch im Bild`, visible(edge), edge.player.map((n) => n.toFixed(2)).join(', '));
+    }
+    view = await game.evaluate(() => SPIEL.view());
+    t.check(`${size}: Kackwurst nach dem Lenken im Bild`, visible(view), view.player.map((n) => n.toFixed(2)).join(', '));
 
     // Rest des Laufs beschleunigt mit Autopilot
     await game.evaluate(() => { SPIEL.autopilot = true; SPIEL.timeScale = 25; });

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-/* Öffnet die App im Browser (Computer- und Handy-Größe) mit nachgestelltem Login und meldet:
+/* Öffnet die App im Browser (Computer, Tablet und Handy – Tablet und Handy mit hoher Pixeldichte
+   wie bei iPad und iPhone) mit nachgestelltem Login und meldet:
    JavaScript-Fehler, fehlende Dateien, Zugriffe auf fremde Server, Kacheln und Bilder der
-   Übersicht, Seite breiter als der Bildschirm, fehlender Link „🏠 Alle Spiele“ im Spiel.
+   Übersicht, Seite breiter als der Bildschirm, fehlender Link „🏠 Alle Spiele“ im Spiel,
+   Spielfläche (<canvas>) größer als der Bildschirm.
    Screenshots landen in test-ergebnisse/ zum Ansehen.
 
    Aufruf:  node tools/smoke.js              Übersicht, Highscores und alle Spiele
@@ -15,7 +17,8 @@ import { OUT, buildTestApp, gameFrame, loadGames, mockSupabase, startServer } fr
 
 const SIZES = [
   { name: 'computer', viewport: { width: 1280, height: 800 } },
-  { name: 'handy', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+  { name: 'tablet', viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  { name: 'handy', viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 ];
 
 const only = process.argv[2];
@@ -31,7 +34,7 @@ let failed = 0;
 
 async function visit(hash, size, shot, check) {
   const problems = [];
-  const context = await browser.newContext({ viewport: size.viewport, isMobile: !!size.isMobile, hasTouch: !!size.hasTouch });
+  const context = await browser.newContext({ viewport: size.viewport, deviceScaleFactor: size.deviceScaleFactor || 1, isMobile: !!size.isMobile, hasTouch: !!size.hasTouch });
   /* Fremde Server werden gesperrt und gemeldet (Supabase stellt mockSupabase nach). */
   await context.route((u) => !u.href.startsWith(url) && u.hostname !== 'test.supabase.co' && /^https?:/.test(u.protocol), (route) => {
     problems.push(`Zugriff auf fremden Server: ${route.request().url()}`);
@@ -76,9 +79,21 @@ async function checkHighscores(page, problems) {
   await noOverflow(page, problems);
 }
 
+/* Eine Spielfläche darf nicht größer als der Bildschirm angezeigt werden. Typischer Fehler: canvas ohne
+   CSS-Breite/-Höhe – bei hoher Pixeldichte (iPad, iPhone) sieht man dann nur einen vergrößerten Ausschnitt. */
+async function checkCanvas(target, problems) {
+  const big = await target.evaluate(() => [...document.querySelectorAll('canvas')].map((c) => {
+    const r = c.getBoundingClientRect();
+    return r.width > window.innerWidth + 1 || r.height > window.innerHeight + 1
+      ? `${c.id ? `#${c.id}` : 'canvas'} ${Math.round(r.width)}×${Math.round(r.height)} bei Bildschirm ${window.innerWidth}×${window.innerHeight}` : '';
+  }).filter(Boolean));
+  big.forEach((b) => problems.push(`Spielfläche größer als der Bildschirm (${b}) – canvas braucht CSS-Breite/-Höhe, devicePixelRatio beachten.`));
+}
+
 const checkGame = (g) => async (page, problems) => {
   if (g.type === 'html') {
     const frame = await gameFrame(page);
+    await checkCanvas(frame, problems);
     const links = frame.locator('a[href="../../#/"]');
     let visible = false;
     for (let i = 0; i < await links.count(); i++) if (await links.nth(i).isVisible()) visible = true;
@@ -86,6 +101,7 @@ const checkGame = (g) => async (page, problems) => {
   } else {
     const link = page.locator('main a[href="#/"]', { hasText: 'Alle Spiele' });
     if (!(await link.count()) || !(await link.first().isVisible())) problems.push('Kein sichtbarer Link „🏠 Alle Spiele“ zur Übersicht.');
+    await checkCanvas(page, problems);
     await noOverflow(page, problems);
   }
 };
