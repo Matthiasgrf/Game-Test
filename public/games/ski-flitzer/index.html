@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Ski-Flitzer – Serfaus-Fiss-Ladis</title>
 <style>
 /* Ski-Flitzer: 3D-Skispiel (Three.js r128, lokal) im Stil von „Bauer Franz“ aus 3c-Sachunterricht:
@@ -16,7 +17,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#87CEEB;
 [hidden]{display:none!important}
 
 /* HUD oben */
-#hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;display:flex;flex-wrap:wrap;
+#hud{position:absolute;top:calc(10px + env(safe-area-inset-top));left:10px;right:calc(var(--gt-bar-space) + 4px);display:flex;flex-wrap:wrap;
   justify-content:space-between;align-items:center;gap:8px;z-index:5;pointer-events:none}
 .hud-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hud-box{background:rgba(255,255,255,.94);border:3px solid #0284c7;border-radius:14px;padding:6px 14px;
@@ -58,7 +59,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
 .btn{display:block;width:100%;margin:10px 0 0;padding:14px 18px;min-height:54px;font:inherit;font-size:1.2rem;font-weight:bold;
   color:#0c4a6e;background:#e0f2fe;border:3px solid #7dd3fc;border-radius:16px;cursor:pointer;text-decoration:none}
 .btn.main{background:#16a34a;border-color:#16a34a;color:#fff}
-.btn.main:hover{background:#15803d}
+@media (hover:hover) and (pointer:fine){.btn.main:hover{background:#15803d}}
 .btn:focus-visible,.hud-box:focus-visible{outline:4px solid #0c4a6e;outline-offset:2px}
 .score-big{font-size:clamp(44px,12vw,70px);font-weight:900;color:#b45309;margin:4px 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}
@@ -70,10 +71,6 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
 <canvas id="scene"></canvas>
 
 <div id="hud" hidden>
-  <div class="hud-group">
-    <a class="hud-box" href="../../#/" target="_top">🏠 Alle Spiele</a>
-    <button class="hud-box" id="soundBtn" aria-label="Ton an oder aus">🔊</button>
-  </div>
   <div class="hud-group">
     <div class="hud-box big" id="timeBox">⏱ <span id="time">40</span></div>
     <div class="hud-box big">⭐ <span id="points">0</span></div>
@@ -114,7 +111,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   </div>
 </section>
 
-<script src="three.min.js"></script>
+<script src="../shared/vendor/three-r128.min.js"></script>
 <script>
 (function () {
   'use strict';
@@ -125,8 +122,6 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   var PW = 9;                   // halbe Pistenbreite
   var SLOPE = 0.32;             // Gefälle (Höhe pro Meter)
   var COURSE = 1250;            // Länge der Strecke (reicht für 40 s Höchsttempo)
-  var SAVE_BEST = 'ski-flitzer_rekord_v1';
-  var SAVE_SOUND = 'ski-flitzer_ton_v1';
 
   /* Dinge zum Einsammeln: Punkte und wie oft sie vorkommen (w) */
   var ITEMS = [
@@ -689,10 +684,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   }
 
   /* ------------------------------------------------------------------ Ton (kurze Klänge, ohne Dateien) */
-  var audio = null, soundOn = true;
-  try { soundOn = localStorage.getItem(SAVE_SOUND) !== 'aus'; } catch (e) {}
-  function updateSoundBtn() { $('soundBtn').textContent = soundOn ? '🔊' : '🔇'; }
-  updateSoundBtn();
+  var audio = null, soundOn = true;   /* Ton an/aus: Leiste des Kits (gemeinsame Einstellung aller Spiele) */
   function ensureAudio() {
     if (audio || !soundOn) return;
     try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
@@ -708,12 +700,6 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     o.connect(g); g.connect(audio.destination);
     o.start(t); o.stop(t + len);
   }
-  $('soundBtn').addEventListener('click', function () {
-    soundOn = !soundOn;
-    try { localStorage.setItem(SAVE_SOUND, soundOn ? 'an' : 'aus'); } catch (e) {}
-    ensureAudio();
-    updateSoundBtn();
-  });
 
   /* ------------------------------------------------------------------ Steuerung */
   var keys = { left: false, right: false }, touchSteer = { left: false, right: false }, pointerSteer = {};
@@ -792,7 +778,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     points = 0; counts = {}; collected = 0; crashes = 0;
     timeLeft = DURATION;
     countdown = 3;
-    phase = 'countdown';
+    phase = 'countdown'; kitState();
     $('start').hidden = true;
     $('win').hidden = true;
     $('hud').hidden = false;
@@ -842,7 +828,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   }
 
   function finishGame() {
-    phase = 'end';
+    phase = 'end'; kitState();
     $('hud').hidden = true;
     $('touch').hidden = true;
     showBanner('');
@@ -857,16 +843,17 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       s.textContent = it.emoji + ' ' + it.name + ' × ' + counts[it.id];
       $('chips').appendChild(s);
     });
-    var best = 0;
-    try { best = parseInt(localStorage.getItem(SAVE_BEST), 10) || 0; } catch (e) {}
+    /* Rekord des Spielers (aus der Bestenliste, also pro Kind – nicht pro Gerät) */
+    var best = rekord;
     if (points > best) {
       $('record').textContent = best > 0 ? '🎉 Neuer persönlicher Rekord!' : '🎉 Dein erster Rekord!';
-      try { localStorage.setItem(SAVE_BEST, String(points)); } catch (e) {}
+      rekord = points;
     } else {
       $('record').textContent = 'Dein Rekord: ⭐ ' + best;
     }
-    /* Ergebnis an Game-Test melden – erscheint in der Bestenliste (mehr Punkte sind besser) */
-    if (window.GameTest) GameTest.reportScore({ points: points, seconds: DURATION });
+    /* Ergebnis für die Bestenliste (mehr Punkte sind besser) – über die Speicher-Schicht des Kits */
+    if (kit) kit.storage.saveScore({ points: points, seconds: DURATION });
+    else if (window.GameTest) GameTest.reportScore({ points: points, seconds: DURATION });
     $('win').hidden = false;
     $('againBtn').focus();
     tone(660, 0.15, 'triangle', 0.12); setTimeout(function () { tone(880, 0.3, 'triangle', 0.12); }, 160);
@@ -965,14 +952,36 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     sun.position.set(p.x + 35, p.y + 55, p.z - 25);
   }
 
-  var last = performance.now();
+  var last = performance.now(), raf = 0, lastDraw = 0, paused = false, kit = null, quality = null, rekord = 0;
   function loop(now) {
-    var raw = Math.min(0.05, (now - last) / 1000) * window.SPIEL.timeScale;
+    raf = 0;
+    if (paused) return;                                     /* Pause: nichts zeichnen */
+    raf = requestAnimationFrame(loop);
+    if ((phase === 'menu' || phase === 'end') && now - lastDraw < 50) return;   /* Menü/Ergebnis: 20 Bilder/s */
+    lastDraw = now;
+    var real = Math.max(0, (now - last) / 1000);
+    var raw = Math.min(0.05, real) * window.SPIEL.timeScale;
     last = now;
+    if (quality && phase === 'play') quality.frame(real);
     while (raw > 0) { var dt = Math.min(raw, 0.02); step(dt); raw -= dt; updateCamera(dt); }
     renderer.render(scene, camera);
-    requestAnimationFrame(loop);
   }
+
+  /* ------------------------------------------------------------------ Game-Test-Kit
+     Leiste mit Pause, Ton, Vollbild und „Alle Spiele“, Pause-Fenster, automatische Pause im Hintergrund,
+     Detailstufe auf schwachen Geräten, Rekord des Spielers aus der Bestenliste. */
+  function kitState() { if (kit) kit.setState(phase === 'menu' ? 'menu' : phase === 'end' ? 'end' : 'play'); }
+  import('../shared/kit/kit.js').then(function (m) {
+    kit = m.startKit({
+      key: 'ski-flitzer', orientation: 'any',
+      pause: function () { paused = true; if (audio && audio.suspend) audio.suspend(); },
+      resume: function () { paused = false; last = performance.now(); if (audio && audio.resume) audio.resume(); if (!raf) raf = requestAnimationFrame(loop); },
+      sound: { setMuted: function (m) { soundOn = !m; if (soundOn) ensureAudio(); } }
+    });
+    quality = m.createQuality({ renderer: renderer });
+    kit.storage.getScores().then(function (list) { list.forEach(function (r) { if (r.points > rekord) rekord = r.points; }); });
+    kitState();
+  }).catch(function () {});
 
   /* Legende im Start-Fenster */
   ITEMS.forEach(function (it) {
@@ -1005,7 +1014,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   planCourse();
   updateSpawns();
   updateCamera(0, true);
-  requestAnimationFrame(loop);
+  raf = requestAnimationFrame(loop);
 })();
 </script>
 </body>

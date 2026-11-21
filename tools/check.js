@@ -31,7 +31,7 @@ const MAX_BYTES = 3 * 1024 * 1024; // Ladegröße je Spiel (3D-Spiele dürfen be
    sind: Standard-Regeln nur als Hinweis. Nach der Umstellung eines Spiels hier austragen – neue Spiele kommen
    nie auf diese Liste. */
 const ALTBESTAND = [
-  'labyrinth', 'rohr-flitzer', 'elisabeth', 'ski-flitzer', 'sachunterricht-getreide',
+  'labyrinth', 'rohr-flitzer', 'elisabeth', 'sachunterricht-getreide',
   'mathe-robi', 'mathe-formen', 'deutsch-wortmonster', 'liftschlange',
 ];
 
