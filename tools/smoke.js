@@ -6,47 +6,81 @@
    Spielfläche (<canvas>) größer als der Bildschirm, Spielfläche auf Tablet/Handy (hoch und quer) zu klein.
    Screenshots landen in test-ergebnisse/ zum Ansehen.
 
-   Aufruf:  node tools/smoke.js              Übersicht, Highscores und alle Spiele
-            node tools/smoke.js elisabeth    nur ein Spiel
+   Aufruf:  node tools/smoke.js                       Übersicht, Highscores und alle Spiele
+            node tools/smoke.js elisabeth weltflug    nur diese Spiele (auch mit Komma)
+   Optionen:
+            --groesse handy,tablet    nur diese Größen (Chromium: computer, tablet, handy, handy-quer;
+                                      WebKit: iphone, iphone-quer, ipad, ipad-hoch)
+            --browser webkit          mit der Safari-Engine und echten iPhone-/iPad-Maßen (statt Chromium)
+            --nur-seiten              nur Übersicht und Highscores, keine Spiele
+            --parallel <n>            so viele Seiten gleichzeitig (Standard: Kerne − 1, höchstens 4)
+            --zeichnen                3D-Szenen auch beim Laden wirklich zeichnen (sonst nur für den Screenshot,
+                                      siehe ohne3dZeichnen in lib.js – ohne Grafikkarte ist das viel schneller)
 
    Der Test spielt die Spiele nicht durch – dafür gibt es tools/spieltest.js. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { OUT, buildTestApp, gameFrame, loadGames, mockSupabase, startServer } from './lib.js';
+import { devices } from 'playwright';
+import {
+  OUT, PARALLEL, buildTestApp, gameFrame, launchBrowser, loadGames, mockSupabase, ohne3dZeichnen,
+  parseArgs, pool, startServer, zeichnenAn,
+} from './lib.js';
 
-const SIZES = [
-  { name: 'computer', viewport: { width: 1280, height: 800 } },
-  { name: 'tablet', viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  { name: 'handy', viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
-  { name: 'handy-quer', viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
-];
+const SIZES = {
+  chromium: [
+    { name: 'computer', viewport: { width: 1280, height: 800 } },
+    { name: 'tablet', viewport: { width: 1080, height: 810 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    { name: 'handy', viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    { name: 'handy-quer', viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  ],
+  /* Safari-Maße: Bildschirm minus Browserleisten, wie auf dem echten Gerät */
+  webkit: [
+    { name: 'iphone', ...devices['iPhone 15'] },
+    { name: 'iphone-quer', ...devices['iPhone 15 landscape'] },
+    { name: 'ipad', ...devices['iPad (gen 7) landscape'] },
+    { name: 'ipad-hoch', ...devices['iPad (gen 7)'] },
+  ],
+};
 /* Spiele mit Spielfläche (<canvas>) sollen auf Tablet und Handy den Bildschirm nutzen: Die größte Spielfläche
    muss mindestens so viel der Bildschirmfläche bedecken (0.6 = 60 %). Kleinere Canvas (Vorschau, Deko) zählen nicht. */
 const MIN_PLAY_AREA = 0.6;
 /* Ältere Spiele, die das noch nicht schaffen: nur Warnung statt Fehler. Nach dem Umbau hier austragen. */
 const PLAY_AREA_WARN_ONLY = ['rohr-flitzer'];
 
-const only = process.argv[2];
+const { keys, opts } = parseArgs(process.argv.slice(2), ['nur-seiten', 'zeichnen']);
+const browserName = opts.browser || 'chromium';
 const all = loadGames();
-const games = only ? all.filter((g) => g.key === only) : all;
-if (!games.length) { console.log(`✗ Kein Spiel "${only}" in src/games/games.json.`); process.exit(1); }
+const unknown = keys.filter((k) => !all.some((g) => g.key === k));
+if (unknown.length) { console.log(`✗ Kein Spiel "${unknown.join('", "')}" in src/games/games.json.`); process.exit(1); }
+const games = opts['nur-seiten'] ? [] : keys.length ? all.filter((g) => keys.includes(g.key)) : all;
+const withPages = !keys.length;
+const sizesAll = SIZES[browserName];
+if (!sizesAll) { console.log(`✗ Unbekannter Browser "${browserName}" (chromium oder webkit).`); process.exit(1); }
+const wantedSizes = opts.groesse ? opts.groesse.split(',') : sizesAll.map((s) => s.name);
+const sizes = sizesAll.filter((s) => wantedSizes.includes(s.name));
+if (sizes.length !== wantedSizes.length) {
+  console.log(`✗ Größe unbekannt: ${wantedSizes.join(', ')} – möglich mit ${browserName}: ${sizesAll.map((s) => s.name).join(', ')}`);
+  process.exit(1);
+}
 
 buildTestApp();
 fs.mkdirSync(OUT, { recursive: true });
 const { server, url } = await startServer();
-const browser = await chromium.launch();
+const browser = await launchBrowser(browserName);
+const started = Date.now();
 let failed = 0;
-const warnings = [];
 
-async function visit(hash, size, shot, check) {
+async function visit({ hash, size, shot, check }) {
   const problems = [];
-  const context = await browser.newContext({ viewport: size.viewport, deviceScaleFactor: size.deviceScaleFactor || 1, isMobile: !!size.isMobile, hasTouch: !!size.hasTouch });
+  const warnings = [];
+  const { name, ...options } = size;
+  const context = await browser.newContext(options);
   /* Fremde Server werden gesperrt und gemeldet (Supabase stellt mockSupabase nach). */
   await context.route((u) => !u.href.startsWith(url) && u.hostname !== 'test.supabase.co' && /^https?:/.test(u.protocol), (route) => {
     problems.push(`Zugriff auf fremden Server: ${route.request().url()}`);
     return route.abort();
   });
+  if (!opts.zeichnen) await ohne3dZeichnen(context);
   await mockSupabase(context);
   const page = await context.newPage();
   page.on('pageerror', (e) => problems.push(`JavaScript-Fehler: ${e.message}`));
@@ -55,13 +89,14 @@ async function visit(hash, size, shot, check) {
   try {
     await page.goto(url + hash, { waitUntil: 'load', timeout: 30000 });
     await page.waitForTimeout(1500);
-    if (check) await check(page, problems);
-    await page.screenshot({ path: path.join(OUT, `${shot}-${size.name}.png`) });
+    if (check) await check(page, problems, warnings);
+    if (!opts.zeichnen) await zeichnenAn(page, true);
+    await page.screenshot({ path: path.join(OUT, `${shot}-${name}.png`) });
   } catch (e) {
     problems.push(`Seite lässt sich nicht öffnen: ${e.message.split('\n')[0]}`);
   }
   await context.close();
-  return [...new Set(problems)];
+  return { problems: [...new Set(problems)], warnings };
 }
 
 const noOverflow = async (page, problems) => {
@@ -110,7 +145,7 @@ async function checkCanvas(target, problems) {
 
 /* Spielfläche zu klein: typischer Fehler ist ein festes Hochformat-Raster mit Rand, Anzeigen darüber und
    Steuerkreuz darunter – auf dem Handy bleibt dann nur ein kleines Feld (vor allem quer). */
-async function checkPlayArea(target, g, size, problems) {
+async function checkPlayArea(target, g, size, problems, warnings) {
   if (!size.isMobile) return;
   const share = await target.evaluate(() => {
     /* Nur sichtbare Spielflächen (versteckte Canvas, z. B. für ein Bonus-Spiel, haben die Größe 0). */
@@ -127,11 +162,11 @@ async function checkPlayArea(target, g, size, problems) {
   }
 }
 
-const checkGame = (g, size) => async (page, problems) => {
+const checkGame = (g, size) => async (page, problems, warnings) => {
   if (g.type === 'html') {
     const frame = await gameFrame(page);
     await checkCanvas(frame, problems);
-    await checkPlayArea(frame, g, size, problems);
+    await checkPlayArea(frame, g, size, problems, warnings);
     const links = frame.locator('a[href="../../#/"]');
     let visible = false;
     for (let i = 0; i < await links.count(); i++) if (await links.nth(i).isVisible()) visible = true;
@@ -140,27 +175,31 @@ const checkGame = (g, size) => async (page, problems) => {
     const link = page.locator('main a[href="#/"]', { hasText: 'Alle Spiele' });
     if (!(await link.count()) || !(await link.first().isVisible())) problems.push('Kein sichtbarer Link „🏠 Alle Spiele“ zur Übersicht.');
     await checkCanvas(page, problems);
-    await checkPlayArea(page, g, size, problems);
+    await checkPlayArea(page, g, size, problems, warnings);
     await noOverflow(page, problems);
   }
 };
 
-const report = (label, problems) => {
-  console.log(`${problems.length ? '✗' : '✓'} ${label}`);
-  problems.forEach((p) => console.log(`    ${p}`));
-  warnings.splice(0).forEach((w) => console.log(`    ⚠ ${w}`));
-  if (problems.length) failed++;
-};
-
-for (const size of SIZES) {
-  if (!only) {
-    report(`Übersicht (${size.name})`, await visit('#/', size, 'uebersicht', checkOverview));
-    report(`Highscores (${size.name})`, await visit('#/highscores', size, 'highscores', checkHighscores));
+/* Alle Besuche: je Größe Übersicht, Highscores und die Spiele */
+const visits = [];
+for (const size of sizes) {
+  if (withPages) {
+    visits.push({ label: `Übersicht (${size.name})`, hash: '#/', size, shot: 'uebersicht', check: checkOverview });
+    visits.push({ label: `Highscores (${size.name})`, hash: '#/highscores', size, shot: 'highscores', check: checkHighscores });
   }
-  for (const g of games) report(`${g.key} (${size.name})`, await visit(`#/spiele/${g.key}`, size, g.key, checkGame(g, size)));
+  for (const g of games) visits.push({ label: `${g.key} (${size.name})`, hash: `#/spiele/${g.key}`, size, shot: g.key, check: checkGame(g, size) });
 }
+const parallel = Number(opts.parallel) || PARALLEL;
+console.log(`${visits.length} Seiten mit ${browserName}, ${Math.min(parallel, visits.length)} gleichzeitig.`);
+
+await pool(visits, parallel, async (v) => {
+  const { problems, warnings } = await visit(v);
+  console.log([`${problems.length ? '✗' : '✓'} ${v.label}`, ...problems.map((p) => `    ${p}`), ...warnings.map((w) => `    ⚠ ${w}`)].join('\n'));
+  if (problems.length) failed++;
+});
 
 await browser.close();
 server.close();
+console.log(`Dauer: ${Math.round((Date.now() - started) / 1000)} s`);
 console.log(failed ? `✗ ${failed} Seiten mit Problemen.` : '✓ Alles in Ordnung. Screenshots: test-ergebnisse/');
 process.exit(failed ? 1 : 0);
