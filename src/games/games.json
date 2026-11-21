@@ -13,9 +13,18 @@
       "pointsIcon": "⭐",
       "showTime": true,
       "variants": [
-        { "id": "leicht", "label": "🐣 Leicht" },
-        { "id": "mittel", "label": "🦊 Mittel" },
-        { "id": "knifflig", "label": "🦁 Knifflig" }
+        {
+          "id": "leicht",
+          "label": "🐣 Leicht"
+        },
+        {
+          "id": "mittel",
+          "label": "🦊 Mittel"
+        },
+        {
+          "id": "knifflig",
+          "label": "🦁 Knifflig"
+        }
       ],
       "rule": "Bestes Ergebnis je Spieler: meiste Sterne, bei Gleichstand die schnellste Zeit."
     }
@@ -62,6 +71,21 @@
       "pointsLabel": "Sekunden",
       "pointsIcon": "⏱",
       "rule": "Bestes Ergebnis je Spieler: schnellste Zeit bis in die Kanalisation."
+    }
+  },
+  {
+    "key": "ski-flitzer",
+    "type": "html",
+    "title": "Ski-Flitzer",
+    "description": "Die Kackwurst saust auf Skiern durch Serfaus-Fiss-Ladis und sammelt in 40 Sekunden Schnitzel, Bier & Co. ein!",
+    "age": "ab 6 Jahren",
+    "emoji": "💩⛷️",
+    "color": "linear-gradient(135deg, #a5d8ff, #8d6e63)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte in 40 Sekunden."
     }
   }
 ]
