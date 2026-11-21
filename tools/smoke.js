@@ -25,7 +25,7 @@ const SIZES = [
    muss mindestens so viel der Bildschirmfläche bedecken (0.6 = 60 %). Kleinere Canvas (Vorschau, Deko) zählen nicht. */
 const MIN_PLAY_AREA = 0.6;
 /* Ältere Spiele, die das noch nicht schaffen: nur Warnung statt Fehler. Nach dem Umbau hier austragen. */
-const PLAY_AREA_WARN_ONLY = ['rohr-flitzer', 'liftschlange'];
+const PLAY_AREA_WARN_ONLY = ['rohr-flitzer'];
 
 const only = process.argv[2];
 const all = loadGames();

@@ -2,7 +2,8 @@
    Das Spiel bietet einen Zugang window.SPIEL (timeScale, state(), step(), advance(), place(), kid(),
    holdWarden(), level(), view()). Mit timeScale 0 steht die Zeit still und der Test bewegt die Schlange
    Schritt für Schritt – so ist jeder Lauf gleich.
-   Geprüft auf Computer, Tablet (iPad quer) und Handy (iPhone): Startbildschirm (Countdown, Spielerauswahl,
+   Das Raster passt sich dem Bildschirm an (hoch/quer), deshalb lenkt der Test relativ zur Lage des Kopfes.
+   Geprüft auf Computer, Tablet (iPad quer) und Handy (iPhone, hoch und quer): Startbildschirm (Countdown, Spielerauswahl,
    Foto), Tutorial beim ersten Start, Steuerung (Pfeiltasten bzw. Steuerkreuz), Einsammeln, alle Power-ups,
    Snowboard-Kid, Liftwart-Sichtkegel → „ERWISCHT“, Game-Over-Bildschirm, gespeichertes Ergebnis (Highscores der App,
    keine eigene Bestenliste), Score teilen, Link zu den Highscores, „Nochmal spielen“ und ein echter Lauf gegen das Gitter. */
@@ -25,7 +26,7 @@ function png() {
 }
 
 export default async function (t) {
-  for (const [size, options] of [['computer', t.DESK], ['tablet', t.TABLET], ['handy', t.PHONE]]) {
+  for (const [size, options] of [['computer', t.DESK], ['tablet', t.TABLET], ['handy', t.PHONE], ['handy-quer', t.PHONE_QUER]]) {
     const touch = size !== 'computer';
     const page = await t.newPage(options);
     await page.goto(t.url, { waitUntil: 'load' });
@@ -39,6 +40,24 @@ export default async function (t) {
       if (touch) await game.dispatchEvent(pads[dir], 'pointerdown');
       else await page.keyboard.press(keys[dir]);
       await page.waitForTimeout(300); // mit Jagertee kommen Eingaben manchmal verspätet an
+    };
+    const NAME = { '1,0': 'right', '-1,0': 'left', '0,1': 'down', '0,-1': 'up' };
+    const frei = (x, y, body) => game.evaluate(([a, b]) => !SPIEL.isWall(a, b), [x, y]).then((ok) => ok && !body.some((p) => p.x === x && p.y === y));
+    /* Platz vor dem Kopf schaffen: ist es in n Feldern eng, eine Kehre machen (hoch oder runter, dann zurück) */
+    const platz = async (n = 3) => {
+      let s = await st();
+      for (let i = 1; i <= n; i++) {
+        if (await frei(s.head.x + s.dir.x * i, s.head.y + s.dir.y * i, s.body)) continue;
+        const quer = s.dir.x ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
+        for (const [qx, qy] of quer) {
+          if (await frei(s.head.x + qx, s.head.y + qy, s.body)) {
+            await steer(NAME[`${qx},${qy}`]); await steps(1);
+            await steer(NAME[`${-s.dir.x},${-s.dir.y}`]); await steps(1);
+            break;
+          }
+        }
+        return platz(n);
+      }
     };
 
     /* Startbildschirm */
@@ -67,6 +86,10 @@ export default async function (t) {
     t.check(`${size}: während des Spiels „🏠 Alle Spiele“`, await game.locator('#hud a[href="../../#/"]').isVisible());
     const view = await game.evaluate(() => SPIEL.view());
     t.check(`${size}: Spielfeld passt auf den Bildschirm`, view.left >= 0 && view.top >= 0 && view.right <= view.screen[0] && view.bottom <= view.screen[1] && view.canvas[0] > 200, JSON.stringify(view));
+    t.check(`${size}: Spielszene füllt den ganzen Bildschirm`, view.cover > 0.98, String(view.cover));
+    t.check(`${size}: Felder groß genug (mind. 24 px)`, view.cell >= 24, `${view.cell} px, ${view.cols}×${view.rows}`);
+    const hud = await game.locator('#hud').boundingBox();
+    t.check(`${size}: Kopfzeile einzeilig und über dem Spielfeld`, hud.height < 60 && hud.y + hud.height <= view.top + 1, JSON.stringify(hud));
     if (touch) {
       t.check(`${size}: Steuerkreuz sichtbar`, await game.locator('#padUp').isVisible() && await game.locator('#padRight').isVisible());
       const box = await game.locator('#padRight').boundingBox();
@@ -85,61 +108,74 @@ export default async function (t) {
     t.check(`${size}: ${touch ? 'Knopf ▶' : 'Pfeiltaste →'} lenkt nach rechts`, s.head.x === h0.x + 1 && s.head.y === h0.y - 1, JSON.stringify(s.head));
 
     /* Einsammeln */
+    await platz(3);
     await game.evaluate(() => SPIEL.place('person'));
     await steps(2);
     s = await st();
     t.check(`${size}: Skifahrer eingesammelt → 10 Punkte, Schlange länger`, s.points === 10 && s.length === 4 && s.people === 1, JSON.stringify(s));
+    await platz(2);
     await game.evaluate(() => SPIEL.place('kumpel'));
     await steps(1);
     s = await st();
     t.check(`${size}: Kumpel eingesammelt → 25 Punkte, Sprechblase`, s.points === 35 && s.bubbles > 0, JSON.stringify(s));
 
     /* Power-ups */
+    await platz(2);
     await game.evaluate(() => SPIEL.place('jager'));
     await steps(1);
     s = await st();
     t.check(`${size}: Jagertee wirkt`, s.effects.jager > 7, JSON.stringify(s.effects));
     t.check(`${size}: Jagertee-Anzeige im HUD`, (await game.textContent('#effects')).includes('🍺'));
+    await platz(2);
     await game.evaluate(() => SPIEL.place('person'));
     await steps(1);
     s = await st();
     t.check(`${size}: mit Jagertee doppelte Punkte`, s.points === 55, String(s.points));
+    await platz(2);
     await game.evaluate(() => SPIEL.place('schmarrn'));
     await steps(1);
     s = await st();
     t.check(`${size}: Kaiserschmarrn bringt Bonus (doppelt mit Jagertee)`, s.points === 155, String(s.points));
     const tick = s.tickMs;
+    await platz(2);
     await game.evaluate(() => SPIEL.place('williams'));
     await steps(1);
     s = await st();
     t.check(`${size}: Williams-Shot macht schneller`, s.effects.williams > 2 && s.tickMs < tick, `${tick} → ${s.tickMs}`);
+    await platz(2);
     await game.evaluate(() => SPIEL.place('furz'));
     await steps(1);
     s = await st();
     t.check(`${size}: Gondel-Furz betäubt den Liftwart`, s.effects.furz > 3 && s.wardens.every((w) => w.stun > 3 && w.cone === 0), JSON.stringify(s.wardens));
     await t.shot(page, `spiel-${size}`);
 
-    /* runter und nach links, dabei noch zwei Leute einsammeln */
-    await steer('down'); await steps(1);
-    await steer('left'); await steps(1);
+    /* Kehre: runter (oder hoch) und zurück, dabei noch zwei Leute einsammeln */
     s = await st();
-    t.check(`${size}: ${touch ? 'Knöpfe ▼ ◀' : 'Pfeiltasten ↓ ←'} lenken`, s.dir.x === -1 && s.dir.y === 0, JSON.stringify(s));
-    await game.evaluate(() => SPIEL.place('person'));
-    await steps(2);
-    await game.evaluate(() => SPIEL.place('person'));
-    await steps(2);
+    const back = { x: -s.dir.x, y: 0 };
+    const v = await frei(s.head.x, s.head.y + 1, s.body) ? 'down' : 'up';
+    await steer(v); await steps(1);
+    await steer(NAME[`${back.x},0`]); await steps(1);
+    s = await st();
+    t.check(`${size}: ${touch ? 'Knöpfe' : 'Pfeiltasten'} ${v === 'down' ? '↓' : '↑'} ${back.x < 0 ? '←' : '→'} lenken`, s.dir.x === back.x && s.dir.y === 0, JSON.stringify(s));
+    for (let i = 0; i < 2; i++) {
+      await platz(3);
+      await game.evaluate(() => SPIEL.place('person'));
+      await steps(2);
+    }
 
     /* Snowboard-Kid fährt in die Schlange und nimmt 3 Glieder */
+    await platz(3);
     s = await st();
     const len = s.length;
-    await game.evaluate(() => { const st = SPIEL.state(); SPIEL.kid(st.head.x + 1, st.head.y, 1); SPIEL.advance(0.04, true); });
+    await game.evaluate(() => { const st = SPIEL.state(); SPIEL.kid(st.head.x - st.dir.x, st.head.y - st.dir.y, -st.dir.x || 1); SPIEL.advance(0.04, true); });
     s = await st();
     t.check(`${size}: Snowboard-Kid kostet 3 Glieder`, s.length === len - 3 && s.kid === null && s.phase === 'play', `${len} → ${s.length}`);
 
     /* Liftwart: Kopf im Sichtkegel → Verdacht → ERWISCHT */
+    await platz(3);
     await game.evaluate(() => {
-      const h = SPIEL.state().head;
-      SPIEL.holdWarden(0, { x: h.x + 1, y: h.y + 2, fx: 0, fy: -1 }); // zwei Felder unter dem Kopf, schaut nach oben
+      const { head: h, dir: d } = SPIEL.state();
+      SPIEL.holdWarden(0, { x: h.x + d.x * 2, y: h.y + d.y * 2, fx: -d.x, fy: -d.y }); // zwei Felder vor dem Kopf, schaut ihn an
       SPIEL.advance(0.3, true);
     });
     s = await st();

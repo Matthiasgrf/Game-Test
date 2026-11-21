@@ -8,59 +8,61 @@
 <title>Liftschlange</title>
 <style>
 /* LIFTSCHLANGE – Snake in der Warteschlange vor dem Sessellift.
-   Aufbau: Kopfzeile (HUD) · Spielfeld (<canvas>, per CSS genau auf die freie Fläche gesetzt) · Steuerkreuz
-   (nur auf Touch-Geräten) · Overlays für Start, Tutorial, Pause und Game Over.
+   Aufbau: Die Spielszene (<canvas>) füllt den ganzen Bildschirm, hoch und quer. Das Raster (Felder) wird zu
+   Beginn jeder Runde an das Seitenverhältnis angepasst. Kopfzeile (HUD) und Steuerkreuz (nur Touch) liegen
+   über der Szene; das umzäunte Spielfeld bleibt frei davon. Overlays für Start, Tutorial, Pause, Game Over.
    Highscores: nur die gemeinsame Highscore-Seite der App (GameTest.reportScore), keine eigene Bestenliste. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
-body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#13243a;
-  background:linear-gradient(#2b5d8c,#9cc9ea);display:flex;flex-direction:column;
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#13243a;background:#eaf3fb;
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
 /* Kopfzeile */
-#hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;
-  padding:calc(6px + env(safe-area-inset-top)) 8px 6px}
-.pill{display:inline-flex;align-items:center;gap:4px;background:#fff;border:0;border-radius:999px;
+#hud{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:6px;
+  padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) 6px calc(8px + env(safe-area-inset-left));
+  pointer-events:none}
+#hud>*{pointer-events:auto}
+.pill{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.9);border:0;border-radius:999px;
   padding:6px 12px;min-height:38px;font-weight:700;font-size:15px;color:#13243a;text-decoration:none;
-  box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap}
+  box-shadow:0 2px 8px rgba(19,36,58,.25);cursor:pointer;white-space:nowrap;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .pill.icon{min-width:42px;justify-content:center;font-size:18px}
 #suspWrap{display:inline-flex;align-items:center;gap:6px}
 #suspBar{width:70px;height:12px;border-radius:6px;background:#e9ecef;overflow:hidden;border:1px solid #adb5bd}
 #suspFill{height:100%;width:0;background:linear-gradient(90deg,#ffd43b,#e03131)}
 #suspWrap.alarm{background:#ffe3e3;animation:blink .3s infinite alternate}
 @keyframes blink{to{background:#ff8787}}
-#effects{display:inline-flex;gap:4px}
-#effects .pill{padding:6px 9px}
-@media (max-width:560px){
-  #hud{gap:4px;padding:calc(4px + env(safe-area-inset-top)) 4px 4px}
-  .pill{font-size:13px;padding:4px 8px;min-height:32px}
-  .pill.icon{min-width:34px;font-size:15px}
-  #suspBar{width:44px}
+#effects{position:fixed;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:4px;pointer-events:none}
+#effects .pill{padding:4px 9px;min-height:30px;font-size:14px;background:#fff3bf}
+@media (max-width:640px){
+  #hud{gap:4px;padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) 4px calc(4px + env(safe-area-inset-left))}
+  #hud .txt{display:none}
+  .pill{font-size:14px;padding:4px 8px;min-height:36px}
+  .pill.icon{min-width:36px;font-size:15px}
+  #suspBar{width:40px}
 }
 
 /* Spielfeld */
-#main{flex:1;display:flex;flex-direction:column;min-height:0}
-#stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;
-  touch-action:none}
-#wobble{line-height:0;will-change:transform}
-#cv{display:block;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);touch-action:none}
-#banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;
-  background:rgba(19,36,58,.88);color:#fff;font-weight:800;font-size:clamp(18px,4vw,30px);text-align:center;
-  padding:12px 20px;border-radius:16px;max-width:90%;opacity:0;transition:opacity .25s}
+#stage{position:fixed;inset:0;overflow:hidden;touch-action:none}
+#wobble{position:absolute;inset:0;line-height:0;will-change:transform}
+#cv{display:block;width:100%;height:100%;touch-action:none}
+#banner{position:absolute;left:50%;top:var(--bannerTop,40%);transform:translate(-50%,-50%);pointer-events:none;
+  background:rgba(19,36,58,.9);color:#fff;font-weight:800;font-size:clamp(16px,4.6vmin,28px);line-height:1.25;text-align:center;
+  padding:10px 18px;border-radius:16px;width:max-content;max-width:min(86vw,520px);opacity:0;transition:opacity .25s;
+  box-shadow:0 6px 20px rgba(0,0,0,.3)}
 #banner.show{opacity:1}
 
 /* Steuerkreuz für Touch */
-#pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,58px);gap:6px;
-  justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom))}
-#pad button{border:0;border-radius:16px;background:rgba(255,255,255,.92);font-size:28px;font-weight:800;
-  box-shadow:0 3px 8px rgba(0,0,0,.3);touch-action:none;cursor:pointer}
+#pad{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,58px);gap:6px;
+  justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom));pointer-events:none}
+#pad button{border:0;border-radius:18px;background:rgba(255,255,255,.82);color:#13243a;font-size:26px;font-weight:800;
+  box-shadow:0 3px 10px rgba(19,36,58,.3);touch-action:none;cursor:pointer;pointer-events:auto;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 #pad button:active{background:#ffd43b}
 #padUp{grid-column:2;grid-row:1}#padLeft{grid-column:1;grid-row:2}#padDown{grid-column:2;grid-row:2}#padRight{grid-column:3;grid-row:2}
-body.landscape #main{flex-direction:row}
-body.landscape #pad{grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);align-content:center;
-  padding:8px calc(10px + env(safe-area-inset-right)) 8px 4px}
+body.landscape #pad{left:auto;top:0;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);align-content:center;
+  padding:8px calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) 4px}
 body.landscape #padUp{grid-column:2;grid-row:1}body.landscape #padLeft{grid-column:1;grid-row:2}
 body.landscape #padRight{grid-column:3;grid-row:2}body.landscape #padDown{grid-column:2;grid-row:3}
 
@@ -102,27 +104,25 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 </style>
 </head>
 <body>
+<div id="stage">
+  <div id="wobble"><canvas id="cv" aria-label="Spielfeld: Warteschlange vor dem Sessellift"></canvas></div>
+  <div id="banner" aria-live="polite"></div>
+</div>
 <div id="hud">
-  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
+  <a class="pill" href="../../#/" target="_top" aria-label="Alle Spiele">🏠<span class="txt"> Alle Spiele</span></a>
   <span class="pill" title="Punkte">⭐ <span id="hudPoints">0</span></span>
   <span class="pill" title="Länge der Schlange">🐍 <span id="hudLength">3</span></span>
-  <span class="pill" title="Level">📶 Lvl <span id="hudLevel">1</span></span>
+  <span class="pill" title="Level">📶<span class="txt"> Lvl</span> <span id="hudLevel">1</span></span>
   <span class="pill" id="suspWrap" title="Verdacht des Liftwarts">👮 <span id="suspBar"><span id="suspFill" style="display:block"></span></span></span>
-  <span id="effects"></span>
   <button class="pill icon" id="pauseBtn" title="Pause (P)" aria-label="Pause">⏸</button>
   <button class="pill icon" id="muteBtn" title="Ton an/aus (M)" aria-label="Ton an/aus">🔊</button>
 </div>
-<div id="main">
-  <div id="stage">
-    <div id="wobble"><canvas id="cv" aria-label="Spielfeld: Warteschlange vor dem Sessellift"></canvas></div>
-    <div id="banner" aria-live="polite"></div>
-  </div>
-  <div id="pad" hidden>
-    <button id="padUp" aria-label="hoch">▲</button>
-    <button id="padLeft" aria-label="links">◀</button>
-    <button id="padDown" aria-label="runter">▼</button>
-    <button id="padRight" aria-label="rechts">▶</button>
-  </div>
+<div id="effects"></div>
+<div id="pad" hidden>
+  <button id="padUp" aria-label="hoch">▲</button>
+  <button id="padLeft" aria-label="links">◀</button>
+  <button id="padDown" aria-label="runter">▼</button>
+  <button id="padRight" aria-label="rechts">▶</button>
 </div>
 
 <!-- Startbildschirm -->
@@ -322,14 +322,41 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   var KEY_TUTORIAL = 'liftschlange_tutorial_v1';
   var KEY_FOTO = 'liftschlange_foto_v1_';   // + Name
 
+  /* Feldgröße: Ein Feld soll auf dem Bildschirm etwa so groß sein (px) – das Raster passt sich an. */
+  var FELD_PX_MIN = 28, FELD_PX_MAX = 46;
+  var GANG_HOEHE = 5;            // Zeilen pro Gang zwischen zwei Absperrgittern (ungefähr)
+
   /* =====================================================================
-     Spielfeld: 20 × 26 Felder. Zeile 0–1 = Lift-Einstieg, Rand = Zaun,
-     Zeilen 7, 13, 19 = Absperrgitter mit Lücke (Gänge wie beim Anstehen).
+     Spielfeld: COLS × ROWS Felder, passend zum Bildschirm (hoch oder quer), zu Beginn jeder Runde
+     neu bestimmt. Zeile 0–1 = Lift-Einstieg, Rand = Zaun, dazwischen Absperrgitter mit Lücke
+     abwechselnd rechts und links (Gänge wie beim Anstehen).
      ===================================================================== */
-  var COLS = 20, ROWS = 26;
-  var BARRIERS = [ { y: 7, x0: 1, x1: 14 }, { y: 13, x0: 5, x1: 18 }, { y: 19, x0: 1, x1: 14 } ];
-  /* Patrouille des Liftwarts: Schlangenlinie durch alle Gänge (Mitte jedes Gangs) */
-  var ROUTE = [[2, 4], [17, 4], [17, 10], [2, 10], [2, 16], [17, 16], [17, 22], [2, 22]];
+  var COLS = 20, ROWS = 26, BARRIERS = [], ROUTE = [], LANES = [], ROUTE_LEN = 0, WARTENDE = [];
+  function baueFeld(cols, rows) {
+    COLS = cols; ROWS = rows;
+    var innen = ROWS - 3, gap = Math.max(3, Math.round((COLS - 2) * 0.25));
+    var n = Math.max(1, Math.round((innen + 1) / (GANG_HOEHE + 1)) - 1);
+    BARRIERS = []; LANES = [];
+    var y0 = 2;
+    for (var k = 1; k <= n; k++) {
+      var y = 2 + Math.round(k * (innen + 1) / (n + 1)) - 1;
+      BARRIERS.push(k % 2 ? { y: y, x0: 1, x1: COLS - 2 - gap } : { y: y, x0: 1 + gap, x1: COLS - 2 });
+      LANES.push([y0, y - 1]); y0 = y + 1;
+    }
+    LANES.push([y0, ROWS - 2]);
+    /* Patrouille des Liftwarts: Schlangenlinie durch alle Gänge (Mitte jedes Gangs) */
+    ROUTE = [];
+    LANES.forEach(function (l, i) {
+      var m = Math.round((l[0] + l[1]) / 2), a = 2, b = COLS - 3;
+      if (i % 2) ROUTE.push([b, m], [a, m]); else ROUTE.push([a, m], [b, m]);
+    });
+    ROUTE_LEN = 0;
+    for (var ri = 1; ri < ROUTE.length; ri++) ROUTE_LEN += Math.abs(ROUTE[ri][0] - ROUTE[ri - 1][0]) + Math.abs(ROUTE[ri][1] - ROUTE[ri - 1][1]);
+    /* Wartende der Nachbarschlange (am linken/rechten Zaun) – Quelle für Schimpf-Sprechblasen */
+    WARTENDE = [];
+    for (var wy = 3; wy < ROWS - 1; wy += 2) { WARTENDE.push({ x: 0, y: wy, c: null }); WARTENDE.push({ x: COLS - 1, y: wy + 1, c: null }); }
+    WARTENDE = WARTENDE.filter(function (w) { return w.y < ROWS - 1; });
+  }
 
   function isWall(x, y) {
     if (x <= 0 || x >= COLS - 1 || y <= 1 || y >= ROWS - 1) return true;
@@ -422,9 +449,11 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   var S = null;
 
   function neuerZustand() {
-    var snake = [], colors = [];
+    var g = feldGroesse();
+    baueFeld(g.cols, g.rows);
+    var snake = [], colors = [], startY = Math.round((LANES[LANES.length - 1][0] + LANES[LANES.length - 1][1]) / 2);
     for (var i = 0; i < START_LAENGE; i++) {
-      snake.push({ x: 5 - i, y: 22 });
+      snake.push({ x: 5 - i, y: startY });
       colors.push(i === 0 ? { cap: spieler.cap, jacket: spieler.jacket } : zufallsFarben());
     }
     return {
@@ -446,8 +475,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   }
 
   /* Route als Polylinie: Position und Blickrichtung bei Strecke s */
-  var ROUTE_LEN = 0;
-  for (var ri = 1; ri < ROUTE.length; ri++) ROUTE_LEN += Math.abs(ROUTE[ri][0] - ROUTE[ri - 1][0]) + Math.abs(ROUTE[ri][1] - ROUTE[ri - 1][1]);
   function routeAt(s) {
     s = Math.max(0, Math.min(ROUTE_LEN, s));
     for (var i = 1; i < ROUTE.length; i++) {
@@ -529,10 +556,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     clearTimeout(banTimer);
     banTimer = setTimeout(function () { b.classList.remove('show'); }, 1700);
   }
-  /* Wartende in der Nachbarschlange (am linken/rechten Zaun) – Quelle für Schimpf-Sprechblasen */
-  var WARTENDE = [];
-  for (var wy = 3; wy < ROWS - 1; wy += 2) { WARTENDE.push({ x: 0, y: wy, c: null }); WARTENDE.push({ x: COLS - 1, y: wy + 1, c: null }); }
-  WARTENDE = WARTENDE.filter(function (w) { return w.y < ROWS - 1; });
 
   /* =====================================================================
      STEUERUNG
@@ -972,21 +995,49 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
      ZEICHNEN
      ===================================================================== */
   var cv = $('cv'), ctx = cv.getContext('2d'), bg = document.createElement('canvas');
-  var CELL = 20, DPR = 1;
+  var CELL = 20, DPR = 1, OX = 0, OY = 0;          // OX/OY: Lage des umzäunten Spielfelds auf dem Bildschirm (px)
+  var REGION = { x: 0, y: 0, w: 100, h: 100, W: 100, H: 100 };
   var touch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 
-  function resize() {
-    var landscape = window.innerWidth > window.innerHeight * 1.15;
+  /* Freie Fläche für das umzäunte Spielfeld: ganzer Bildschirm ohne Kopfzeile und Steuerkreuz.
+     Die Spielszene (Schnee, Bäume) wird trotzdem bildschirmfüllend gezeichnet. */
+  function bereich() {
+    var W = window.innerWidth, H = window.innerHeight, landscape = W > H * 1.15;
     document.body.classList.toggle('landscape', touch && landscape);
     $('pad').hidden = !touch;
-    var st = $('stage').getBoundingClientRect();
-    var w = Math.max(100, st.width - 12), h = Math.max(100, st.height - 12);
-    CELL = Math.max(8, Math.floor(Math.min(w / COLS, h / ROWS)));
+    var left = 4, right = W - 4, top = $('hud').getBoundingClientRect().bottom + 2, bottom = H - 4;
+    if (touch) {
+      var pad = $('pad').getBoundingClientRect();
+      if (landscape) right = Math.min(right, pad.left); else bottom = Math.min(bottom, pad.top);
+    }
+    return { x: left, y: top, w: Math.max(100, right - left), h: Math.max(100, bottom - top), W: W, H: H };
+  }
+  /* Raster passend zur freien Fläche: Felder etwa FELD_PX_MIN–FELD_PX_MAX groß */
+  function feldGroesse() {
+    var r = bereich();
+    var px = Math.max(FELD_PX_MIN, Math.min(FELD_PX_MAX, Math.min(r.W, r.H) / 13));
+    return {
+      cols: Math.max(11, Math.min(26, Math.floor(r.w / px))),
+      rows: Math.max(11, Math.min(28, Math.floor(r.h / px)))
+    };
+  }
+
+  function resize() {
+    var r = bereich();
+    REGION = r;
+    /* Vor dem Start darf sich das Raster ändern (Handy gedreht), während der Runde nur die Größe */
+    if (S && S.phase === 'ready') {
+      var g = feldGroesse();
+      if (g.cols !== COLS || g.rows !== ROWS) { S = neuerZustand(); neuesEssen(); updateHud(); }
+    }
+    CELL = Math.max(8, Math.floor(Math.min(r.w / COLS, r.h / ROWS)));
+    OX = Math.round(r.x + (r.w - CELL * COLS) / 2);
+    OY = Math.round(r.y + (r.h - CELL * ROWS) / 2);
     DPR = Math.min(3, window.devicePixelRatio || 1);
-    cv.style.width = CELL * COLS + 'px';
-    cv.style.height = CELL * ROWS + 'px';
-    cv.width = Math.round(CELL * COLS * DPR);
-    cv.height = Math.round(CELL * ROWS * DPR);
+    cv.width = Math.round(r.W * DPR);
+    cv.height = Math.round(r.H * DPR);
+    $('effects').style.top = Math.round(OY + CELL * 2.1) + 'px';
+    document.body.style.setProperty('--bannerTop', Math.round(OY + CELL * ROWS * 0.42) + 'px');
     malHintergrund();
   }
   window.addEventListener('resize', resize);
@@ -998,16 +1049,56 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
   }
 
-  /* Hintergrund einmal vorzeichnen: Schnee, Gänge, Gitter, Zaun, Lift-Station */
+  /* Tanne mit Schnee, von schräg oben */
+  function tanne(c, x, y, s) {
+    c.fillStyle = 'rgba(40,70,110,.18)'; c.beginPath(); c.ellipse(x + s * 0.35, y + s * 0.15, s * 0.7, s * 0.28, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6b4423'; c.fillRect(x - s * 0.08, y - s * 0.2, s * 0.16, s * 0.3);
+    for (var i = 0; i < 3; i++) {
+      var w = s * (0.62 - i * 0.15), yb = y - s * 0.15 - i * s * 0.34, ht = s * 0.55;
+      c.fillStyle = i % 2 ? '#2b8a3e' : '#237032';
+      c.beginPath(); c.moveTo(x - w, yb); c.lineTo(x, yb - ht); c.lineTo(x + w, yb); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.92)';
+      c.beginPath(); c.moveTo(x - w * 0.45, yb - ht * 0.55); c.lineTo(x, yb - ht); c.lineTo(x + w * 0.45, yb - ht * 0.55);
+      c.quadraticCurveTo(x, yb - ht * 0.42, x - w * 0.45, yb - ht * 0.55); c.fill();
+    }
+  }
+
+  /* Hintergrund einmal vorzeichnen: Schneelandschaft (ganzer Bildschirm), dann das umzäunte Feld
+     mit Gängen, Gittern, Zaun und Lift-Station */
   function malHintergrund() {
     bg.width = cv.width; bg.height = cv.height;
-    var c = bg.getContext('2d'), C = CELL;
-    c.setTransform(DPR, 0, 0, DPR, 0, 0);
-    c.fillStyle = '#f4f9ff'; c.fillRect(0, 0, COLS * C, ROWS * C);
-    /* Schneegesprenkel */
+    var c = bg.getContext('2d'), C = CELL, W = REGION.W, H = REGION.H;
     var seed = 7;
     var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-    for (var i = 0; i < 500; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(160,190,220,.25)' : 'rgba(255,255,255,.9)'; c.fillRect(rnd() * COLS * C, rnd() * ROWS * C, 2, 2); }
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    /* Schnee rundherum mit sanften Hügeln und Spuren */
+    var sky = c.createLinearGradient(0, 0, W, H);
+    sky.addColorStop(0, '#d6e6f5'); sky.addColorStop(1, '#f3f8fd');
+    c.fillStyle = sky; c.fillRect(0, 0, W, H);
+    for (var i = 0; i < 14; i++) {
+      c.fillStyle = 'rgba(255,255,255,' + (0.35 + rnd() * 0.3) + ')';
+      c.beginPath(); c.ellipse(rnd() * W, rnd() * H, 60 + rnd() * 140, 30 + rnd() * 60, rnd() * 3, 0, Math.PI * 2); c.fill();
+    }
+    c.strokeStyle = 'rgba(140,170,205,.35)'; c.lineWidth = 2;
+    for (i = 0; i < 6; i++) {
+      var sx = rnd() * W, sy = rnd() * H, ex = sx + (rnd() - 0.5) * W, ey = sy + H * 0.6;
+      [-3, 3].forEach(function (o) { c.beginPath(); c.moveTo(sx + o, sy); c.bezierCurveTo(sx + o + 60, sy + 80, ex + o - 60, ey - 80, ex + o, ey); c.stroke(); });
+    }
+    /* Tannen außerhalb des Feldes */
+    var fx0 = OX - C * 0.4, fy0 = OY - C * 0.4, fx1 = OX + COLS * C + C * 0.4, fy1 = OY + ROWS * C + C * 0.6;
+    var size = Math.max(26, C * 1.1);
+    for (i = 0; i < 260; i++) {
+      var tx = rnd() * W, ty = rnd() * (H + size) , ts = size * (0.75 + rnd() * 0.5);
+      if (tx + ts * 0.7 > fx0 && tx - ts * 0.7 < fx1 && ty + ts * 0.3 > fy0 && ty - ts * 1.3 < fy1) continue;
+      tanne(c, tx, ty, ts);
+    }
+    /* Schatten unter dem Feld */
+    c.fillStyle = 'rgba(19,36,58,.16)';
+    rr(c, OX + 4, OY + 8, COLS * C, ROWS * C, C * 0.4); c.fill();
+    c.translate(OX, OY);
+    c.fillStyle = '#f4f9ff'; c.fillRect(0, 0, COLS * C, ROWS * C);
+    /* Schneegesprenkel */
+    for (i = 0; i < COLS * ROWS; i++) { c.fillStyle = rnd() < 0.5 ? 'rgba(160,190,220,.25)' : 'rgba(255,255,255,.9)'; c.fillRect(rnd() * COLS * C, rnd() * ROWS * C, 2, 2); }
     /* Gänge: plattgetretener Schnee mit Skispuren */
     c.fillStyle = '#e3edf7';
     c.fillRect(C * 0.5, C * 1.5, (COLS - 1) * C, (ROWS - 2) * C);
@@ -1038,7 +1129,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     c.fillText('🚡 SESSELLIFT · EINSTIEG', COLS * C / 2, C * 0.55);
     /* Drehkreuze in Zeile 1 */
     c.fillStyle = '#ced4da'; c.fillRect(C * 0.5, C * 1.15, (COLS - 1) * C, C * 0.8);
-    for (var x = 1; x < COLS - 1; x += 2) {
+    for (var x = 1; x < COLS - 2; x += 2) {
       c.fillStyle = '#343a40'; rr(c, x * C + C * 0.2, C * 1.25, C * 0.6, C * 0.6, 4); c.fill();
       c.strokeStyle = '#ffd43b'; c.lineWidth = Math.max(2, C * 0.08);
       c.beginPath(); c.moveTo(x * C + C * 0.5, C * 1.55); c.lineTo(x * C + C * 1.4, C * 1.55); c.stroke();
@@ -1075,6 +1166,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     rr(c, -r * 1.05, r * 0.4, r * 2.3, r * 0.22, r * 0.1); c.fill();
     c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(r * 0.1, r * 0.12, r * 0.85, r * 0.75, 0, 0, Math.PI * 2); c.fill();
     c.fillStyle = colors.jacket; c.beginPath(); c.ellipse(0, 0, r * 0.75, r * 0.88, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.22)'; c.beginPath(); c.ellipse(-r * 0.15, -r * 0.3, r * 0.42, r * 0.3, 0, 0, Math.PI * 2); c.fill();
     if (foto) {
       c.rotate(-a);
       c.save(); c.beginPath(); c.arc(0, 0, r * 0.82, 0, Math.PI * 2); c.closePath(); c.clip();
@@ -1154,20 +1246,33 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     c.globalAlpha = 1;
   }
 
+  /* leichter Schneefall über der ganzen Szene */
+  function schneefall(t) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    var W = REGION.W, H = REGION.H;
+    for (var i = 0; i < 45; i++) {
+      var sp = 18 + (i % 5) * 7, x = (i * 97.31 + Math.sin(t * 0.7 + i) * 18 + t * 8) % W, y = (i * 61.7 + t * sp) % H;
+      ctx.beginPath(); ctx.arc(x < 0 ? x + W : x, y, 1.2 + (i % 3) * 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   function draw(now) {
     var t = now / 1000, C = CELL;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(bg, 0, 0);
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.setTransform(DPR, 0, 0, DPR, OX * DPR, OY * DPR);
     if (!S) return;
 
-    /* Sessel am Seil */
+    /* Sessel am Seil (nur über dem Feld) */
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COLS * C, C * 1.1); ctx.clip();
     ctx.strokeStyle = '#212529'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, C * 0.18); ctx.lineTo(COLS * C, C * 0.18); ctx.stroke();
     for (var i = -1; i < 6; i++) {
       var cx = ((S.chairs * C * 1.3 + i * C * 4.5) % (COLS * C + C * 4.5)) - C * 2;
       ctx.fillStyle = '#1864ab'; rr(ctx, cx, C * 0.06, C * 1.6, C * 0.28, 3); ctx.fill();
     }
+    ctx.restore();
 
     /* Sichtkegel (halbtransparent rot) */
     S.wardens.forEach(function (w) {
@@ -1239,6 +1344,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       ctx.lineWidth = 6; ctx.strokeStyle = '#fff'; ctx.strokeText('ERWISCHT!', COLS * C / 2, ROWS * C / 2);
       ctx.fillStyle = '#c92a2a'; ctx.fillText('ERWISCHT!', COLS * C / 2, ROWS * C / 2);
     }
+    schneefall(t);
   }
 
   /* Hauptschleife */
@@ -1252,7 +1358,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var wob = $('wobble');
     if (S && S.effects.jager > 0 && S.phase === 'play') {
       var tt = now / 1000;
-      wob.style.transform = 'rotate(' + (Math.sin(tt * 2.1) * 1.6).toFixed(2) + 'deg) translate(' + (Math.sin(tt * 3.3) * 4).toFixed(1) + 'px,' + (Math.cos(tt * 2.6) * 3).toFixed(1) + 'px)';
+      wob.style.transform = 'scale(1.06) rotate(' + (Math.sin(tt * 2.1) * 1.6).toFixed(2) + 'deg) translate(' + (Math.sin(tt * 3.3) * 4).toFixed(1) + 'px,' + (Math.cos(tt * 2.6) * 3).toFixed(1) + 'px)';
     } else if (wob.style.transform) wob.style.transform = '';
     draw(now);
     requestAnimationFrame(frame);
@@ -1267,7 +1373,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
         susp: S.susp, cause: S.cause, head: copy(S.snake[0]), dir: copy(S.dir), effects: JSON.parse(JSON.stringify(S.effects)),
         wardens: S.wardens.map(function (w) { return { x: w.x, y: w.y, stun: w.stun, cone: w.cone.length }; }),
         kid: S.kid ? { x: S.kid.x, y: S.kid.y } : null, player: spieler.name, foto: !!fotoImg, tickMs: tickMs(),
-        food: S.food ? { x: S.food.x, y: S.food.y } : null, bubbles: S.bubbles.length
+        food: S.food ? { x: S.food.x, y: S.food.y } : null, bubbles: S.bubbles.length,
+        body: S.snake.map(copy), cols: COLS, rows: ROWS
       };
     },
     /* Ein Schritt der Schlange (plus die Zeit dafür) – für Tests mit timeScale 0 */
@@ -1288,7 +1395,15 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     holdWarden: function (i, hold) { S.wardens[i].hold = hold; S.wardens[i].stun = 0; },
     level: function (n) { S.people = (n - 1) * LEUTE_PRO_LEVEL; levelUp(n); },
     isWall: isWall,
-    view: function () { var r = cv.getBoundingClientRect(); return { canvas: [r.width, r.height], screen: [innerWidth, innerHeight], left: r.left, top: r.top, right: r.right, bottom: r.bottom }; }
+    /* Lage des umzäunten Spielfelds (field) und Anteil des Bildschirms, den die Spielszene bedeckt (cover) */
+    view: function () {
+      var r = cv.getBoundingClientRect();
+      return {
+        canvas: [CELL * COLS, CELL * ROWS], screen: [innerWidth, innerHeight], cell: CELL, cols: COLS, rows: ROWS,
+        left: r.left + OX, top: r.top + OY, right: r.left + OX + CELL * COLS, bottom: r.top + OY + CELL * ROWS,
+        cover: (r.width * r.height) / (innerWidth * innerHeight)
+      };
+    }
   };
 
   S = neuerZustand();

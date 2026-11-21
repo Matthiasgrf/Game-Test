@@ -19,6 +19,11 @@ mit Namen) bringen 25 statt 10 Punkte.
 
 Steuerung: Pfeiltasten oder WASD, P/Leertaste/Esc = Pause, M = Ton · Tablet/Handy: Steuerkreuz oder Wischen.
 
+Bildschirm: Die Schneelandschaft füllt den ganzen Bildschirm, hoch und quer. Das umzäunte Feld (Raster und
+Anzahl der Gänge) wird zu Beginn jeder Runde an den Bildschirm angepasst – ein Feld ist etwa 28–46 px groß
+(`FELD_PX_MIN`, `FELD_PX_MAX`, `GANG_HOEHE`). Kopfzeile und Steuerkreuz liegen über der Landschaft, nicht über
+dem Feld (hoch: Steuerkreuz unten, quer: rechts).
+
 Highscore: Punkte (mehr ist besser, bei Gleichstand die kürzere Zeit). Jedes Ergebnis geht per
 `GameTest.reportScore` auf die gemeinsame Seite „Highscores“ der App – das Spiel hat keine eigene Bestenliste.
 Start- und Game-Over-Bildschirm verlinken dorthin. „Score teilen“ kopiert einen Text in die Zwischenablage
