@@ -7,6 +7,7 @@
             node tools/geaendert.js <von> <bis>  zwei Stände vergleichen, z. B. was ein alter Commit getestet hätte
             node tools/geaendert.js --keys       nur die Spiele zum Durchspielen, mit Komma (für spieltest.js)
             node tools/geaendert.js --github     im Workflow: Basis aus dem Ereignis, Ergebnis nach $GITHUB_OUTPUT
+            --alle                               alles testen, egal was sich geändert hat (ausführlicher Test)
 
    Regeln (erste passende gilt):
      nur Doku: *.md, docs/, .gitignore, .env.example     → keine Browser-Tests
@@ -16,7 +17,7 @@
      Werkzeug, das Durchspiel-Tests einbinden (flugtest)  → die Spiele, deren Test es einbindet
      src/games/games.json                                 → Spiele mit geändertem Eintrag (+ Übersicht)
      alles andere: App (src/), shared/, Vorlage, Werkzeuge, Workflows, package.json … → alle Spiele
-   Ergebnis (JSON): { basis, dateien, alle, browser, durchspielen: [keys], gruende: [...] } */
+   Ergebnis (JSON): { basis, dateien, alle, browser, spiele: [betroffene keys], durchspielen: [keys mit Test], gruende } */
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -35,6 +36,7 @@ const testKeys = fs.readdirSync(path.join(ROOT, 'tools/spieltests')).filter((f) 
 
 /* Basis bestimmen. null = keine sinnvolle Basis → alles testen. */
 function findBase() {
+  if (args.includes('--alle')) return { ref: null, text: 'ausführlicher Test → alles' };
   if (explicitBase) return { ref: explicitBase, head: explicitHead, text: explicitHead ? `${explicitBase}..${explicitHead}` : explicitBase, worktree: !github && !explicitHead };
   if (github) {
     const event = process.env.GITHUB_EVENT_NAME;
@@ -109,11 +111,13 @@ function classify(files, base) {
     }
   }
   const play = all ? testKeys : testKeys.filter((k) => affected.has(k));
-  return { all, browser, play: play.filter((k) => games.has(k)), reasons };
+  const touched = all ? [...games] : [...games].filter((k) => affected.has(k));
+  return { all, browser, touched, play: play.filter((k) => games.has(k)), reasons };
 }
 
 const base = findBase();
-const everything = (why) => ({ basis: base.text, dateien: null, alle: true, browser: true, durchspielen: testKeys, gruende: [why] });
+const allKeys = loadGames().map((g) => g.key);
+const everything = (why) => ({ basis: base.text, dateien: null, alle: true, browser: true, spiele: allKeys, durchspielen: testKeys.filter((k) => allKeys.includes(k)), gruende: [why] });
 let result;
 if (!base.ref) {
   result = everything(base.text);
@@ -123,14 +127,15 @@ if (!base.ref) {
   if (!files) result = everything(`Basis ${base.ref} unbekannt → alles`);
   else {
     const c = classify(files, base);
-    result = { basis: base.text, dateien: files.length, alle: c.all, browser: c.browser, durchspielen: c.play, gruende: c.reasons };
+    result = { basis: base.text, dateien: files.length, alle: c.all, browser: c.browser, spiele: c.touched, durchspielen: c.play, gruende: c.reasons };
   }
 }
 
 if (keysOnly) {
   console.log(result.durchspielen.join(','));
 } else if (github) {
-  const out = [`alle=${result.alle}`, `browser=${result.browser}`, `durchspielen=${JSON.stringify(result.durchspielen)}`, `anzahl=${result.durchspielen.length}`];
+  const out = [`alle=${result.alle}`, `browser=${result.browser}`, `spiele=${JSON.stringify(result.spiele)}`,
+    `durchspielen=${JSON.stringify(result.durchspielen)}`, `anzahl=${result.durchspielen.length}`];
   fs.appendFileSync(process.env.GITHUB_OUTPUT, out.join('\n') + '\n');
   const summary = [
     '### Was wird getestet?',

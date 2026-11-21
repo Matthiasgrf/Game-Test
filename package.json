@@ -10,9 +10,12 @@
     "check": "node tools/check.js",
     "smoke": "node tools/smoke.js",
     "spieltest": "node tools/spieltest.js",
+    "leistung": "node tools/leistung.js",
+    "geaendert": "node tools/geaendert.js",
     "neues-spiel": "node tools/neues-spiel.js",
     "thumbnail": "node tools/thumbnail.js",
-    "test": "tsc -b && node tools/check.js && node tools/smoke.js && node tools/spieltest.js"
+    "test": "tsc -b && node tools/check.js && node tools/smoke.js && node tools/spieltest.js",
+    "test:schnell": "node tools/schnell.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.1",
