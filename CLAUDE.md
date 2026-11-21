@@ -69,6 +69,24 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 - Im Durchspiel-Test: `page.states` (gespeicherte Stände), Startwerte mit `t.newPage(…, { states: { '<key>': {…} } })`.
 - Einstellungen wie Ton an/aus dürfen im Spielstand stehen, Highscores nicht (die gehören nach `game_scores`).
 
+## Aussehen auf Handy und Tablet
+
+Die Spiele werden vor allem auf Handy und Tablet gespielt – dort muss ein Spiel so gut aussehen wie am Computer.
+Vorbild: `public/games/sachunterricht-getreideernte` (Bauer Franz).
+
+- **Spielszene bildschirmfüllend**, hoch **und** quer gehalten. Kein festes Hochformat-Raster mit Rand drumherum:
+  Raster, Kamera bzw. Ausschnitt an das Seitenverhältnis anpassen.
+- **Anzeigen und Steuerung liegen über der Szene** (halbtransparent, an den Rändern, `env(safe-area-inset-*)`),
+  nicht in eigenen Leisten darüber/darunter. Kopfzeile auf dem Handy höchstens eine Zeile.
+  Touch: Joystick/Steuerkreuz unten links bzw. rechts, Aktionsknopf auf der anderen Seite, mindestens 56 px.
+- **Groß genug**: Figuren auf dem Handy mindestens ca. 32 px; Texte und Banner laufen nie über den Bildschirm.
+- **Grafik mit Tiefe**: Schatten, Licht, Farbverläufe, kleine Animationen – keine flachen Platzhalter-Formen.
+  Three.js liegt bereit (`public/games/shared/vendor/`), lohnt sich bei Bewegungs- und Erkundungsspielen.
+- `tools/smoke.js` prüft auf Tablet und Handy (hoch und quer), dass die Spielfläche mindestens 60 % des
+  Bildschirms bedeckt. Das reicht nicht: im Durchspiel-Test die **laufende** Szene auf `t.PHONE` und
+  `t.PHONE_QUER` fotografieren, ansehen und mindestens eine Verbesserungsrunde einplanen, bevor der Pull Request
+  entsteht.
+
 ## Werkzeuge
 
 | Befehl | Zweck |
@@ -76,7 +94,7 @@ tools/vorlage/                Startpunkt für neue Spiele (HTML- und React-Quiz,
 | `node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "…"] [--gruppe "…"] [--emoji "…"] [--kategorie "…"]` | Spiel aus der Vorlage anlegen: Dateien, games.json, Migration, Durchspiel-Test. Überschreibt nichts. |
 | `node tools/thumbnail.js <key> [--klick "<css>"] [--tippen "<css>" "<text>"] [--verstecken "<css>"] [--warten <ms>]` | `thumbnail.jpg` 900×600 als Screenshot |
 | `node tools/check.js` | Regeln prüfen ohne Browser – muss ohne Fehler durchlaufen |
-| `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy – mit hoher Pixeldichte wie iPad/iPhone), Screenshots in `test-ergebnisse/` |
+| `node tools/smoke.js [key]` | Übersicht, Highscores und Spiele im Browser öffnen (Computer, Tablet, Handy hoch und quer – mit hoher Pixeldichte wie iPad/iPhone), Größe der Spielfläche prüfen, Screenshots in `test-ergebnisse/` |
 | `node tools/spieltest.js [key]` | Spiele mit Testdatei in `tools/spieltests/` automatisch durchspielen |
 | `npm test` | alles zusammen (tsc, check, smoke, spieltest) |
 
@@ -107,8 +125,9 @@ Neue Regeln, die sich automatisch prüfen lassen, in `tools/check.js` ergänzen 
 6. **Vorschaubild**: `node tools/thumbnail.js <key> …` – typische Spielszene ohne Bedienelemente. Ansehen.
 7. **Durchspiel-Test** `tools/spieltests/<key>.js` anpassen (die Vorlage passt zum Vorlagen-Quiz).
    Er muss Gewinn-Bildschirm und gespeichertes Ergebnis prüfen (`page.scores`).
-8. **Testen**: `npm test` ohne Fehler; Screenshots in `test-ergebnisse/` (Computer, Tablet und Handy) ansehen,
-   auch die Übersicht (`uebersicht-*.png`) mit der neuen Kachel.
+8. **Testen**: `npm test` ohne Fehler; Screenshots in `test-ergebnisse/` (Computer, Tablet, Handy hoch und quer)
+   ansehen – auch die laufende Spielszene aus dem Durchspiel-Test, nicht nur den Start-Bildschirm – und mit
+   „Aussehen auf Handy und Tablet“ vergleichen; auch die Übersicht (`uebersicht-*.png`) mit der neuen Kachel.
 9. **Datenbank**: Migration aus Schritt 1 prüfen (Highscore-Art, Freigabe für Gruppen, Kategorie wie
    Mathe/Deutsch/Sachkunde/Erdkunde/Religion/Freizeit – sonst steht das Spiel unter „Weitere Spiele“) und mit dem
    Supabase-MCP `apply_migration` einspielen (Projekt „Game-test“). Sie legt nur neue Zeilen an und kann vor
