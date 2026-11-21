@@ -5,6 +5,9 @@
     "title": "Labyrinth-Abenteuer",
     "description": "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
     "age": "ab 5 Jahren",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🐭🧀",
     "color": "linear-gradient(135deg, #ffd43b, #ff922b)",
     "highscore": {
@@ -35,6 +38,9 @@
     "title": "Elisabeth von Thüringen",
     "description": "Begleite Elisabeth durch ihr Leben und beantworte an 20 Stationen Fragen für den Religionsunterricht.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🏰🌹",
     "color": "linear-gradient(135deg, #b2f2bb, #fcc2d7)",
     "highscore": {
@@ -50,6 +56,9 @@
     "title": "Rohr-Flitzer",
     "description": "Lenke die Kackwurst durch die verstopften Abflussrohre von Haus Buchhammer bis in die Kanalisation!",
     "age": "ab 6 Jahren",
+    "zielgruppe": "erwachsene",
+    "orientation": "any",
+    "status": "live",
     "emoji": "💩🚽",
     "color": "linear-gradient(135deg, #d8b48a, #8d6e63)",
     "highscore": {
@@ -65,6 +74,9 @@
     "title": "Ski-Flitzer",
     "description": "Die Kackwurst saust auf Skiern durch Serfaus-Fiss-Ladis und sammelt in 40 Sekunden Schnitzel, Bier & Co. ein!",
     "age": "ab 6 Jahren",
+    "zielgruppe": "erwachsene",
+    "orientation": "any",
+    "status": "live",
     "emoji": "💩⛷️",
     "color": "linear-gradient(135deg, #a5d8ff, #8d6e63)",
     "highscore": {
@@ -80,6 +92,9 @@
     "title": "Flug über Europa",
     "description": "Fliege über Europa und lerne Länder, Hauptstädte, Flaggen und Sehenswürdigkeiten.",
     "age": "8–10 Jahre",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "✈️🇪🇺",
     "color": "linear-gradient(135deg, #a5d8ff, #4dabf7)",
     "highscore": {
@@ -95,6 +110,9 @@
     "title": "Getreide-Abenteuer",
     "description": "Fahre mit dem Traktor über das Feld und löse an 10 Stationen Aufgaben rund ums Getreide.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🚜🌾",
     "color": "linear-gradient(135deg, #ffe066, #94d82d)",
     "highscore": {
@@ -110,6 +128,9 @@
     "title": "Flug über Deutschland",
     "description": "Fliege über Deutschland zu den 16 Bundesländern und lerne ihre Flaggen und Hauptstädte.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "✈️🇩🇪",
     "color": "linear-gradient(135deg, #ffd43b, #fa5252)",
     "highscore": {
@@ -125,6 +146,9 @@
     "title": "Flug über die Welt",
     "description": "Fliege um die ganze Welt zu allen 193 Ländern und lerne ihre Flaggen, Hauptstädte und Sehenswürdigkeiten.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "✈️🌍",
     "color": "linear-gradient(135deg, #99e9f2, #51cf66)",
     "highscore": {
@@ -141,6 +165,9 @@
     "title": "Robi in der Zahlenfabrik",
     "description": "Hüpfe mit Roboter Robi durch die Fabrik und löse Aufgaben zum Rechnen, zu Zahlen und zu Größen.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🤖🔢",
     "color": "linear-gradient(135deg, #ffc078, #868e96)",
     "highscore": {
@@ -156,6 +183,9 @@
     "title": "Bauer Franz und die Getreideernte",
     "description": "Mähe mit Bauer Franz und seiner Sense das Feld und löse an 10 Stationen Aufgaben rund ums Getreide.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "👨‍🌾🌾",
     "color": "linear-gradient(135deg, #ffec99, #d9480f)",
     "highscore": {
@@ -171,6 +201,9 @@
     "title": "Die Formen-Werkstatt",
     "description": "Hilf Füchsin Tilda in ihrer Werkstatt: Erkenne Figuren und Körper, falte Würfelnetze, spiegle und zähle Kästchen.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🦊🔺",
     "color": "linear-gradient(135deg, #ffa94d, #845ef7)",
     "highscore": {
@@ -186,6 +219,9 @@
     "title": "Die Wortmonster",
     "description": "Füttere drei hungrige Monster mit Nomen, Verben und Adjektiven und übe für den Sprachkundetest.",
     "age": "3. Klasse",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
     "emoji": "👾📚",
     "color": "linear-gradient(135deg, #74c0fc, #da77f2)",
     "highscore": {
@@ -223,6 +259,9 @@
     "title": "Liftschlange",
     "description": "Drängel dich als Skifahrer durch die Liftschlange, sammel deine Kumpels ein und lass dich nicht vom Liftwart erwischen!",
     "age": "ab 18 Jahren",
+    "zielgruppe": "erwachsene",
+    "orientation": "any",
+    "status": "live",
     "emoji": "🚡🐍",
     "color": "linear-gradient(135deg, #a5d8ff, #ff8787)",
     "highscore": {

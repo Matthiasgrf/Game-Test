@@ -22,6 +22,18 @@ const rel = (p) => path.relative(ROOT, p);
 
 const KEY_RE = /^[a-z0-9_-]{1,40}$/; // wie in der Datenbank (games.key)
 const MODES = ['high', 'low', 'none'];
+const ZIELGRUPPEN = ['kinder', 'erwachsene'];
+const ORIENTATIONS = ['landscape', 'portrait', 'any'];
+const STATUS = ['live', 'beta', 'entwurf'];
+const MAX_BYTES = 3 * 1024 * 1024; // Ladegröße je Spiel (3D-Spiele dürfen begründet darüber liegen)
+
+/* Spiele, die noch nicht auf den Standard (docs/GAME_STANDARD.md, Kit in public/games/shared/kit/) umgestellt
+   sind: Standard-Regeln nur als Hinweis. Nach der Umstellung eines Spiels hier austragen – neue Spiele kommen
+   nie auf diese Liste. */
+const ALTBESTAND = [
+  'labyrinth', 'rohr-flitzer', 'elisabeth', 'ski-flitzer', 'europaflug', 'sachunterricht-getreide', 'deutschlandflug',
+  'weltflug', 'mathe-robi', 'sachunterricht-getreideernte', 'mathe-formen', 'deutsch-wortmonster', 'liftschlange',
+];
 
 /* Breite und Höhe aus einer JPEG-Datei lesen (SOF-Abschnitt). */
 function jpegSize(buf) {
@@ -60,6 +72,10 @@ function checkEntry(g, where) {
   }
   if (typeof g.key === 'string' && !KEY_RE.test(g.key)) err(where, 'key darf nur Kleinbuchstaben (ohne Umlaute), Ziffern, - und _ enthalten (max. 40).');
   if (g.type && !['react', 'html'].includes(g.type)) err(where, 'type muss "react" oder "html" sein.');
+  if (!ZIELGRUPPEN.includes(g.zielgruppe)) err(where, `zielgruppe muss ${ZIELGRUPPEN.map((z) => `"${z}"`).join(' oder ')} sein.`);
+  if (!ORIENTATIONS.includes(g.orientation)) err(where, `orientation muss ${ORIENTATIONS.map((z) => `"${z}"`).join(', ')} sein (beste Ausrichtung fürs Spiel).`);
+  if (!STATUS.includes(g.status)) err(where, `status muss ${STATUS.map((z) => `"${z}"`).join(', ')} sein.`);
+  if (g.type === 'react' && !ALTBESTAND.includes(g.key)) err(where, 'neue Spiele sind HTML-Spiele mit dem Kit (type "html", siehe docs/GAME_STANDARD.md).');
   if (/TODO/.test(`${g.title} ${g.description}`)) err(where, 'enthält noch „TODO“.');
   if (g.description && g.description.length > 140) warn(where, `Beschreibung ist lang (${g.description.length} Zeichen) – ein kurzer Satz passt besser auf die Kachel.`);
   if ('saveKey' in g) {
@@ -138,8 +154,10 @@ function checkHtmlGame(g, dir) {
   });
   if (!/Alle Spiele/.test(html)) err(where, 'Text „🏠 Alle Spiele“ für den Link zur Übersicht fehlt.');
 
-  if (g.highscore && !/GameTest\.reportScore\s*\(/.test(html)) err(where, 'Spiel hat Highscore, ruft aber GameTest.reportScore(...) nicht auf.');
-  if (!g.highscore && /GameTest\.reportScore\s*\(/.test(html)) warn(where, 'ruft GameTest.reportScore auf, obwohl highscore: null – die App ignoriert das.');
+  const code = gameCode(dir, html);
+  const reports = /GameTest\.reportScore\s*\(|\.saveScore\s*\(/.test(code);
+  if (g.highscore && !reports) err(where, 'Spiel hat Highscore, meldet aber kein Ergebnis: kit.storage.saveScore(...) (oder GameTest.reportScore).');
+  if (!g.highscore && reports) warn(where, 'meldet ein Ergebnis, obwohl highscore: null – die App ignoriert das.');
 
   /* Nichts von fremden Servern laden: Datenschutz, und das Spiel läuft auch bei CDN-Ausfall. */
   const external = new Set();
@@ -157,7 +175,56 @@ function checkHtmlGame(g, dir) {
     else if (!fs.existsSync(target)) err(where, `Datei "${ref}" gibt es nicht.`);
   }
   checkScripts(dir, html, where);
-  return html;
+  checkStandard(g, dir, html, code);
+  return code;
+}
+
+/* index.html und eigene Skripte des Spiels (game.js …), ohne fertige Bibliotheken */
+function gameCode(dir, html) {
+  const files = fs.readdirSync(dir, { recursive: true })
+    .filter((f) => /\.m?js$/.test(f) && !/\.min\.js$/.test(f) && !f.split(path.sep).includes('vendor'));
+  return [html, ...files.map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))].join('\n');
+}
+
+/* Regeln aus docs/GAME_STANDARD.md, die sich ohne Browser prüfen lassen. Altbestand: nur Hinweise. */
+function checkStandard(g, dir, html, code) {
+  const where = `public/games/${g.key}/`;
+  const legacy = ALTBESTAND.includes(g.key);
+  const report = legacy ? (w, m) => warn(w, `[Altbestand] ${m}`) : err;
+  if (legacy) {
+    /* nur die wichtigsten Punkte als Erinnerung, damit die Hinweisliste kurz bleibt */
+    if (!/kit\/theme\.css/.test(html)) warn(where, '[Altbestand] noch nicht auf den Standard umgestellt (Kit, Pause, Ton, Vollbild, Drehen-Hinweis).');
+  } else {
+    if (!/<link[^>]+href=["']\.\.\/shared\/kit\/theme\.css["']/i.test(html)) report(where + 'index.html', 'Design fehlt: <link rel="stylesheet" href="../shared/kit/theme.css"> im <head>.');
+    if (!/from\s+["']\.\.\/shared\/kit\/kit\.js["']/.test(code) || !/startKit\s*\(/.test(code)) report(where, 'Kit fehlt: import { startKit } from \'../shared/kit/kit.js\' und startKit({ key, orientation, … }) aufrufen.');
+    const key = /startKit\s*\(\s*\{[^}]*?\bkey\s*:\s*["']([^"']+)["']/.exec(code);
+    if (key && key[1] !== g.key) report(where, `startKit bekommt key "${key[1]}", in games.json steht "${g.key}".`);
+    if (g.orientation !== 'any' && !new RegExp(`orientation\\s*:\\s*["']${g.orientation}["']`).test(code)) {
+      report(where, `games.json sagt orientation "${g.orientation}" – startKit({ orientation: '${g.orientation}' }) übergeben (Drehen-Hinweis).`);
+    }
+  }
+  /* Retina: Canvas muss die Pixeldichte kennen */
+  if (/getContext\(\s*["'](?:2d|webgl2?)["']|new THREE\.WebGLRenderer/.test(code) && !/devicePixelRatio|fitCanvas\s*\(|setPixelRatio\s*\(/.test(code)) {
+    report(where, 'zeichnet auf <canvas>, beachtet aber die Pixeldichte nicht – fitCanvas(canvas) aus dem Kit bzw. renderer.setPixelRatio(Math.min(devicePixelRatio, 2)), sonst unscharf auf iPad/iPhone.');
+  }
+  /* Hover nur mit Maus – auf Touch-Geräten bleibt er sonst „hängen“ */
+  if (/:hover\b/.test(html) && !/hover\s*:\s*hover/.test(html)) report(where + 'index.html', ':hover nur innerhalb von @media (hover: hover) and (pointer: fine) verwenden.');
+  /* Bibliotheken nur aus der festen Liste in shared/vendor/, keine eigenen Kopien */
+  for (const f of fs.readdirSync(dir, { recursive: true })) {
+    if (/\.min\.js$/.test(f)) report(where + f, 'Bibliothek im Spielordner – Bibliotheken nur aus public/games/shared/vendor/ (feste Liste mit Version) einbinden.');
+    if (/\.(png|bmp|wav|aiff?)$/i.test(f) && fs.statSync(path.join(dir, f)).size > 200 * 1024) report(where + f, 'große unkomprimierte Datei – Bilder als WebP/JPEG, Töne als MP3.');
+  }
+  /* Ladegröße: Ordner + eingebundene gemeinsame Bibliotheken */
+  let bytes = 0;
+  for (const f of fs.readdirSync(dir, { recursive: true })) {
+    const full = path.join(dir, f);
+    if (f !== 'thumbnail.jpg' && f !== 'readme.md' && fs.statSync(full).isFile()) bytes += fs.statSync(full).size;
+  }
+  for (const m of html.matchAll(/<script[^>]+src=["'](\.\.\/shared\/vendor\/[^"']+)["']/gi)) {
+    const full = path.resolve(dir, m[1]);
+    if (fs.existsSync(full)) bytes += fs.statSync(full).size;
+  }
+  if (bytes > MAX_BYTES) warn(where, `lädt ${(bytes / 1024 / 1024).toFixed(1)} MB (Ziel unter 3 MB; bei 3D-Spielen in readme.md begründen).`);
 }
 
 function checkReactGame(g) {
@@ -244,9 +311,10 @@ function main() {
 
     const s = storageKeys(code);
     if (typeof g.saveKey === 'string') {
-      if (!s.keys.includes(g.saveKey)) err(g.key, `saveKey "${g.saveKey}" wird im Spiel nicht als localStorage-Schlüssel benutzt.`);
-      if (!/GameTest\.saveState\s*\(/.test(code)) err(g.key, 'Spiel hat saveKey, ruft aber GameTest.saveState(...) nicht auf.');
-    } else if (/GameTest\.saveState\s*\(/.test(code)) warn(g.key, 'ruft GameTest.saveState auf, hat aber keinen saveKey in games.json – die App ignoriert das.');
+      const viaKit = new RegExp(`saveKey\\s*:\\s*["']${g.saveKey}["']`).test(code) && /\.saveProgress\s*\(/.test(code);
+      if (!viaKit && !s.keys.includes(g.saveKey)) err(g.key, `saveKey "${g.saveKey}" wird im Spiel nicht benutzt (startKit({ saveKey: '${g.saveKey}' }) bzw. localStorage-Schlüssel).`);
+      if (!viaKit && !/GameTest\.saveState\s*\(/.test(code)) err(g.key, 'Spiel hat saveKey, speichert aber nicht über kit.storage.saveProgress(...) (oder GameTest.saveState).');
+    } else if (/GameTest\.saveState\s*\(|\.saveProgress\s*\(/.test(code)) warn(g.key, 'speichert einen Spielstand, hat aber keinen saveKey in games.json – er bleibt nur auf diesem Gerät.');
     if (s.unknown) warn(g.key, 'localStorage-Schlüssel nicht erkennbar – bitte prüfen, dass er nur zu diesem Spiel gehört.');
     s.keys.forEach((k) => {
       if (k === '*clear*') { err(g.key, 'localStorage.clear() löscht auch die Daten der App und der anderen Spiele.'); return; }

@@ -75,6 +75,7 @@ async function visit({ hash, size, shot, check }) {
   const warnings = [];
   const { name, ...options } = size;
   const context = await browser.newContext(options);
+  context.setDefaultTimeout(20000);
   /* Fremde Server werden gesperrt und gemeldet (Supabase stellt mockSupabase nach). */
   await context.route((u) => !u.href.startsWith(url) && u.hostname !== 'test.supabase.co' && /^https?:/.test(u.protocol), (route) => {
     problems.push(`Zugriff auf fremden Server: ${route.request().url()}`);
@@ -89,7 +90,14 @@ async function visit({ hash, size, shot, check }) {
   try {
     await page.goto(url + hash, { waitUntil: 'load', timeout: 30000 });
     await page.waitForTimeout(1500);
-    if (check) await check(page, problems, warnings);
+    /* Eine hängende Prüfung (z. B. ein Bild, das nie lädt) darf den Lauf nicht blockieren */
+    if (check) {
+      let timer;
+      await Promise.race([
+        check(page, problems, warnings),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Prüfung hängt (über 45 s)')), 45000); }),
+      ]).finally(() => clearTimeout(timer));
+    }
     if (!opts.zeichnen) await zeichnenAn(page, true);
     await page.screenshot({ path: path.join(OUT, `${shot}-${name}.png`) });
   } catch (e) {
@@ -108,18 +116,32 @@ const noOverflow = async (page, problems) => {
 async function checkOverview(page, problems) {
   const tiles = await page.locator('.game-tile').count();
   if (tiles !== all.length) problems.push(`${tiles} Kacheln sichtbar, erwartet ${all.length}.`);
-  /* Kategorien: Filter-Knöpfe und Abschnitte (mockSupabase verteilt die Spiele auf TEST_CATEGORIES). */
-  const sections = await page.locator('.category-section .category-title').count();
-  if (sections < 2) problems.push(`${sections} Kategorie-Abschnitte sichtbar, erwartet mehrere.`);
+  /* Bereiche nach Zielgruppe: Knöpfe „Alle“, „Kinder · Lernen“, „Erwachsene · Spaß“ (wenn beide vorkommen) */
+  const kinder = all.filter((g) => g.zielgruppe === 'kinder').length;
+  const areas = page.locator('.area-filter button');
+  if (kinder && kinder < all.length) {
+    if (await areas.count() !== 3) problems.push(`${await areas.count()} Bereichs-Knöpfe, erwartet 3 (Alle, Kinder, Erwachsene).`);
+    else {
+      await areas.nth(1).click();
+      const shown = await page.locator('.game-tile').count();
+      if (shown !== kinder) problems.push(`Bereich „Kinder · Lernen“ zeigt ${shown} Kacheln, erwartet ${kinder}.`);
+      await areas.nth(0).click();
+    }
+  }
+  /* Kategorien: Filter-Knöpfe und Abschnitte (mockSupabase verteilt die Spiele auf TEST_CATEGORIES).
+     Dieselbe Kategorie kann in beiden Bereichen vorkommen – ein Knopf je Kategorie. */
+  const titles = new Set(await page.locator('.category-section .category-title').allTextContents());
+  if (titles.size < 2) problems.push(`${titles.size} Kategorien sichtbar, erwartet mehrere.`);
   const filter = page.locator('.category-filter button');
-  if (await filter.count() !== sections + 1) problems.push('Filter-Knöpfe passen nicht zu den Kategorien (+ „Alle“).');
+  if (await filter.count() !== titles.size + 1) problems.push('Filter-Knöpfe passen nicht zu den Kategorien (+ „Alle“).');
   else {
     await filter.nth(1).click();
-    const shown = await page.locator('.category-section').count();
-    if (shown !== 1) problems.push(`Nach Klick auf eine Kategorie ${shown} Abschnitte sichtbar, erwartet 1.`);
+    const shown = new Set(await page.locator('.category-section .category-title').allTextContents());
+    if (shown.size !== 1) problems.push(`Nach Klick auf eine Kategorie ${shown.size} Kategorien sichtbar, erwartet 1.`);
     await filter.nth(0).click();
   }
-  await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode().catch(() => {}))));
+  /* Vorschaubilder laden erst beim Scrollen (loading="lazy") – für die Prüfung alle sofort laden */
+  await page.evaluate(() => Promise.all([...document.images].map((i) => { i.loading = 'eager'; return i.decode().catch(() => {}); })));
   const broken = await page.evaluate(() => [...document.images].filter((i) => !i.naturalWidth).map((i) => i.getAttribute('src')));
   broken.forEach((src) => problems.push(`Vorschaubild lädt nicht: ${src}`));
   await noOverflow(page, problems);
