@@ -37,8 +37,9 @@ import { createSound } from './sound.js';
 import { createStorage } from './storage.js';
 import { watchOrientation } from './orientation.js';
 import { fullscreen } from './fullscreen.js';
+import { createQuality } from './quality.js';
 
-export { createViewport, fitCanvas, board, createLoop, createInput, createSound, createStorage, watchOrientation, fullscreen };
+export { createViewport, fitCanvas, board, createLoop, createInput, createSound, createStorage, watchOrientation, fullscreen, createQuality };
 
 export const HOME_URL = '../../#/';
 
