@@ -22,3 +22,8 @@ export interface Profile {
   role: Role;
   created_at: string;
 }
+
+export interface Group {
+  id: number;
+  name: string;
+}

@@ -1,42 +1,23 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-
-interface GameInfo {
-  path: string;
-  title: string;
-  emoji: string;
-  description: string;
-  age: string;
-  color: string;
-}
-
-// Neue Spiele hier eintragen – die Übersicht baut sich daraus auf.
-export const GAMES: GameInfo[] = [
-  {
-    path: "/spiele/labyrinth",
-    title: "Labyrinth-Abenteuer",
-    emoji: "🐭🧀",
-    description: "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
-    age: "ab 5 Jahren",
-    color: "linear-gradient(135deg, #ffd43b, #ff922b)",
-  },
-  {
-    path: "/spiele/zahlenraten",
-    title: "Zahlenraten",
-    emoji: "🔢",
-    description: "Errate die geheime Zahl zwischen 1 und 100.",
-    age: "ab 8 Jahren",
-    color: "linear-gradient(135deg, #74c0fc, #5c7cfa)",
-  },
-];
+import { useAllowedGames } from "../games/catalog";
 
 export default function Overview() {
   const { profile } = useAuth();
+  const { games, error } = useAllowedGames();
   return (
     <main className="overview">
       <h2>Hallo {profile?.username}! Was möchtest du spielen?</h2>
+      {error && <p className="error">{error}</p>}
+      {!games && !error && <p className="muted">Lade…</p>}
+      {games && games.length === 0 && (
+        <p className="card muted">
+          Für dich sind noch keine Spiele freigeschaltet. Bitte frag den Admin,
+          dich einer Gruppe zuzuordnen.
+        </p>
+      )}
       <div className="game-grid">
-        {GAMES.map((g) => (
+        {games?.map((g) => (
           <Link key={g.path} to={g.path} className="game-tile">
             <div className="game-tile-art" style={{ background: g.color }}>{g.emoji}</div>
             <div className="game-tile-body">

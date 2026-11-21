@@ -39,6 +39,15 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
   kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
   `TRUNCATE` ist für Client-Rollen entzogen, weil es RLS umgeht.
 
+### Gruppen
+- Tabellen `groups`, `user_groups` (User ↔ Gruppe) und `game_groups` (Spiel ↔ Gruppe),
+  siehe `supabase/migrations/20261121100000_groups.sql`.
+- Ein Spieler sieht ein Spiel, wenn er in mindestens einer Gruppe des Spiels ist;
+  Admins sehen alle Spiele. Verwaltet wird alles im Tab **Admin**.
+- Nur Admins dürfen Zuordnungen ändern (RLS über `public.is_admin()`).
+  Ergebnisse werden nur gespeichert, wenn `public.can_play('<spiel>')` stimmt.
+- Spiele stehen in `src/games/catalog.ts` (`key` = `game_groups.game_key`).
+
 ## Einmalige Einrichtung
 
 ### 1. Supabase (Dashboard)
