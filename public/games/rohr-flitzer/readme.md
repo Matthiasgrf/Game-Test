@@ -2,20 +2,22 @@
 
 Ein Spiel für die Gruppe **Fisser-Flitzer**, ab 6 Jahren. Code: `src/games/rohr-flitzer/`.
 
-Die Kackwurst 💩 wird im Dachgeschoss von **Haus Buchhammer** heruntergespült und muss durch ein
-Labyrinth aus Abflussrohren bis unten in die Kanalisation finden. Manche Rohre sind verstopft
-(Klopapier-Pfropfen mit ❌) – dann heißt es: Umweg suchen!
+Die Kackwurst 💩 wird auf dem Dachboden von **Haus Buchhammer** heruntergespült und muss durch die
+Abflussrohre bis unten in die Kanalisation finden. Manche Rohre sind verstopft (Klopapier mit 🚫) –
+dann heißt es: Umweg suchen!
 
-- Jede Runde ein neues Rohrsystem (`maze.ts`): 9 × 16 Knoten über 4 Stockwerke
-  (Bad, Gäste-WC, Küche, Waschküche), Tiefensuche plus Extra-Rohre für Schleifen.
-- Bis zu 16 Verstopfungen, bevorzugt auf dem kürzesten Weg – aber immer so, dass es einen Weg gibt.
-- Im Rohr ist es dunkel: sichtbar ist nur die Umgebung der Wurst, Erkundetes bleibt sichtbar.
-  Der Ausgang in die Kanalisation ist immer zu sehen.
-- Schwerkraft: die Wurst rutscht von allein nach unten, nach oben geht es nur langsam.
-- Eine Runde dauert etwa 20–30 Sekunden. Nach 60 Sekunden ist das Rohr „eingetrocknet“.
+- Das ganze Rohrsystem ist von Anfang an zu sehen: 6 × 9 Knoten über 3 Stockwerke
+  (Badezimmer, Küche, Keller). Jede Runde gibt es ein neues (`maze.ts`).
+- 5 Verstopfungen, bevorzugt auf dem kürzesten Weg – es gibt aber immer einen Weg.
+- Die Wurst flitzt nach einem Wisch von selbst weiter, auch um Kurven, und hält an jeder
+  Abzweigung. Eine Richtung kann man schon vorher wählen, sie gilt an der nächsten passenden Stelle.
+- Das Spielfeld passt sich an den Bildschirm an (Handy, Tablet, Computer).
+- Grafik (`draw.ts`): Haus mit Ziegeldach, Zimmer mit Einrichtung, Metallrohre, Wolken, Rauch,
+  Kanalisation mit Wasser und Ratte, Spritzer beim Platsch.
+- Eine Runde dauert für Kinder etwa 20–30 Sekunden (perfekt gespielt etwa 8 Sekunden).
 
-Steuerung: Computer: Pfeiltasten oder WASD, Leertaste startet · Tablet/Handy: auf dem Spielfeld wischen
-oder das Steuerkreuz antippen (gedrückt halten = weiterflitzen).
+Steuerung: Computer: Pfeiltasten oder WASD, Leertaste startet · Tablet/Handy: auf dem Spielfeld wischen,
+in die gewünschte Richtung tippen oder die Pfeil-Knöpfe unter dem Spielfeld.
 
 Highscore: Punkte = Sekunden bis in die Kanalisation (weniger ist besser).
 

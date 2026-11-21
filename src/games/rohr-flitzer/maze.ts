@@ -5,15 +5,12 @@
 //   Start: Klo oben im Dachgeschoss, Ziel: Ausgang unten in die Kanalisation.
 // =====================================================================
 
-export const COLS = 9;
-export const ROWS = 16;
-export const ROWS_PER_FLOOR = 4;
-export const FLOORS = [
-  "Dachgeschoss · Bad",
-  "1. OG · Gäste-WC",
-  "Erdgeschoss · Küche",
-  "Keller · Waschküche",
-];
+export const COLS = 6;
+export const ROWS = 9;
+export const ROWS_PER_FLOOR = 3;
+export const FLOORS = ["🛁 Badezimmer", "🍳 Küche", "🧺 Keller"];
+/** Höchstzahl verstopfter Rohre */
+const MAX_CLOGS = 5;
 
 export type Dir = "up" | "down" | "left" | "right";
 export type Edge = 0 | 1 | 2; // 0 = kein Rohr, 1 = offen, 2 = verstopft
@@ -57,7 +54,11 @@ function setEdge(m: Maze, r: number, c: number, dir: Dir, v: Edge) {
   else m.down[r - 1][c] = v;
 }
 
-const DIRS: Dir[] = ["up", "down", "left", "right"];
+export const DIRS: Dir[] = ["up", "down", "left", "right"];
+export const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
+
+/** Alle offenen (nicht verstopften) Richtungen an einer Zelle */
+export const openDirs = (m: Maze, r: number, c: number) => DIRS.filter((d) => edgeAt(m, r, c, d) === 1);
 
 /** Kürzester Weg vom Klo bis in die Kanalisation (Liste von Zellen) oder null. */
 export function shortestPath(m: Maze): [number, number][] | null {
@@ -141,8 +142,8 @@ function build(rng: () => number): Maze {
   // 2) Ein paar Zusatzrohre -> Schleifen, damit es Umwege um Verstopfungen gibt
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++) {
-      if (c < COLS - 1 && right[r][c] === 0 && rng() < 0.1) right[r][c] = 1;
-      if (r < ROWS - 1 && down[r][c] === 0 && rng() < 0.1) down[r][c] = 1;
+      if (c < COLS - 1 && right[r][c] === 0 && rng() < 0.14) right[r][c] = 1;
+      if (r < ROWS - 1 && down[r][c] === 0 && rng() < 0.14) down[r][c] = 1;
     }
 
   // Ausgang in die Kanalisation
@@ -151,10 +152,10 @@ function build(rng: () => number): Maze {
   // 3) Verstopfungen: bevorzugt auf dem aktuell kürzesten Weg, aber nur,
   //    wenn danach noch ein Weg existiert. So muss man Umwege suchen.
   let clogs = 0;
-  for (let tries = 0; tries < 400 && clogs < 16; tries++) {
+  for (let tries = 0; tries < 400 && clogs < MAX_CLOGS; tries++) {
     const path = shortestPath(m)!;
     let r: number, c: number, d: Dir;
-    if (rng() < 0.6 && path.length > 3) {
+    if (rng() < 0.75 && path.length > 3) {
       const i = 1 + Math.floor(rng() * (path.length - 2));
       d = dirBetween(path[i], path[i + 1] ?? path[i]);
       [r, c] = path[i];
@@ -178,14 +179,14 @@ function build(rng: () => number): Maze {
 
 /**
  * Erzeugt ein neues Rohrsystem. Die Weglänge wird so gewählt, dass eine Runde
- * etwa 20–30 Sekunden dauert.
+ * für Kinder etwa 20–30 Sekunden dauert.
  */
 export function generateMaze(rng: () => number = Math.random): Maze {
   let best: Maze | null = null;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 80; i++) {
     const m = build(rng);
-    if (m.shortest >= 42 && m.shortest <= 58) return m;
-    if (!best || Math.abs(m.shortest - 50) < Math.abs(best.shortest - 50)) best = m;
+    if (m.shortest >= 24 && m.shortest <= 32) return m;
+    if (!best || Math.abs(m.shortest - 28) < Math.abs(best.shortest - 28)) best = m;
   }
   return best!;
 }
