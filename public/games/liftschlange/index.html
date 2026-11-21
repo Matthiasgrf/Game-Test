@@ -9,7 +9,8 @@
 <style>
 /* LIFTSCHLANGE – Snake in der Warteschlange vor dem Sessellift.
    Aufbau: Kopfzeile (HUD) · Spielfeld (<canvas>, per CSS genau auf die freie Fläche gesetzt) · Steuerkreuz
-   (nur auf Touch-Geräten) · Overlays für Start, Tutorial, Pause, Game Over und Bestenliste. */
+   (nur auf Touch-Geräten) · Overlays für Start, Tutorial, Pause und Game Over.
+   Highscores: nur die gemeinsame Highscore-Seite der App (GameTest.reportScore), keine eigene Bestenliste. */
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
 body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#13243a;
@@ -98,12 +99,6 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 #overRank{font-size:20px;font-weight:800;color:#e8590c}
 #shareText{font-size:14px;background:#f1f3f5;border-radius:10px;padding:8px;margin:8px 0 0}
 #shareInfo{min-height:20px;font-weight:700;color:#2b8a3e;font-size:15px}
-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:16px}
-th,td{padding:8px 6px;border-bottom:1px solid #dee2e6;text-align:left}
-th{font-size:13px;color:#495057}
-td.num{text-align:right;font-weight:800}
-tr.last td{background:#fff3bf}
-.tag{display:inline-block;font-size:12px;font-weight:800;background:#e8590c;color:#fff;border-radius:999px;padding:2px 8px;margin-top:2px}
 </style>
 </head>
 <body>
@@ -146,7 +141,7 @@ tr.last td{background:#fff3bf}
     <p class="small">Das Foto bleibt nur hier im Browser und wird nirgendwo hochgeladen.</p>
     <button class="btn main" id="startBtn">🎿 Los, vordrängeln!</button>
     <div class="row">
-      <button class="btn" id="startBoardBtn">🏆 Bestenliste</button>
+      <a class="btn" href="../../#/highscores" target="_top">🏅 Highscores</a>
       <button class="btn" id="startMuteBtn">🔊 Ton an</button>
     </div>
     <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
@@ -190,30 +185,15 @@ tr.last td{background:#fff3bf}
       <div>Level<b id="finalLevel">1</b></div>
     </div>
     <p>Rang: <span id="overRank"></span></p>
-    <p id="overRecord"></p>
     <p id="shareText"></p>
     <button class="btn" id="shareBtn">📲 Score teilen</button>
     <div id="shareInfo" aria-live="polite"></div>
     <button class="btn main" id="againBtn">🔄 Nochmal spielen</button>
     <div class="row">
-      <button class="btn" id="overBoardBtn">🏆 Bestenliste</button>
+      <a class="btn" href="../../#/highscores" target="_top">🏅 Highscores</a>
       <button class="btn" id="whoBtn">👥 Anderer Drängler</button>
     </div>
     <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
-  </div>
-</section>
-
-<!-- Bestenliste -->
-<section class="overlay" id="board" hidden>
-  <div class="card">
-    <div class="big">🏆</div>
-    <h2>Bestenliste der Drängler</h2>
-    <table>
-      <thead><tr><th>#</th><th>Wer</th><th style="text-align:right">Punkte</th><th style="text-align:right">Länge</th><th>Datum</th></tr></thead>
-      <tbody id="boardBody"></tbody>
-    </table>
-    <p class="small">Rekord pro Person, gespeichert auf diesem Gerät. Die Bestenliste der App (🏅) zählt alle Geräte.</p>
-    <button class="btn main" id="boardClose">Zurück</button>
   </div>
 </section>
 
@@ -226,7 +206,7 @@ tr.last td{background:#fff3bf}
      ===================================================================== */
 
   /* Beginn des Skiurlaubs (für den Countdown auf dem Startbildschirm). Format: JJJJ-MM-TTTHH:MM:SS (Ortszeit). */
-  var URLAUB_START = '2026-12-11T16:00:00';
+  var URLAUB_START = '2026-12-11T00:00:00';
   var URLAUB_NAME = 'Skiurlaub';
 
   /* Die vier Drängler: Name, Mützenfarbe (cap), Jackenfarbe (jacket). */
@@ -332,14 +312,11 @@ tr.last td{background:#fff3bf}
       aufgegeben: { icon: '🏳', titel: 'Aufgegeben!', texte: [
         'Freiwillig hinten anstellen? Wer bist du, ein Schweizer?', 'Ab in die Hütte. Da ist die Schlange eh kürzer.'] }
     },
-    rekord: ['NEUER REKORD! Der Liftwart lässt dein Foto am Kassenhäuschen aufhängen.', 'NEUER REKORD! Die erste Runde zahlt heute wer anders.'],
     teilen: 'Ich hab mich in der Liftschlange {punkte} Plätze vorgedrängelt 🎿🍺 ({laenge} Leute im Schlepptau, Rang „{rang}“) – schlag das, ihr Pfeifen!',
-    zahltRunde: 'Zahlt die erste Runde 🍻',
     pause: ['Die Schlange wartet. Der Liftwart auch.', 'Kurz Glühwein nachfüllen?', 'Die Wartenden nutzen die Pause zum Lästern.']
   };
 
   /* Speicher im Browser – nur eigene Schlüssel, die mit liftschlange_ beginnen */
-  var KEY_BESTENLISTE = 'liftschlange_bestenliste_v1';
   var KEY_SPIELER = 'liftschlange_spieler_v1';
   var KEY_TON = 'liftschlange_ton_v1';
   var KEY_TUTORIAL = 'liftschlange_tutorial_v1';
@@ -371,37 +348,6 @@ tr.last td{background:#fff3bf}
   };
   var pick = function (a) { return a[Math.floor(Math.random() * a.length)]; };
   var rand = function (a, b) { return a + Math.random() * (b - a); };
-
-  /* =====================================================================
-     BESTENLISTE – lokal im Browser. Für ein Online-Leaderboard (Supabase, Firebase …)
-     nur laden() und speichern() ersetzen; beide liefern Promises, der Rest bleibt gleich.
-     In Game-Test wird jedes Ergebnis zusätzlich per GameTest.reportScore in der
-     Supabase-Bestenliste der App gespeichert (siehe ende()).
-     ===================================================================== */
-  var Bestenliste = {
-    laden: function () {
-      var list = [];
-      try { list = JSON.parse(store.get(KEY_BESTENLISTE) || '[]'); } catch (e) { list = []; }
-      return Promise.resolve(Array.isArray(list) ? list : []);
-    },
-    speichern: function (eintrag) {
-      return Bestenliste.laden().then(function (list) {
-        list.push(eintrag);
-        list.sort(function (a, b) { return b.punkte - a.punkte; });
-        store.set(KEY_BESTENLISTE, JSON.stringify(list.slice(0, 100)));
-      });
-    },
-    /* Rekord pro Freund (auch Freunde ohne Ergebnis), sortiert */
-    rekorde: function () {
-      return Bestenliste.laden().then(function (list) {
-        return FREUNDE.map(function (f) {
-          var best = null;
-          list.forEach(function (e) { if (e.name === f.name && (!best || e.punkte > best.punkte)) best = e; });
-          return { name: f.name, freund: f, best: best };
-        }).sort(function (a, b) { return (b.best ? b.best.punkte : -1) - (a.best ? a.best.punkte : -1); });
-      });
-    }
-  };
 
   /* =====================================================================
      TON – alles synthetisch mit der Web Audio API
@@ -634,7 +580,7 @@ tr.last td{background:#fff3bf}
      SPIELABLAUF
      ===================================================================== */
   function zeige(id) {
-    ['start', 'tutorial', 'pause', 'over', 'board'].forEach(function (o) { $(o).hidden = o !== id; });
+    ['start', 'tutorial', 'pause', 'over'].forEach(function (o) { $(o).hidden = o !== id; });
   }
 
   function starte() {
@@ -884,16 +830,9 @@ tr.last td{background:#fff3bf}
     $('shareInfo').textContent = '';
     var punkte = S.points, sekunden = Math.max(1, Math.round(S.time));
 
-    /* Ergebnis an die Bestenliste der App (Supabase) melden */
+    /* Ergebnis an die Highscores der App melden (gemeinsame Seite „Highscores“ für alle Spiele) */
     if (window.GameTest) GameTest.reportScore({ points: punkte, seconds: sekunden });
 
-    /* … und lokal speichern */
-    Bestenliste.rekorde().then(function (vorher) {
-      var alt = vorher.filter(function (x) { return x.name === spieler.name; })[0];
-      var neu = punkte > 0 && (!alt || !alt.best || punkte > alt.best.punkte);
-      $('overRecord').textContent = neu ? '🎉 ' + pick(SPRUECHE.rekord) : (alt && alt.best ? 'Dein Rekord: ' + alt.best.punkte + ' Punkte' : '');
-      return Bestenliste.speichern({ name: spieler.name, punkte: punkte, laenge: laenge, datum: new Date().toISOString().slice(0, 10) });
-    });
     setTimeout(function () { if (S.phase === 'over') { zeige('over'); $('againBtn').focus(); } }, aufgegeben ? 0 : 900);
   }
 
@@ -922,32 +861,6 @@ tr.last td{background:#fff3bf}
       $('shareInfo').textContent = 'Kopieren hat nicht geklappt – markier den Text oben einfach selbst.';
     });
   });
-
-  /* Bestenliste anzeigen */
-  var boardZurueck = 'start';
-  function zeigeBestenliste(zurueck) {
-    boardZurueck = zurueck;
-    Bestenliste.rekorde().then(function (rows) {
-      var body = $('boardBody');
-      body.innerHTML = '';
-      rows.forEach(function (r, i) {
-        var tr = document.createElement('tr');
-        var last = i === rows.length - 1;
-        if (last) tr.className = 'last';
-        var td = function (html, cls) { var c = document.createElement('td'); if (cls) c.className = cls; c.innerHTML = html; tr.appendChild(c); };
-        var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-        td(String(i + 1));
-        td('<span class="dot" style="display:inline-block;width:18px;height:18px;vertical-align:middle;border-width:2px;border-color:' + r.freund.jacket + ';--cap:' + r.freund.cap + '"></span> <b>' + esc(r.name) + '</b>' +
-          (last ? '<br><span class="tag">' + esc(SPRUECHE.zahltRunde) + '</span>' : ''));
-        td(r.best ? String(r.best.punkte) : '–', 'num');
-        td(r.best ? String(r.best.laenge) : '–', 'num');
-        td(r.best ? esc(r.best.datum.split('-').reverse().join('.')) : 'noch nie');
-        body.appendChild(tr);
-      });
-      zeige('board');
-      $('boardClose').focus();
-    });
-  }
 
   /* =====================================================================
      STARTBILDSCHIRM: Countdown, Spielerauswahl, Foto
@@ -1026,9 +939,6 @@ tr.last td{background:#fff3bf}
   $('tutorialOk').addEventListener('click', los);
   $('againBtn').addEventListener('click', starte);
   $('whoBtn').addEventListener('click', function () { S = neuerZustand(); neuesEssen(); updateHud(); zeige('start'); });
-  $('startBoardBtn').addEventListener('click', function () { zeigeBestenliste('start'); });
-  $('overBoardBtn').addEventListener('click', function () { zeigeBestenliste('over'); });
-  $('boardClose').addEventListener('click', function () { zeige(boardZurueck); });
   $('pauseBtn').addEventListener('click', function () { if (S.phase === 'play') pause(true); else pause(false); });
   $('resumeBtn').addEventListener('click', function () { pause(false); });
   $('quitBtn').addEventListener('click', function () { S.phase = 'play'; ende('aufgegeben'); });
