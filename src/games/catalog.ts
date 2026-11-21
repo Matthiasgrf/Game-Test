@@ -2,18 +2,42 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 
+/** Highscore-Einstellungen eines Spiels. Muss zur Spalte games.highscore passen. */
+export interface HighscoreConfig {
+  /** "high": mehr Punkte sind besser (Sterne) · "low": weniger sind besser (Versuche, Fehler) */
+  better: "high" | "low";
+  /** Spaltenüberschrift für die Punkte, z. B. "Sterne" */
+  pointsLabel: string;
+  /** Zeichen vor den Punkten, z. B. "⭐" */
+  pointsIcon?: string;
+  /** Spalte „Zeit“ anzeigen (Gleichstand entscheidet immer die kürzere Zeit) */
+  showTime?: boolean;
+  /** Varianten mit eigener Bestenliste, z. B. Schwierigkeitsstufen */
+  variants?: { id: string; label: string }[];
+  /** Erklärung über der Bestenliste */
+  rule: string;
+}
+
 export interface GameInfo {
-  /** Kennung in der Tabelle game_groups */
+  /** Kennung in den Tabellen games, game_groups und game_scores */
   key: string;
+  /** Route in der App (#/spiele/…) */
   path: string;
   title: string;
   emoji: string;
   description: string;
   age: string;
   color: string;
+  /** Vorschaubild statt Emoji (relativ zur App, z. B. "games/x/thumbnail.jpg") */
+  image?: string;
+  /** Eigenständiges HTML-Spiel unter public/ – wird im iframe gezeigt (siehe HtmlGame.tsx) */
+  html?: string;
+  /** null = Spiel ohne Highscores (in games: highscore = 'none') */
+  highscore: HighscoreConfig | null;
 }
 
-// Neue Spiele hier eintragen – Übersicht und Admin bauen sich daraus auf.
+// Neue Spiele hier eintragen – Übersicht, Highscores und Admin bauen sich daraus auf.
+// Dazu gehört eine Zeile in der Tabelle games (Migration), siehe README.
 // Freigabe für Gruppen: Admin → Gruppen (Tabelle game_groups).
 export const GAMES: GameInfo[] = [
   {
@@ -24,6 +48,18 @@ export const GAMES: GameInfo[] = [
     description: "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
     age: "ab 5 Jahren",
     color: "linear-gradient(135deg, #ffd43b, #ff922b)",
+    highscore: {
+      better: "high",
+      pointsLabel: "Sterne",
+      pointsIcon: "⭐",
+      showTime: true,
+      variants: [
+        { id: "leicht", label: "🐣 Leicht" },
+        { id: "mittel", label: "🦊 Mittel" },
+        { id: "knifflig", label: "🦁 Knifflig" },
+      ],
+      rule: "Bestes Ergebnis je Spieler: meiste Sterne, bei Gleichstand die schnellste Zeit.",
+    },
   },
   {
     key: "zahlenraten",
@@ -33,6 +69,28 @@ export const GAMES: GameInfo[] = [
     description: "Errate die geheime Zahl zwischen 1 und 100.",
     age: "ab 8 Jahren",
     color: "linear-gradient(135deg, #74c0fc, #5c7cfa)",
+    highscore: {
+      better: "low",
+      pointsLabel: "Versuche",
+      rule: "Bestes Ergebnis je Spieler: wenigste Versuche.",
+    },
+  },
+  {
+    key: "elisabeth",
+    path: "/spiele/elisabeth",
+    title: "Elisabeth von Thüringen",
+    emoji: "🏰🌹",
+    description: "Begleite Elisabeth durch ihr Leben und beantworte an 20 Stationen Fragen für den Religionsunterricht.",
+    age: "3. Klasse",
+    color: "linear-gradient(135deg, #b2f2bb, #fcc2d7)",
+    image: "games/elisabeth/thumbnail.jpg",
+    html: "games/elisabeth/index.html",
+    highscore: {
+      better: "low",
+      pointsLabel: "Fehlversuche",
+      showTime: true,
+      rule: "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit.",
+    },
   },
 ];
 

@@ -19,11 +19,16 @@ export default function Overview() {
       <div className="game-grid">
         {games?.map((g) => (
           <Link key={g.path} to={g.path} className="game-tile">
-            <div className="game-tile-art" style={{ background: g.color }}>{g.emoji}</div>
+            {g.image ? (
+              <img className="game-tile-img" src={g.image} alt="" style={{ background: g.color }} />
+            ) : (
+              <div className="game-tile-art" style={{ background: g.color }}>{g.emoji}</div>
+            )}
             <div className="game-tile-body">
               <h3>{g.title}</h3>
               <p className="muted">{g.description}</p>
               <span className="game-tile-age">{g.age}</span>
+              {g.highscore && <span className="game-tile-age" title="mit Bestenliste">🏅 Bestenliste</span>}
             </div>
           </Link>
         ))}

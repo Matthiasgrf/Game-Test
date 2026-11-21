@@ -3,50 +3,39 @@ import { supabase, type Group } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import { useAllowedGames } from "../games/catalog";
 
+// Eine Bestenliste für alle Spiele mit Highscore (View game_highscores).
 // Die Datenbank liefert nur Ergebnisse aus den eigenen Gruppen (RLS);
-// die Bestenlisten sind je Gruppe berechnet (Spalte group_id).
+// die Listen sind je Gruppe, Spiel und Variante berechnet.
+// Spiele ohne Highscore (highscore: null im Katalog) erscheinen hier nicht.
 
-interface GuessRow {
+interface Row {
   id: number;
+  game_key: string;
+  variant: string;
   group_id: number;
   rank: number;
   username: string;
-  attempts: number;
+  points: number;
+  max_points: number | null;
+  seconds: number | null;
   created_at: string;
 }
-
-interface LabRow {
-  id: number;
-  group_id: number;
-  mode: string;
-  rank: number;
-  username: string;
-  stars: number;
-  max_stars: number;
-  seconds: number;
-  created_at: string;
-}
-
-const LAB_MODES = [
-  { id: "leicht", label: "🐣 Leicht" },
-  { id: "mittel", label: "🦊 Mittel" },
-  { id: "knifflig", label: "🦁 Knifflig" },
-];
 
 const date = (s: string) => new Date(s).toLocaleDateString("de-DE");
-const time = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min` : `${s} s`);
+const time = (s: number | null) =>
+  s === null ? "–" : s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min` : `${s} s`;
 const medal = (rank: number) => (rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : rank);
 
 export default function Highscores() {
   const { profile } = useAuth();
-  const { games, error: gamesError } = useAllowedGames();
+  const { games: allowed, error: gamesError } = useAllowedGames();
+  const games = useMemo(() => allowed?.filter((g) => g.highscore) ?? null, [allowed]);
   const [tab, setTab] = useState<string | null>(null);
-  const [mode, setMode] = useState("leicht");
+  const [variant, setVariant] = useState("");
   const [groupId, setGroupId] = useState<number | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [gameGroups, setGameGroups] = useState<{ game_key: string; group_id: number }[]>([]);
-  const [guess, setGuess] = useState<GuessRow[]>([]);
-  const [lab, setLab] = useState<LabRow[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,25 +49,32 @@ export default function Highscores() {
         if (e) throw e;
         groupQuery = groupQuery.in("id", (mine ?? []).map((r) => r.group_id as number));
       }
-      const [g, gg, hs, lh] = await Promise.all([
+      const [g, gg, hs] = await Promise.all([
         groupQuery,
         supabase.from("game_groups").select("game_key, group_id"),
-        supabase.from("highscores").select("*").order("rank"),
-        supabase.from("labyrinth_highscores").select("*").order("rank"),
+        supabase.from("game_highscores").select("*").order("rank"),
       ]);
-      const err = g.error ?? gg.error ?? hs.error ?? lh.error;
+      const err = g.error ?? gg.error ?? hs.error;
       if (err) throw err;
       setGroups((g.data ?? []) as Group[]);
       setGameGroups((gg.data ?? []) as { game_key: string; group_id: number }[]);
-      setGuess((hs.data ?? []) as GuessRow[]);
-      setLab((lh.data ?? []) as LabRow[]);
+      setRows((hs.data ?? []) as Row[]);
     })().catch((e) => setError((e as Error).message));
   }, [profile]);
 
-  // Erstes erlaubtes Spiel vorauswählen
+  // Erstes Spiel mit Highscore vorauswählen
   useEffect(() => {
     if (games && !games.some((g) => g.key === tab)) setTab(games[0]?.key ?? null);
   }, [games, tab]);
+
+  const game = games?.find((g) => g.key === tab) ?? null;
+  const config = game?.highscore ?? null;
+
+  // Erste Variante vorauswählen ('' = Spiel ohne Varianten)
+  useEffect(() => {
+    const ids = config?.variants?.map((v) => v.id) ?? [""];
+    if (!ids.includes(variant)) setVariant(ids[0]);
+  }, [config, variant]);
 
   // Gruppen, für die das gewählte Spiel freigegeben ist
   const tabGroups = useMemo(
@@ -92,8 +88,7 @@ export default function Highscores() {
   const err = error ?? gamesError;
   if (!games && !err) return <main className="card"><p className="muted">Lade…</p></main>;
 
-  const labRows = lab.filter((r) => r.mode === mode && r.group_id === groupId);
-  const guessRows = guess.filter((r) => r.group_id === groupId);
+  const shown = rows.filter((r) => r.game_key === tab && r.variant === variant && r.group_id === groupId);
 
   return (
     <main className="card">
@@ -101,7 +96,7 @@ export default function Highscores() {
       {err && <p className="error">{err}</p>}
 
       {games && games.length === 0 && (
-        <p className="muted">Für dich sind noch keine Spiele freigeschaltet – daher gibt es auch keine Highscores.</p>
+        <p className="muted">Für deine Spiele gibt es noch keine Bestenlisten.</p>
       )}
 
       {games && games.length > 0 && (
@@ -129,30 +124,39 @@ export default function Highscores() {
       )}
       {tabGroups.length === 1 && <p className="muted">Gruppe: 👥 {tabGroups[0].name}</p>}
 
-      {groupId !== null && tab === "labyrinth" && (
+      {groupId !== null && config && (
         <>
-          <div className="tabs small">
-            {LAB_MODES.map((m) => (
-              <button key={m.id} className={mode === m.id ? "" : "secondary"} onClick={() => setMode(m.id)}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <p className="muted">Bestes Ergebnis je Spieler: meiste Sterne, bei Gleichstand die schnellste Zeit.</p>
-          {labRows.length === 0 ? (
-            <p className="muted">Noch keine Ergebnisse auf dieser Stufe.</p>
+          {config.variants && (
+            <div className="tabs small">
+              {config.variants.map((v) => (
+                <button key={v.id} className={variant === v.id ? "" : "secondary"} onClick={() => setVariant(v.id)}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="muted">{config.rule}</p>
+          {shown.length === 0 ? (
+            <p className="muted">Noch keine Ergebnisse.</p>
           ) : (
             <table>
               <thead>
-                <tr><th>#</th><th>Spieler</th><th>Sterne</th><th>Zeit</th><th>Datum</th></tr>
+                <tr>
+                  <th>#</th><th>Spieler</th><th>{config.pointsLabel}</th>
+                  {config.showTime && <th>Zeit</th>}
+                  <th>Datum</th>
+                </tr>
               </thead>
               <tbody>
-                {labRows.map((r) => (
+                {shown.map((r) => (
                   <tr key={r.id}>
                     <td>{medal(r.rank)}</td>
                     <td>{r.username}</td>
-                    <td>⭐ {r.stars} / {r.max_stars}</td>
-                    <td>{time(r.seconds)}</td>
+                    <td>
+                      {config.pointsIcon && `${config.pointsIcon} `}
+                      {r.points}{r.max_points !== null && ` / ${r.max_points}`}
+                    </td>
+                    {config.showTime && <td>{time(r.seconds)}</td>}
                     <td>{date(r.created_at)}</td>
                   </tr>
                 ))}
@@ -160,28 +164,6 @@ export default function Highscores() {
             </table>
           )}
         </>
-      )}
-
-      {groupId !== null && tab === "zahlenraten" && (
-        guessRows.length === 0 ? (
-          <p className="muted">Noch keine Ergebnisse.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr><th>#</th><th>Spieler</th><th>Versuche</th><th>Datum</th></tr>
-            </thead>
-            <tbody>
-              {guessRows.map((r) => (
-                <tr key={r.id}>
-                  <td>{medal(r.rank)}</td>
-                  <td>{r.username}</td>
-                  <td>{r.attempts}</td>
-                  <td>{date(r.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )
       )}
     </main>
   );

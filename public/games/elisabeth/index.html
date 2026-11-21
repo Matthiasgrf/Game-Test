@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script src="../shared/zoom-schutz.js"></script>
+    <script src="../shared/game-test.js"></script>
+    <title>Elisabeth von Thüringen - 3D Religions-Abenteuer (3. Klasse)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            background-color: #87CEEB;
+        }
+        #game-canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        /* Kopfbereich (HUD) */
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            /* passt es nicht in eine Zeile, rutscht die zweite Anzeige darunter, statt abgeschnitten zu werden */
+            flex-wrap: wrap;
+            row-gap: 6px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #hud .hud-box:last-child {
+            margin-left: auto;
+        }
+        .hud-box {
+            background: rgba(255, 255, 255, 0.94);
+            border: 3px solid #d97706;
+            border-radius: 18px;
+            padding: 8px 16px;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.2);
+            font-size: 1.05rem;
+            color: #451a03;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        /* Steuerungs-Hinweis unten (Desktop) */
+        #controls-hint {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.92);
+            border: 3px solid #15803d;
+            border-radius: 15px;
+            padding: 9px 20px;
+            font-size: 1rem;
+            color: #14532d;
+            text-align: center;
+            pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 5;
+            max-width: 90%;
+        }
+        /* Mobile Steuerkreuz (D-Pad Pfeiltasten) */
+        #mobile-dpad {
+            display: none;
+            position: absolute;
+            bottom: 22px;
+            left: 22px;
+            width: 168px;
+            height: 168px;
+            z-index: 6;
+            pointer-events: auto;
+        }
+        .dpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(3, 52px);
+            gap: 6px;
+            width: 100%;
+            height: 100%;
+        }
+        .dpad-btn {
+            background: rgba(255, 255, 255, 0.88);
+            border: 3px solid #b45309;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #78350f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 0 #92400e, 0 6px 12px rgba(0,0,0,0.25);
+            cursor: pointer;
+            touch-action: none;
+            padding: 0;
+        }
+        .dpad-btn:active, .dpad-btn.active {
+            background: #f59e0b;
+            color: white;
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #92400e;
+        }
+        /* Link zurück zur Spiele-Übersicht */
+        #home-link {
+            position: absolute;
+            top: 66px;
+            left: 12px;
+            z-index: 6;
+            background: rgba(255, 255, 255, 0.9);
+            border: 3px solid #d97706;
+            border-radius: 14px;
+            padding: 5px 11px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #451a03;
+            text-decoration: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        a.action-btn {
+            display: inline-block;
+            text-decoration: none;
+            margin: 6px;
+            background: #fff7ed;
+            color: #92400e;
+        }
+        .dpad-empty {
+            visibility: hidden;
+        }
+        /* Modals */
+        #quiz-modal, #start-modal, #end-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fffbeb;
+            border: 6px solid #b45309;
+            border-radius: 25px;
+            padding: 26px;
+            width: 92%;
+            max-width: 620px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+            text-align: center;
+            z-index: 10;
+        }
+        #quiz-modal, #end-modal {
+            display: none;
+        }
+        .topic-badge {
+            display: inline-block;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            color: #92400e;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        h1, h2 {
+            color: #92400e;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+        p {
+            font-size: 1.15rem;
+            color: #451a03;
+            line-height: 1.45;
+            margin: 10px 0;
+        }
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            margin-top: 18px;
+        }
+        button.option-btn, .action-btn {
+            background: #f59e0b;
+            color: white;
+            border: 3px solid #b45309;
+            border-radius: 15px;
+            padding: 13px 18px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 0 #92400e;
+        }
+        button.option-btn:hover, button.action-btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+        button.option-btn:active, button.action-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #92400e;
+        }
+        #feedback {
+            margin-top: 14px;
+            font-size: 1.12rem;
+            font-weight: bold;
+            min-height: 28px;
+        }
+        .correct { color: #15803d; }
+        #step-progress {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #b45309;
+            min-height: 0;
+        }
+        #question-text { white-space: pre-line; }
+        #next-btn { display: none; margin-top: 12px; }
+        .wrong { color: #b91c1c; }
+
+        @media (max-width: 600px) {
+            .hud-box {
+                font-size: 0.92rem;
+                padding: 6px 11px;
+            }
+            #quiz-modal, #start-modal, #end-modal {
+                padding: 18px;
+            }
+            h1, h2 {
+                font-size: 1.35rem;
+            }
+            p {
+                font-size: 1rem;
+            }
+            button.option-btn, button.action-btn {
+                font-size: 1rem;
+                padding: 11px 14px;
+            }
+            #controls-hint {
+                font-size: 0.85rem;
+                padding: 7px 12px;
+                bottom: 12px;
+                left: auto;
+                right: 12px;
+                transform: none;
+                max-width: calc(100vw - 210px);
+            }
+        }
+        /* schmale Handys (360–420 px): Anzeige oben passt in eine Zeile, auch bei „20 / 20“ */
+        @media (max-width: 420px) {
+            #hud {
+                left: 8px;
+                right: 8px;
+                gap: 6px;
+            }
+            .hud-box {
+                font-size: 0.82rem;
+                padding: 6px 8px;
+            }
+            #home-link {
+                left: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-box">🌹 Rosen-Punkte: <span id="score">0</span> / <span class="station-count">20</span></div>
+        <div class="hud-box">🏰 Stationen: <span id="progress">0</span> / <span class="station-count">20</span></div>
+    </div>
+
+    <a id="home-link" href="../../#/" target="_top">🏠 Alle Spiele</a>
+
+    <div id="controls-hint">
+        🖱 <b>Tippe/Klicke auf die Wiese</b> oder nutze die <b>Pfeiltasten / WASD</b>, um Elisabeth zu allen <b>goldenen Stationen</b> zu führen!
+    </div>
+
+    <!-- Mobile Pfeiltasten (D-Pad) -->
+    <div id="mobile-dpad">
+        <div class="dpad-grid">
+            <div class="dpad-empty"></div>
+            <button class="dpad-btn" id="btn-up" aria-label="Nach oben">▲</button>
+            <div class="dpad-empty"></div>
+            <button class="dpad-btn" id="btn-left" aria-label="Nach links">◀</button>
+            <div class="dpad-empty"></div>
+            <button class="dpad-btn" id="btn-right" aria-label="Nach rechts">▶</button>
+            <div class="dpad-empty"></div>
+            <button class="dpad-btn" id="btn-down" aria-label="Nach unten">▼</button>
+            <div class="dpad-empty"></div>
+        </div>
+    </div>
+
+    <!-- Startbildschirm -->
+    <div id="start-modal">
+        <h1>🏰 Großes Elisabeth-Quiz (3. Klasse)</h1>
+        <p>Begleite <b>Elisabeth von Thüringen</b> auf einer Reise durch ihr ganzes Leben – von ihrer Kindheit bis zu ihrem Wirken in Marburg!</p>
+        <p>Besuche alle <b><span class="station-count">20</span> Stationen</b> in der 3D-Welt und werde zum Profi für den Religionsunterricht.</p>
+        <button class="action-btn" onclick="startGame()">Abenteuer starten! 🚀</button>
+        <a class="action-btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+
+    <!-- Quiz-Fenster -->
+    <div id="quiz-modal">
+        <div class="topic-badge" id="station-topic">Thema</div>
+        <h2 id="station-title">Station 1</h2>
+        <div id="step-progress"></div>
+        <p id="question-text">Hier steht die Frage.</p>
+        <div class="options-grid" id="options-container"></div>
+        <div id="feedback"></div>
+        <button class="action-btn" id="next-btn" onclick="nextStep()">Weiter ➜</button>
+    </div>
+
+    <!-- Endbildschirm -->
+    <div id="end-modal">
+        <h1>🎉 Herzlichen Glückwunsch! 🎉</h1>
+        <p id="final-score-text"></p>
+        <p id="final-result-text"></p>
+        <p>Du kennst jetzt alle wichtigen Geschichten und Bedeutungen rund um die Heilige Elisabeth von Thüringen!</p>
+        <button class="action-btn" onclick="location.reload()">Nochmal spielen 🔄</button>
+        <a class="action-btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+
+    <script>
+        // --- AUTOMATISCHE DEVICE-ERKENNUNG (MOBILE vs. DESKTOP) ---
+        function detectMobileDevice() {
+            const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const smallScreen = window.innerWidth <= 900 && hasTouch;
+            return mobileUA || smallScreen;
+        }
+
+        const isMobileDevice = detectMobileDevice();
+
+        function applyDeviceControls() {
+            const dpad = document.getElementById('mobile-dpad');
+            const hint = document.getElementById('controls-hint');
+            if (isMobileDevice) {
+                dpad.style.display = 'block';
+                hint.innerHTML = '📱 Nutze die <b>Pfeiltasten unten links</b> oder <b>tippe auf die Wiese</b>!';
+            } else {
+                dpad.style.display = 'none';
+                hint.innerHTML = '🖱 <b>Tippe/Klicke auf die Wiese</b> oder nutze die <b>Pfeiltasten / WASD</b>, um Elisabeth zu allen <b>' + stationsData.length + ' goldenen Stationen</b> zu führen!';
+            }
+        }
+
+        // --- STATIONEN (RELIGION 3. KLASSE) ---
+        // Eine Station hat entweder eine Frage (question/options/correct/explanation)
+        // oder mehrere Fragen nacheinander (steps: [ {question, options, correct, explanation}, … ]).
+        // Die Stationen stehen in der Reihenfolge von Elisabeths Leben; ihre Plätze auf der Wiese
+        // werden unten automatisch berechnet.
+        const stationsData = [
+            {
+                topic: "Biografie: Herkunft",
+                title: "Woher kam Elisabeth?",
+                question: "Elisabeth war eine echte Königstochter. Aus welchem Land kam sie als Kind nach Thüringen?",
+                options: [
+                    "Aus Ungarn",
+                    "Aus Spanien",
+                    "Aus Schweden"
+                ],
+                correct: 0,
+                explanation: "Richtig! Sie wurde als Prinzessin in Ungarn geboren und kam schon mit 4 Jahren nach Thüringen."
+            },
+            {
+                topic: "Von Ungarn auf die Wartburg",
+                title: "Elisabeths Eltern",
+                question: "Vor mehr als 800 Jahren wurde Elisabeth auf einer Burg in Ungarn geboren. Wie hießen ihre Eltern?",
+                options: [
+                    "Vater Andreas und Mutter Gertrud",
+                    "Vater Ludwig und Mutter Sophie",
+                    "Vater Walter und Mutter Maria"
+                ],
+                correct: 0,
+                explanation: "Richtig! Ihr Vater Andreas war König von Ungarn. Ihre Mutter hieß Gertrud."
+            },
+            {
+                topic: "Von Ungarn auf die Wartburg",
+                title: "Besuch am Königshof",
+                steps: [
+                    {
+                        question: "Als Elisabeth 4 Jahre alt war, kamen fremde Leute aus Deutschland an den ungarischen Königshof. Wer hatte sie geschickt?",
+                        options: [
+                            "Der Landgraf von Thüringen schickte Ritter",
+                            "Der Papst schickte Mönche",
+                            "Der König von England schickte Soldaten"
+                        ],
+                        correct: 0,
+                        explanation: "Genau! Elisabeth sollte später einmal die Frau seines ältesten Sohnes Herrmann werden."
+                    },
+                    {
+                        question: "Ungarn ist mächtig, Thüringen ist mächtig. Warum sollte Elisabeth nach Thüringen heiraten?",
+                        options: [
+                            "Damit sie dort Ritterin wird",
+                            "Durch die Heirat werden die Länder miteinander verbunden und noch stärker",
+                            "Weil es in Ungarn keine Prinzen gab"
+                        ],
+                        correct: 1,
+                        explanation: "Super! Die Heirat sollte Ungarn und Thüringen verbinden. So werden beide noch stärker."
+                    }
+                ]
+            },
+            {
+                topic: "Ohne Eltern verreisen",
+                title: "Allein in ein fremdes Land",
+                steps: [
+                    {
+                        question: "Elisabeth ist erst 4 Jahre alt. Sie muss ohne ihre Eltern und Geschwister in ein fremdes Land reisen. Was denkt sie wohl?",
+                        options: [
+                            "„Hurra, endlich Ferien!“",
+                            "„Ich habe Angst! Mögen mich meine Eltern nicht mehr?“",
+                            "„Das ist mir ganz egal.“"
+                        ],
+                        correct: 1,
+                        explanation: "Ja! Elisabeth hatte bestimmt Angst und war traurig. Sie fragte sich: Warum muss ich gehen?"
+                    },
+                    {
+                        question: "Was war für Elisabeth in Thüringen alles fremd?",
+                        options: [
+                            "Nichts, sie kannte dort schon alle",
+                            "Nur das Wetter",
+                            "Das Land, die Sprache und die Familie"
+                        ],
+                        correct: 2,
+                        explanation: "Richtig! Sie fragte sich: Werden die Menschen auf der Wartburg auch nett und gut zu mir sein?"
+                    }
+                ]
+            },
+            {
+                topic: "Von Ungarn auf die Wartburg",
+                title: "Die lange Reise",
+                steps: [
+                    {
+                        question: "Mit wem machte sich Elisabeth auf die lange Reise zur Wartburg?",
+                        options: [
+                            "Mit Ritter Walter und einem kostbaren Brautschatz",
+                            "Mit ihren Eltern und Geschwistern",
+                            "Ganz allein zu Fuß"
+                        ],
+                        correct: 0,
+                        explanation: "Genau! Ritter Walter brachte sie mit einem kostbaren Brautschatz zur Wartburg."
+                    },
+                    {
+                        question: "Elisabeth war nun am Hof des Landgrafen. Wer sorgte dort für sie?",
+                        options: [
+                            "Königin Gertrud",
+                            "Landgräfin Sophie",
+                            "Ritter Walter"
+                        ],
+                        correct: 1,
+                        explanation: "Richtig! Landgräfin Sophie sorgte für sie genauso wie für Prinz Herrmann und Prinz Ludwig."
+                    }
+                ]
+            },
+            {
+                topic: "Biografie: Leben auf der Burg",
+                title: "Die Wartburg",
+                question: "Auf welcher großen Burg lebte Elisabeth als Erwachsene mit ihrem Mann?",
+                options: [
+                    "Auf der Wartburg",
+                    "Auf Schloss Neuschwanstein",
+                    "Auf der Zugspitze"
+                ],
+                correct: 0,
+                explanation: "Genau! Auf der Wartburg bei Eisenach lebte sie als Landgräfin."
+            },
+            {
+                topic: "Elisabeth heiratet Ludwig",
+                title: "Herrmann und Ludwig",
+                steps: [
+                    {
+                        question: "Wen sollte Elisabeth eigentlich heiraten?",
+                        options: [
+                            "Ritter Walter",
+                            "Herrmann, den ältesten Sohn des Landgrafen",
+                            "Den König von Ungarn"
+                        ],
+                        correct: 1,
+                        explanation: "Richtig! Elisabeth sollte die Frau von Herrmann werden."
+                    },
+                    {
+                        question: "Was geschah dann mit Herrmann?",
+                        options: [
+                            "Er wurde krank und starb",
+                            "Er zog nach Ungarn",
+                            "Er wurde ein Mönch"
+                        ],
+                        correct: 0,
+                        explanation: "Genau. Manche wollten Elisabeth zurück nach Ungarn schicken. Doch Ludwig hatte sie lieb gewonnen."
+                    }
+                ]
+            },
+            {
+                topic: "Biografie: Familie",
+                title: "Ihr Ehemann Ludwig",
+                question: "Wie hieß Elisabeths Ehemann, der sie bei ihrer Hilfe für die Armen unterstützte?",
+                options: [
+                    "Landgraf Ludwig",
+                    "König Artus",
+                    "Kaiser Barbarossa"
+                ],
+                correct: 0,
+                explanation: "Super! Landgraf Ludwig liebte Elisabeth sehr und erlaubte ihr, den Armen zu helfen."
+            },
+            {
+                topic: "Elisabeth heiratet Ludwig",
+                title: "Das Hochzeitsfest",
+                question: "Bei der Hochzeit von Elisabeth und Ludwig gab es ein großes Fest. Wen vergaß Elisabeth auch an diesem Tag nicht?",
+                options: [
+                    "Die Armen",
+                    "Ihre Puppen",
+                    "Die Ritterpferde"
+                ],
+                correct: 0,
+                explanation: "Richtig! Auch an ihrem Hochzeitstag dachte Elisabeth an die armen Menschen."
+            },
+            {
+                topic: "Glaube & Vorbild",
+                title: "Die Krone in der Kirche",
+                question: "Warum nahm Elisabeth in der Kirche ihre goldene Krone vom Kopf und legte sie ab?",
+                options: [
+                    "Weil ihr die Krone zu schwer und unbequem war",
+                    "Weil sie vor Jesus am Kreuz nicht als reiche Königin stehen wollte",
+                    "Weil sie die Krone verschenken wollte"
+                ],
+                correct: 1,
+                explanation: "Richtig! Vor Jesus, der eine Dornenkrone trug, wollte sie keine teure Goldkrone tragen."
+            },
+            {
+                topic: "Nächstenliebe im Alltag",
+                title: "Hilfe für die Armen",
+                question: "Wie half Elisabeth den armen und hungernden Menschen unterhalb der Burg?",
+                options: [
+                    "Sie verteilte Brote, Kleider und Geld an sie",
+                    "Sie lud alle zum Ritterturnier ein",
+                    "Sie schickte sie in ein anderes Land"
+                ],
+                correct: 0,
+                explanation: "Genau! Sie gab den Armen zu essen und teilte ihren Reichtum."
+            },
+            {
+                topic: "Bekannte Legende",
+                title: "Das Rosenwunder",
+                question: "Elisabeth trug heimlich Brote unter ihrem Mantel. Was geschah, als sie ihren Mantel öffnen musste?",
+                options: [
+                    "Die Brote waren plötzlich verschwunden",
+                    "Im Korb lagen wunderschöne rote Rosen",
+                    "Die Brote wurden zu Goldmünzen"
+                ],
+                correct: 1,
+                explanation: "Wunderbar! Aus den Broten wurden Rosen – das nennt man das Rosenwunder."
+            },
+            {
+                topic: "Bekannte Legende",
+                title: "Der Kranke im Bett",
+                question: "Wen legte Elisabeth einmal in ihr eigenes Bett, um ihn zu pflegen?",
+                options: [
+                    "Einen schwer kranken, aussätzigen Mann",
+                    "Einen verirrten Wanderer",
+                    "Einen müden Ritter"
+                ],
+                correct: 0,
+                explanation: "Richtig! In dieser Geschichte erkannte ihr Mann in dem Kranken das Bild von Jesus."
+            },
+            {
+                topic: "Taten der Liebe",
+                title: "Das Hospital",
+                question: "Was ließ Elisabeth am Fuß der Wartburg extra für kranke und schwache Menschen bauen?",
+                options: [
+                    "Ein Hospital (Krankenhaus)",
+                    "Eine große Schule",
+                    "Ein Rathaus"
+                ],
+                correct: 0,
+                explanation: "Super! In diesem Hospital pflegte sie die Kranken sogar selbst."
+            },
+            {
+                topic: "Die Werke der Barmherzigkeit",
+                title: "Jesus sagt …",
+                intro: "Jesus sagt: Was ihr für andere Menschen tut, das tut ihr für mich. Welches Satzende gehört dazu?",
+                // Satzenden wie auf dem Arbeitsblatt; options werden beim Öffnen aus allen Satzenden gebildet
+                matching: [
+                    ["Denn ich bin hungrig gewesen …", "… und ihr habt mir zu essen gegeben."],
+                    ["Ich bin durstig gewesen …", "… und ihr habt mir zu trinken gegeben."],
+                    ["Ich bin ein Fremder gewesen …", "… und ihr habt mich aufgenommen."],
+                    ["Ich bin nackt gewesen …", "… und ihr habt mich gekleidet."],
+                    ["Ich bin krank gewesen …", "… und ihr habt mich besucht."],
+                    ["Ich bin im Gefängnis gewesen …", "… und ihr seid zu mir gekommen."]
+                ],
+                lastExplanation: "Toll! Das sind die Werke der Barmherzigkeit. Elisabeth hat sie jeden Tag getan."
+            },
+            {
+                topic: "Die Werke der Barmherzigkeit",
+                title: "Gute Werke heute",
+                steps: [
+                    {
+                        question: "Ein Kind aus deiner Klasse ist traurig. Was ist ein gutes Werk?",
+                        options: [
+                            "Ich lache es aus",
+                            "Ich tröste es",
+                            "Ich schaue einfach weg"
+                        ],
+                        correct: 1,
+                        explanation: "Richtig! „Ich bin traurig gewesen und ihr habt mich getröstet.“"
+                    },
+                    {
+                        question: "Ein Kind ist auf dem Schulhof hingefallen. Was ist ein gutes Werk?",
+                        options: [
+                            "Ich helfe ihm wieder auf",
+                            "Ich laufe schnell weiter",
+                            "Ich rufe: „Selber schuld!“"
+                        ],
+                        correct: 0,
+                        explanation: "Genau! „Ich bin hingefallen und ihr habt mir geholfen.“"
+                    },
+                    {
+                        question: "Ein Kind hat eine schlechte Mathearbeit zurückbekommen. Was ist ein gutes Werk?",
+                        options: [
+                            "Ich erzähle es allen weiter",
+                            "Ich lache über das Kind",
+                            "Ich lache nicht und mache ihm Mut"
+                        ],
+                        correct: 2,
+                        explanation: "Super! „Ihr habt nicht über mich gelacht.“"
+                    },
+                    {
+                        question: "Ein Mensch ist arm und hat kaum Geld. Was ist ein gutes Werk?",
+                        options: [
+                            "Wir teilen und geben ihm etwas ab",
+                            "Wir behalten alles für uns",
+                            "Wir machen uns über ihn lustig"
+                        ],
+                        correct: 0,
+                        explanation: "Prima! „Ich bin arm gewesen und ihr habt mir Geld gegeben.“ So hat es auch Elisabeth gemacht."
+                    }
+                ]
+            },
+            {
+                topic: "Biografie: Schicksalsschlag",
+                title: "Abschied von der Burg",
+                question: "Warum verließ Elisabeth nach einigen Jahren die Wartburg?",
+                options: [
+                    "Ihr Mann Ludwig starb und seine Familie war gegen ihre Großzügigkeit",
+                    "Die Burg wurde durch ein Feuer zerstört",
+                    "Sie wollte eine Weltreise machen"
+                ],
+                correct: 0,
+                explanation: "Richtig! Nach Ludwigs Tod musste sie mit ihren drei Kindern die Burg verlassen."
+            },
+            {
+                topic: "Biografie: Lebensende",
+                title: "Ihr Weg nach Marburg",
+                question: "In welche Stadt zog Elisabeth später, wo sie bis zu ihrem Tod für Kranke sorgte?",
+                options: [
+                    "Nach Marburg",
+                    "Nach Berlin",
+                    "Nach München"
+                ],
+                correct: 0,
+                explanation: "Genau! In Marburg gründete sie wieder ein Hospital und lebte ganz einfach."
+            },
+            {
+                topic: "Religiöse Bedeutung",
+                title: "Vorbild Jesus",
+                question: "Warum wird Elisabeth in der Kirche als „Heilige“ verehrt?",
+                options: [
+                    "Weil sie eine mächtige Prinzessin war",
+                    "Weil sie wie Jesus gelebt und Nächstenliebe gezeigt hat",
+                    "Weil sie besonders viele Burgen besaß"
+                ],
+                correct: 1,
+                explanation: "Perfekt! Heilige sind Menschen, die anderen zeigen, wie man nach Gottes Willen liebt und hilft."
+            },
+            {
+                topic: "Kirchenjahr & Transfer",
+                title: "Der Elisabeth-Tag",
+                question: "Wann feiern wir jedes Jahr das Fest der Heiligen Elisabeth?",
+                options: [
+                    "Am 19. November",
+                    "Am 24. Dezember",
+                    "Am Ostersonntag"
+                ],
+                correct: 0,
+                explanation: "Klasse! Am 19. November denken wir an Elisabeth und teilen miteinander."
+            }
+        ];
+
+        // Fragen jeder Station als Liste (eine oder mehrere)
+        stationsData.forEach(st => {
+            if (st.matching) {
+                const endings = st.matching.map(m => m[1]);
+                st.steps = st.matching.map(([start, end], i) => ({
+                    question: (i === 0 ? st.intro + "\n\n" : "") + start,
+                    // alle Satzenden in fester, gemischter Reihenfolge – wie auf dem Arbeitsblatt
+                    options: [2, 4, 0, 5, 1, 3].map(k => endings[k]),
+                    answer: end,
+                    explanation: i === st.matching.length - 1 ? st.lastExplanation : "Richtig! " + start.replace(" …", "") + " " + end.replace("… ", "")
+                }));
+                st.steps.forEach(s => { s.correct = s.options.indexOf(s.answer); });
+            }
+            if (!st.steps) st.steps = [{ question: st.question, options: st.options, correct: st.correct, explanation: st.explanation }];
+        });
+
+        // Plätze auf der Wiese: Schlangenweg in Reihen zu je 5 Stationen
+        stationsData.forEach((st, idx) => {
+            const row = Math.floor(idx / 5), col = idx % 5;
+            const c = row % 2 === 0 ? col : 4 - col;
+            st.x = -14 + c * 7;
+            st.z = 13 - row * 6;
+        });
+
+        document.querySelectorAll('.station-count').forEach(el => el.textContent = stationsData.length);
+
+        // Zugang für den Durchspiel-Test (tools/spieltests/elisabeth.js)
+        window.ELISABETH = {
+            stations: stationsData,
+            goTo: idx => { player.x = stationsData[idx].x; player.z = stationsData[idx].z; }
+        };
+
+        // --- EIGENSTÄNDIGE 3D-ENGINE (OHNE EXTERNE DATEIEN) ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            applyDeviceControls();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Spielzustand
+        let player = { x: -16, z: 15, targetX: null, targetZ: null, walkAnim: 0 };
+        let cam = { x: -16, z: 15 };
+        let completedStations = new Set();
+        let score = 0;
+        let mistakes = 0;      // Fehlversuche – für die Bestenliste in Game-Test
+        let startedAt = 0;
+        let isGameActive = false;
+        let isModalOpen = false;
+        const keys = {};
+
+        // 3D-Projektion (Perspektive)
+        function project3D(wx, wy, wz) {
+            const dx = wx - cam.x;
+            const dz = wz - cam.z;
+
+            // Kamera-Neigung (38 Grad)
+            const cosA = 0.78;
+            const sinA = 0.62;
+
+            const ry = wy * cosA - dz * sinA;
+            const rz = wy * sinA + dz * cosA + 22;
+
+            if (rz <= 1) return null;
+
+            const fov = Math.min(width, height) * 0.85;
+            const scale = fov / rz;
+
+            return {
+                x: width / 2 + dx * scale,
+                y: height / 2 - ry * scale,
+                scale: scale,
+                depth: rz
+            };
+        }
+
+        // Bäume & Deko generieren
+        const trees = [
+            [-18, 16], [-19, 3], [-18, -11], [-10, -14], [12, -13],
+            [18, -8], [18, 2], [17, 14], [3.5, 10], [-10.5, 4], [10.5, -2], [-3.5, -8.5]
+        ];
+
+        // Maus- & Touch-Steuerung auf Wiese (Inverse Projektion)
+        function screenToWorld(sx, sy) {
+            const fov = Math.min(width, height) * 0.85;
+            const cosA = 0.78;
+            const sinA = 0.62;
+
+            const normY = (height / 2 - sy) / fov;
+            const denom = sinA + normY * cosA;
+            if (Math.abs(denom) < 0.05) return null;
+
+            const dz = (22 * normY) / denom;
+            const rz = dz * cosA + 22;
+            if (rz <= 2) return null;
+
+            const scale = fov / rz;
+            const dx = (sx - width / 2) / scale;
+
+            return {
+                x: Math.max(-19, Math.min(19, cam.x + dx)),
+                z: Math.max(-13, Math.min(17, cam.z + dz))
+            };
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!isGameActive || isModalOpen) return;
+            const pos = screenToWorld(e.clientX, e.clientY);
+            if (pos) {
+                player.targetX = pos.x;
+                player.targetZ = pos.z;
+            }
+        });
+
+        // Tastatur-Steuerung (Desktop)
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            player.targetX = null;
+            player.targetZ = null;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Mobile Pfeiltasten (D-Pad) Bindings
+        function bindDpadButton(btnId, keyCode) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+
+            const press = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[keyCode] = true;
+                player.targetX = null;
+                player.targetZ = null;
+                btn.classList.add('active');
+            };
+            const release = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[keyCode] = false;
+                btn.classList.remove('active');
+            };
+
+            btn.addEventListener('pointerdown', press);
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+            btn.addEventListener('pointercancel', release);
+        }
+
+        bindDpadButton('btn-up', 'ArrowUp');
+        bindDpadButton('btn-down', 'ArrowDown');
+        bindDpadButton('btn-left', 'ArrowLeft');
+        bindDpadButton('btn-right', 'ArrowRight');
+
+        // --- ZEICHENFUNKTIONEN ---
+        function drawGround() {
+            // Himmel
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.5);
+            skyGrad.addColorStop(0, '#38bdf8');
+            skyGrad.addColorStop(1, '#bae6fd');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Große grüne Wiese
+            // Hinteren Rand begrenzen, damit er nicht hinter der Kamera liegt
+            const farZ = Math.max(-24, cam.z - 25);
+            const corners = [
+                project3D(-60, 0, farZ),
+                project3D(60, 0, farZ),
+            ];
+            if (corners.every(c => c !== null)) {
+                // Vorne bis zum unteren Bildschirmrand auffüllen
+                corners.push({ x: width + 10, y: height + 10 }, { x: -10, y: height + 10 });
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x, corners[0].y);
+                corners.forEach(c => ctx.lineTo(c.x, c.y));
+                ctx.closePath();
+                ctx.fillStyle = '#4ade80';
+                ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#16a34a';
+                ctx.stroke();
+            }
+
+            // Sandweg entlang der Stationen
+            ctx.beginPath();
+            stationsData.forEach((st, idx) => {
+                const p = project3D(st.x, 0.02, st.z);
+                if (p) {
+                    if (idx === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                }
+            });
+            ctx.strokeStyle = '#fde68a';
+            ctx.lineWidth = 22;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function drawCastle() {
+            const base = project3D(0, 0, -19);
+            if (!base) return;
+            const s = base.scale;
+
+            // Hauptbau der Wartburg
+            ctx.fillStyle = '#e7e5e4';
+            ctx.fillRect(base.x - 6.5 * s, base.y - 4.5 * s, 13 * s, 4.5 * s);
+            ctx.strokeStyle = '#78716c';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(base.x - 6.5 * s, base.y - 4.5 * s, 13 * s, 4.5 * s);
+
+            // Fachwerk-Balken
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(base.x - 6.5 * s, base.y - 2.4 * s, 13 * s, 0.35 * s);
+
+            // Rotes Dach
+            ctx.beginPath();
+            ctx.moveTo(base.x - 7.2 * s, base.y - 4.5 * s);
+            ctx.lineTo(base.x, base.y - 7.5 * s);
+            ctx.lineTo(base.x + 7.2 * s, base.y - 4.5 * s);
+            ctx.closePath();
+            ctx.fillStyle = '#dc2626';
+            ctx.fill();
+
+            // Bergfried (Turm links)
+            ctx.fillStyle = '#d6d3d1';
+            ctx.fillRect(base.x - 9.2 * s, base.y - 7.5 * s, 2.6 * s, 7.5 * s);
+            ctx.strokeRect(base.x - 9.2 * s, base.y - 7.5 * s, 2.6 * s, 7.5 * s);
+
+            // Turmdach
+            ctx.beginPath();
+            ctx.moveTo(base.x - 9.6 * s, base.y - 7.5 * s);
+            ctx.lineTo(base.x - 7.9 * s, base.y - 10.2 * s);
+            ctx.lineTo(base.x - 6.2 * s, base.y - 7.5 * s);
+            ctx.closePath();
+            ctx.fillStyle = '#b91c1c';
+            ctx.fill();
+
+            // Schild "WARTBURG"
+            ctx.fillStyle = '#451a03';
+            ctx.font = `bold ${Math.max(10, 0.75 * s)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('WARTBURG', base.x, base.y - 3 * s);
+        }
+
+        function drawTree(wx, wz) {
+            const p = project3D(wx, 0, wz);
+            if (!p) return;
+            const s = p.scale;
+
+            // Schatten
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, 1.1 * s, 0.5 * s, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.fill();
+
+            // Stamm
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(p.x - 0.25 * s, p.y - 1.5 * s, 0.5 * s, 1.5 * s);
+
+            // Krone
+            ctx.beginPath();
+            ctx.moveTo(p.x - 1.4 * s, p.y - 1.3 * s);
+            ctx.lineTo(p.x, p.y - 4.2 * s);
+            ctx.lineTo(p.x + 1.4 * s, p.y - 1.3 * s);
+            ctx.closePath();
+            ctx.fillStyle = '#15803d';
+            ctx.fill();
+        }
+
+        function drawStation(st, idx, time) {
+            const p = project3D(st.x, 0, st.z);
+            if (!p) return;
+            const s = p.scale;
+            const isDone = completedStations.has(idx);
+
+            // Leuchtender Bodenring
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, 1.15 * s, 0.65 * s, 0, 0, Math.PI * 2);
+            ctx.fillStyle = isDone ? 'rgba(34, 197, 94, 0.35)' : 'rgba(250, 204, 21, 0.45)';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = isDone ? '#16a34a' : '#f59e0b';
+            ctx.stroke();
+
+            // Schwebende Rose / Kristall
+            const bob = Math.sin(time * 4 + idx) * 0.22;
+            const gemY = p.y - (1.4 + bob) * s;
+
+            ctx.beginPath();
+            ctx.arc(p.x, gemY, 0.45 * s, 0, Math.PI * 2);
+            ctx.fillStyle = isDone ? '#22c55e' : '#e11d48';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            // Stationsnummer
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.max(11, 0.55 * s)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(isDone ? '✓' : (idx + 1), p.x, gemY);
+        }
+
+        function drawPlayer(time) {
+            const p = project3D(player.x, 0, player.z);
+            if (!p) return;
+            const s = p.scale;
+            const bounce = Math.abs(Math.sin(player.walkAnim)) * 0.18 * s;
+
+            // Schatten
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, 0.75 * s, 0.38 * s, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.fill();
+
+            // Blaues Kleid
+            ctx.beginPath();
+            ctx.moveTo(p.x - 0.65 * s, p.y - bounce);
+            ctx.lineTo(p.x, p.y - 1.85 * s - bounce);
+            ctx.lineTo(p.x + 0.65 * s, p.y - bounce);
+            ctx.closePath();
+            ctx.fillStyle = '#2563eb';
+            ctx.fill();
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Roter Mantel-Umhang
+            ctx.beginPath();
+            ctx.moveTo(p.x - 0.5 * s, p.y - 0.3 * s - bounce);
+            ctx.lineTo(p.x, p.y - 1.75 * s - bounce);
+            ctx.lineTo(p.x + 0.5 * s, p.y - 0.3 * s - bounce);
+            ctx.closePath();
+            ctx.fillStyle = '#dc2626';
+            ctx.fill();
+
+            // Kopf
+            ctx.beginPath();
+            ctx.arc(p.x, p.y - 2.1 * s - bounce, 0.42 * s, 0, Math.PI * 2);
+            ctx.fillStyle = '#fde68a';
+            ctx.fill();
+            ctx.strokeStyle = '#b45309';
+            ctx.stroke();
+
+            // Goldene Krone
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.moveTo(p.x - 0.28 * s, p.y - 2.45 * s - bounce);
+            ctx.lineTo(p.x - 0.28 * s, p.y - 2.75 * s - bounce);
+            ctx.lineTo(p.x - 0.1 * s, p.y - 2.58 * s - bounce);
+            ctx.lineTo(p.x, p.y - 2.8 * s - bounce);
+            ctx.lineTo(p.x + 0.1 * s, p.y - 2.58 * s - bounce);
+            ctx.lineTo(p.x + 0.28 * s, p.y - 2.75 * s - bounce);
+            ctx.lineTo(p.x + 0.28 * s, p.y - 2.45 * s - bounce);
+            ctx.closePath();
+            ctx.fill();
+
+            // Zielpunkt-Markierung bei Touch/Klick
+            if (player.targetX !== null && player.targetZ !== null) {
+                const tp = project3D(player.targetX, 0, player.targetZ);
+                if (tp) {
+                    ctx.beginPath();
+                    ctx.arc(tp.x, tp.y, 0.35 * tp.scale, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // --- SPIELLOGIK ---
+        function startGame() {
+            document.getElementById('start-modal').style.display = 'none';
+            isGameActive = true;
+            startedAt = Date.now();
+        }
+
+        let currentStation = -1;
+        let currentStep = 0;
+
+        function openStation(index) {
+            isModalOpen = true;
+            player.targetX = null;
+            player.targetZ = null;
+            // Alle gedrückten Tasten zurücksetzen, damit Figur beim Schließen nicht weiterläuft
+            Object.keys(keys).forEach(k => keys[k] = false);
+            document.querySelectorAll('.dpad-btn').forEach(b => b.classList.remove('active'));
+
+            const st = stationsData[index];
+            currentStation = index;
+            currentStep = 0;
+
+            document.getElementById('station-topic').innerText = st.topic;
+            document.getElementById('station-title').innerText = `Station ${index + 1}: ${st.title}`;
+            showStep();
+            document.getElementById('quiz-modal').style.display = 'block';
+        }
+
+        function showStep() {
+            const st = stationsData[currentStation];
+            const step = st.steps[currentStep];
+
+            document.getElementById('step-progress').innerText =
+                st.steps.length > 1 ? `Frage ${currentStep + 1} / ${st.steps.length}` : "";
+            document.getElementById('question-text').innerText = step.question;
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('next-btn').style.display = 'none';
+
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = "";
+
+            step.options.forEach((optText, optIndex) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = optText;
+                btn.onclick = () => checkAnswer(optIndex, btn);
+                optionsContainer.appendChild(btn);
+            });
+            document.getElementById('quiz-modal').scrollTop = 0;
+        }
+
+        function nextStep() {
+            currentStep++;
+            showStep();
+        }
+
+        function checkAnswer(selectedOption, btnElement) {
+            const stationIndex = currentStation;
+            const st = stationsData[stationIndex];
+            const step = st.steps[currentStep];
+            const feedbackEl = document.getElementById('feedback');
+            const allButtons = document.querySelectorAll('.option-btn');
+
+            if (selectedOption === step.correct) {
+                allButtons.forEach(b => b.disabled = true);
+                btnElement.style.background = "#16a34a";
+                btnElement.style.borderColor = "#14532d";
+
+                feedbackEl.className = "correct";
+                feedbackEl.innerText = "🌟 " + step.explanation;
+
+                // Weitere Fragen an dieser Station: mit „Weiter“ zur nächsten
+                if (currentStep < st.steps.length - 1) {
+                    const next = document.getElementById('next-btn');
+                    next.style.display = 'inline-block';
+                    next.focus();
+                    return;
+                }
+
+                if (!completedStations.has(stationIndex)) {
+                    completedStations.add(stationIndex);
+                    score++;
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('progress').innerText = completedStations.size;
+                }
+
+                setTimeout(() => {
+                    document.getElementById('quiz-modal').style.display = 'none';
+                    isModalOpen = false;
+
+                    if (completedStations.size === stationsData.length) {
+                        showEndScreen();
+                    }
+                }, 2600);
+            } else {
+                btnElement.style.background = "#dc2626";
+                btnElement.style.borderColor = "#7f1d1d";
+                btnElement.disabled = true;
+                mistakes++;
+                feedbackEl.className = "wrong";
+                feedbackEl.innerText = "❌ Nicht ganz! Lies noch einmal genau und probiere eine andere Antwort.";
+            }
+        }
+
+        function showEndScreen() {
+            isGameActive = false;
+            document.getElementById('final-score-text').innerText =
+                `Du hast alle ${stationsData.length} Stationen gemeistert und ${score} von ${stationsData.length} Rosen-Punkten gesammelt!`;
+            const seconds = Math.round((Date.now() - startedAt) / 1000);
+            const time = seconds >= 60 ? `${Math.floor(seconds / 60)} min ${seconds % 60} s` : `${seconds} s`;
+            document.getElementById('final-result-text').innerText =
+                `Fehlversuche: ${mistakes} · Zeit: ${time}`;
+            // Ergebnis an Game-Test melden (speichert es in der Bestenliste)
+            if (window.GameTest) GameTest.reportScore({ points: mistakes, seconds: seconds });
+            document.getElementById('end-modal').style.display = 'block';
+        }
+
+        function update() {
+            if (!isGameActive || isModalOpen) return;
+
+            const speed = 0.13;
+            let moveX = 0;
+            let moveZ = 0;
+
+            if (keys['ArrowUp'] || keys['KeyW']) moveZ -= 1;
+            if (keys['ArrowDown'] || keys['KeyS']) moveZ += 1;
+            if (keys['ArrowLeft'] || keys['KeyA']) moveX -= 1;
+            if (keys['ArrowRight'] || keys['KeyD']) moveX += 1;
+
+            let isMoving = false;
+
+            if (moveX !== 0 || moveZ !== 0) {
+                const len = Math.hypot(moveX, moveZ);
+                player.x += (moveX / len) * speed;
+                player.z += (moveZ / len) * speed;
+                isMoving = true;
+            } else if (player.targetX !== null && player.targetZ !== null) {
+                const dx = player.targetX - player.x;
+                const dz = player.targetZ - player.z;
+                const dist = Math.hypot(dx, dz);
+
+                if (dist > 0.2) {
+                    player.x += (dx / dist) * speed;
+                    player.z += (dz / dist) * speed;
+                    isMoving = true;
+                } else {
+                    player.targetX = null;
+                    player.targetZ = null;
+                }
+            }
+
+            if (isMoving) {
+                player.walkAnim += 0.22;
+            } else {
+                player.walkAnim = 0;
+            }
+
+            // Spielfeld-Grenzen
+            player.x = Math.max(-18, Math.min(18, player.x));
+            player.z = Math.max(-12, Math.min(16, player.z));
+
+            // Sanfte Kamera-Verfolgung
+            cam.x += (player.x - cam.x) * 0.08;
+            cam.z += (player.z - cam.z) * 0.08;
+
+            // Kollision mit Stationen prüfen
+            stationsData.forEach((st, idx) => {
+                if (!completedStations.has(idx)) {
+                    const dist = Math.hypot(player.x - st.x, player.z - st.z);
+                    if (dist < 1.35) {
+                        openStation(idx);
+                    }
+                }
+            });
+        }
+
+        function render() {
+            const time = Date.now() * 0.001;
+            ctx.clearRect(0, 0, width, height);
+
+            drawGround();
+            drawCastle();
+
+            // Alle 3D-Objekte nach Tiefe sortieren (Maler-Algorithmus)
+            const renderList = [];
+            trees.forEach(([tx, tz]) => {
+                renderList.push({ z: tz, draw: () => drawTree(tx, tz) });
+            });
+            stationsData.forEach((st, idx) => {
+                renderList.push({ z: st.z, draw: () => drawStation(st, idx, time) });
+            });
+            renderList.push({ z: player.z, draw: () => drawPlayer(time) });
+
+            renderList.sort((a, b) => a.z - b.z);
+            renderList.forEach(item => item.draw());
+
+            update();
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+</html>
