@@ -6,6 +6,7 @@ import NumberGuess from "./pages/NumberGuess";
 import Labyrinth from "./games/labyrinth/Labyrinth";
 import Highscores from "./pages/Highscores";
 import Admin from "./pages/Admin";
+import GameGate from "./games/GameGate";
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -35,8 +36,8 @@ export default function App() {
       </header>
       <Routes>
         <Route path="/" element={<Overview />} />
-        <Route path="/spiele/labyrinth" element={<Labyrinth />} />
-        <Route path="/spiele/zahlenraten" element={<NumberGuess />} />
+        <Route path="/spiele/labyrinth" element={<GameGate gameKey="labyrinth"><Labyrinth /></GameGate>} />
+        <Route path="/spiele/zahlenraten" element={<GameGate gameKey="zahlenraten"><NumberGuess /></GameGate>} />
         <Route path="/highscores" element={<Highscores />} />
         <Route path="/admin" element={isAdmin ? <Admin /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />

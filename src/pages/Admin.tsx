@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { supabase, type Profile, type Role } from "../lib/supabase";
+import { supabase, type Group, type Profile, type Role } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
+import { GAMES } from "../games/catalog";
+
+// Tabellen user_groups / game_groups: Schreiben ist per RLS nur Admins erlaubt.
+const pairKey = (a: string | number, b: string | number) => `${a}|${b}`;
+
+async function check(p: PromiseLike<{ error: { message: string } | null }>) {
+  const { error } = await p;
+  if (error) throw new Error(error.message);
+}
 
 // Alle Admin-Aktionen laufen ueber die Edge Function "admin-users".
 // supabase.functions.invoke schickt automatisch das JWT des eingeloggten Users mit.
@@ -24,11 +33,26 @@ export default function Admin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("user");
+  const [newGroups, setNewGroups] = useState<Set<number>>(new Set());
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [userGroups, setUserGroups] = useState<Set<string>>(new Set()); // "userId|groupId"
+  const [gameGroups, setGameGroups] = useState<Set<string>>(new Set()); // "gameKey|groupId"
+  const [groupName, setGroupName] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const { users } = await callAdmin<{ users: Profile[] }>({ action: "list" });
+      const [{ users }, g, ug, gg] = await Promise.all([
+        callAdmin<{ users: Profile[] }>({ action: "list" }),
+        supabase.from("groups").select("id, name").order("name"),
+        supabase.from("user_groups").select("user_id, group_id"),
+        supabase.from("game_groups").select("game_key, group_id"),
+      ]);
+      const err = g.error ?? ug.error ?? gg.error;
+      if (err) throw new Error(err.message);
       setUsers(users);
+      setGroups((g.data ?? []) as Group[]);
+      setUserGroups(new Set((ug.data ?? []).map((r) => pairKey(r.user_id, r.group_id))));
+      setGameGroups(new Set((gg.data ?? []).map((r) => pairKey(r.game_key, r.group_id))));
     } catch (e) {
       setMsg({ text: (e as Error).message, ok: false });
     }
@@ -50,12 +74,69 @@ export default function Admin() {
   const onCreate = (e: FormEvent) => {
     e.preventDefault();
     run(async () => {
-      await callAdmin({ action: "create", username, password, role });
+      const { user } = await callAdmin<{ user: { id: string } }>({ action: "create", username, password, role });
+      if (newGroups.size) {
+        await check(supabase.from("user_groups").insert(
+          [...newGroups].map((group_id) => ({ user_id: user.id, group_id })),
+        ));
+      }
       setUsername("");
       setPassword("");
       setRole("user");
+      setNewGroups(new Set());
     }, `User "${username}" angelegt`);
   };
+
+  const toggleUserGroup = (u: Profile, g: Group) => {
+    const on = userGroups.has(pairKey(u.id, g.id));
+    run(
+      () => check(on
+        ? supabase.from("user_groups").delete().eq("user_id", u.id).eq("group_id", g.id)
+        : supabase.from("user_groups").insert({ user_id: u.id, group_id: g.id })),
+      `${u.username} ${on ? "aus" : "zu"} „${g.name}“ ${on ? "entfernt" : "hinzugefügt"}`,
+    );
+  };
+
+  const toggleGameGroup = (gameKey: string, title: string, g: Group) => {
+    const on = gameGroups.has(pairKey(gameKey, g.id));
+    run(
+      () => check(on
+        ? supabase.from("game_groups").delete().eq("game_key", gameKey).eq("group_id", g.id)
+        : supabase.from("game_groups").insert({ game_key: gameKey, group_id: g.id })),
+      `${title} für „${g.name}“ ${on ? "gesperrt" : "freigegeben"}`,
+    );
+  };
+
+  const onCreateGroup = (e: FormEvent) => {
+    e.preventDefault();
+    const name = groupName.trim();
+    run(async () => {
+      await check(supabase.from("groups").insert({ name }));
+      setGroupName("");
+    }, `Gruppe „${name}“ angelegt`);
+  };
+
+  const onDeleteGroup = (g: Group) => {
+    if (window.confirm(`Gruppe „${g.name}“ löschen? Alle Zuordnungen dieser Gruppe gehen verloren.`)) {
+      run(() => check(supabase.from("groups").delete().eq("id", g.id)), `Gruppe „${g.name}“ gelöscht`);
+    }
+  };
+
+  const chips = (isOn: (g: Group) => boolean, onToggle: (g: Group) => void) => (
+    <div className="chips">
+      {groups.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          className={isOn(g) ? "chip on" : "chip"}
+          aria-pressed={isOn(g)}
+          onClick={() => onToggle(g)}
+        >
+          {g.name}
+        </button>
+      ))}
+    </div>
+  );
 
   const onReset = (u: Profile) => {
     const pw = window.prompt(`Neues Passwort für ${u.username} (min. 8 Zeichen):`);
@@ -95,25 +176,89 @@ export default function Admin() {
           <option value="admin">admin</option>
         </select>
         <button>Anlegen</button>
+        {groups.length > 0 && (
+          <div className="form-groups">
+            <span className="muted">Gruppen:</span>
+            {chips(
+              (g) => newGroups.has(g.id),
+              (g) => setNewGroups((s) => {
+                const n = new Set(s);
+                if (n.has(g.id)) n.delete(g.id); else n.add(g.id);
+                return n;
+              }),
+            )}
+          </div>
+        )}
       </form>
 
       {msg && <p className={msg.ok ? "success" : "error"}>{msg.text}</p>}
 
       <table>
         <thead>
-          <tr><th>Username</th><th>Rolle</th><th>Angelegt</th><th></th></tr>
+          <tr><th>Username</th><th>Rolle</th><th>Gruppen</th><th>Angelegt</th><th></th></tr>
         </thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.id}>
               <td>{u.username}</td>
               <td>{u.role}</td>
+              <td>{chips((g) => userGroups.has(pairKey(u.id, g.id)), (g) => toggleUserGroup(u, g))}</td>
               <td>{new Date(u.created_at).toLocaleDateString("de-DE")}</td>
               <td className="actions">
                 <button className="secondary" onClick={() => onReset(u)}>Passwort</button>
                 {u.id !== profile?.id && (
                   <button className="danger" onClick={() => onDelete(u)}>Löschen</button>
                 )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h2 className="section">Gruppen &amp; Spiele</h2>
+      <p className="muted">
+        Ein Spieler sieht ein Spiel, wenn er in mindestens einer Gruppe ist, für die das Spiel
+        freigegeben ist. Admins sehen immer alle Spiele.
+      </p>
+
+      <form onSubmit={onCreateGroup} className="row wrap">
+        <input
+          placeholder="Neue Gruppe, z.B. Klasse-3c"
+          value={groupName}
+          onChange={(e) => setGroupName(e.target.value)}
+          maxLength={40}
+          required
+        />
+        <button>Gruppe anlegen</button>
+      </form>
+
+      <table>
+        <thead>
+          <tr><th>Spiel</th><th>Freigegeben für</th></tr>
+        </thead>
+        <tbody>
+          {GAMES.map((game) => (
+            <tr key={game.key}>
+              <td>{game.emoji} {game.title}</td>
+              <td>{chips((g) => gameGroups.has(pairKey(game.key, g.id)), (g) => toggleGameGroup(game.key, game.title, g))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <table>
+        <thead>
+          <tr><th>Gruppe</th><th>Mitglieder</th><th></th></tr>
+        </thead>
+        <tbody>
+          {groups.map((g) => (
+            <tr key={g.id}>
+              <td>{g.name}</td>
+              <td className="muted">
+                {users.filter((u) => userGroups.has(pairKey(u.id, g.id))).map((u) => u.username).join(", ") || "–"}
+              </td>
+              <td className="actions">
+                <button className="danger" onClick={() => onDeleteGroup(g)}>Löschen</button>
               </td>
             </tr>
           ))}
