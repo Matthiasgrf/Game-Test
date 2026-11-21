@@ -4,6 +4,8 @@ import Login from "./pages/Login";
 import Game from "./pages/Game";
 import Highscores from "./pages/Highscores";
 import Admin from "./pages/Admin";
+import Games from "./pages/Games";
+import GamePlayer from "./pages/GamePlayer";
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -19,7 +21,8 @@ export default function App() {
     <HashRouter>
       <header>
         <nav>
-          <NavLink to="/game">Spiel</NavLink>
+          <NavLink to="/game">Zahlenraten</NavLink>
+          <NavLink to="/spiele">Sachunterricht</NavLink>
           <NavLink to="/highscores">Highscores</NavLink>
           {isAdmin && <NavLink to="/admin">Admin</NavLink>}
         </nav>
@@ -33,6 +36,8 @@ export default function App() {
       </header>
       <Routes>
         <Route path="/game" element={<Game />} />
+        <Route path="/spiele" element={<Games />} />
+        <Route path="/spiele/:id" element={<GamePlayer />} />
         <Route path="/highscores" element={<Highscores />} />
         <Route path="/admin" element={isAdmin ? <Admin /> : <Navigate to="/game" />} />
         <Route path="*" element={<Navigate to="/game" />} />

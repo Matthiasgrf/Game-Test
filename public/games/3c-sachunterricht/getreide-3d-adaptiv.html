@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Getreide-Abenteuer – Adaptiv (PC & Tablet/Handy)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            overflow: hidden;
+            background-color: #87CEEB;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* HUD oben */
+        #hud {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            right: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .hud-box {
+            background: rgba(255, 255, 255, 0.94);
+            border: 3px solid #d97706;
+            border-radius: 14px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 1rem;
+            font-weight: bold;
+            color: #451a03;
+            pointer-events: auto;
+        }
+        .mode-btn {
+            background: #fef3c7;
+            border: 2px solid #b45309;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 0.92rem;
+            font-weight: bold;
+            color: #451a03;
+            cursor: pointer;
+        }
+        .mode-btn:hover {
+            background: #fde68a;
+        }
+
+        /* Touch D-Pad für Mobilgeräte */
+        #touch-controls {
+            display: none;
+            position: absolute;
+            bottom: 22px;
+            left: 22px;
+            right: 22px;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 6;
+            pointer-events: none;
+        }
+        .dpad-group {
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+        .dpad-btn {
+            width: 68px;
+            height: 68px;
+            background: rgba(255, 251, 235, 0.9);
+            border: 4px solid #d97706;
+            border-radius: 20px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #451a03;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+            touch-action: none;
+        }
+        .dpad-btn:active, .dpad-btn.pressed {
+            background: #f59e0b;
+            color: white;
+            transform: scale(0.94);
+        }
+
+        /* Quiz Modal */
+        #quiz-modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            justify-content: center;
+            align-items: center;
+            padding: 14px;
+            z-index: 20;
+        }
+        .modal-card {
+            background: #fffbeb;
+            border: 5px solid #f59e0b;
+            border-radius: 22px;
+            padding: 22px;
+            max-width: 780px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+            color: #1f2937;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #fde68a;
+            padding-bottom: 8px;
+        }
+        .modal-header h2 {
+            color: #b45309;
+            font-size: 1.35rem;
+        }
+        .close-btn {
+            background: #fee2e2;
+            border: 2px solid #dc2626;
+            color: #991b1b;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .q-desc {
+            font-size: 1.05rem;
+            margin-bottom: 14px;
+            line-height: 1.45;
+        }
+
+        /* Diagramm & Layout */
+        .diagram-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border: 2px dashed #f59e0b;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+        .inputs-col {
+            flex: 1;
+            min-width: 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+        .badge {
+            background: #d97706;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.95rem;
+        }
+
+        /* Desktop Inputs */
+        .desktop-input {
+            padding: 7px 10px;
+            border: 2px solid #d97706;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 100%;
+            background: #fff;
+        }
+        .inline-input {
+            padding: 4px 8px;
+            border: 2px solid #d97706;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 135px;
+            margin: 2px 3px;
+            font-weight: bold;
+            color: #451a03;
+        }
+        .num-input {
+            width: 46px;
+            padding: 6px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 2px solid #d97706;
+            border-radius: 8px;
+        }
+
+        /* Mobile Touch-Chips & Slots */
+        .word-bank {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #fef3c7;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            justify-content: center;
+        }
+        .chip {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 13px;
+            font-size: 0.98rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .chip.selected {
+            background: #1d4ed8;
+            outline: 3px solid #93c5fd;
+        }
+        .chip.used {
+            opacity: 0.35;
+        }
+        .touch-slot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 125px;
+            min-height: 36px;
+            padding: 5px 10px;
+            background: #fef9c3;
+            border: 2px dashed #b45309;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #78350f;
+            cursor: pointer;
+            margin: 2px;
+        }
+        .touch-slot.filled {
+            background: #fde68a;
+            border-style: solid;
+        }
+        .num-tap-btn {
+            width: 46px;
+            height: 42px;
+            background: #fef3c7;
+            border: 2px solid #d97706;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #451a03;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Statusfarben */
+        .is-correct {
+            border-color: #16a34a !important;
+            background-color: #dcfce7 !important;
+            color: #14532d !important;
+        }
+        .is-wrong {
+            border-color: #dc2626 !important;
+            background-color: #fee2e2 !important;
+            color: #7f1d1d !important;
+        }
+
+        /* Tabelle & Sortierzeilen */
+        table.work-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            background: white;
+        }
+        table.work-table th, table.work-table td {
+            border: 2px solid #fcd34d;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+        table.work-table th {
+            background: #fef3c7;
+            color: #78350f;
+        }
+        .sort-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            border: 2px solid #fcd34d;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        /* Buttons unten */
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        .btn-primary {
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background: #15803d; }
+        .btn-tip {
+            background: #e0f2fe;
+            color: #075985;
+            border: 2px solid #0284c7;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #feedback {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 26px;
+        }
+        #tip-box {
+            display: none;
+            margin-top: 10px;
+            background: #e0f2fe;
+            border: 2px solid #38bdf8;
+            border-radius: 10px;
+            padding: 10px;
+            color: #0c4a6e;
+            font-size: 0.98rem;
+        }
+
+        /* Gewinn-Screen */
+        #win-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 30;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-box" id="controls-hint">🚜 Pfeiltasten (↑ ↓ ← →) zum Fahren</div>
+        <div class="hud-box">🌾 Stationen: <span id="score">0</span> / 10</div>
+        <button class="mode-btn" id="mode-toggle-btn" onclick="toggleInputMode()">📱 Modus: Auto</button>
+    </div>
+
+    <!-- Touch Steuerkreuz für Mobilgeräte -->
+    <div id="touch-controls">
+        <div class="dpad-group">
+            <button class="dpad-btn" id="btn-left">◀</button>
+            <button class="dpad-btn" id="btn-right">▶</button>
+        </div>
+        <div class="dpad-group">
+            <button class="dpad-btn" id="btn-down">▼</button>
+            <button class="dpad-btn" id="btn-up">▲</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Quiz Modal -->
+    <div id="quiz-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="q-title">Station</h2>
+                <button class="close-btn" onclick="closeModal()">✕ Weiterfahren</button>
+            </div>
+            <div id="q-body"></div>
+            <div id="tip-box"></div>
+            <div class="action-bar">
+                <button class="btn-tip" onclick="showTip()">💡 Tipp anzeigen</button>
+                <button class="btn-primary" id="check-btn" onclick="checkCurrentStation()">Antworten prüfen</button>
+            </div>
+            <div id="feedback"></div>
+        </div>
+    </div>
+
+    <!-- Gewonnen -->
+    <div id="win-screen">
+        <div class="modal-card" style="text-align:center;">
+            <h2 style="color:#15803d; font-size:1.8rem; margin-bottom:12px;">🏆 Alle 10 Stationen geschafft! 🏆</h2>
+            <p style="font-size:1.15rem; margin-bottom:20px;">Du hast alle Bilder beschriftet, den Lückentext gelöst und das Getreide-Rätsel gemeistert. Viel Erfolg bei deiner Probe!</p>
+            <button class="btn-primary" onclick="location.reload()">Nochmal spielen</button>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="../vendor/three-r128.min.js"></script>
+
+    <script>
+        // --- GERÄTE-ERKENNUNG (Desktop vs. Touch/Mobile ohne Tastatur) ---
+        let isMobileMode = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 820);
+        let selectedChip = null;
+
+        function updateDeviceUI() {
+            const touchDiv = document.getElementById('touch-controls');
+            const hintDiv = document.getElementById('controls-hint');
+            const modeBtn = document.getElementById('mode-toggle-btn');
+
+            if (isMobileMode) {
+                touchDiv.style.display = 'flex';
+                hintDiv.innerText = '🚜 Unten auf die Pfeile tippen';
+                modeBtn.innerText = '📱 Touch-Modus (Tippen)';
+            } else {
+                touchDiv.style.display = 'none';
+                hintDiv.innerText = '🚜 Pfeiltasten (↑ ↓ ← →) zum Fahren';
+                modeBtn.innerText = '💻 PC-Modus (Tastatur)';
+            }
+        }
+
+        function toggleInputMode() {
+            isMobileMode = !isMobileMode;
+            updateDeviceUI();
+            if (isModalOpen && currentStation) {
+                renderStationContent(stationsData[currentStation.qIndex]);
+            }
+        }
+
+        // --- ALLE 10 STATIONEN AUS DEINEN SACHUNTERRICHTSHEFTEN ---
+        const stationsData = [
+            {
+                title: "Station 1: Das Getreidekorn beschriften",
+                type: "diagram_korn",
+                desc: "Beschrifte die drei Bestandteile des Getreidekorns auf der Zeichnung.",
+                words: ["Schale", "Mehlkörper", "Keimling"],
+                tip: "Außen schützt die Schale das Korn. Innen liegt der große helle Mehlkörper, und unten in der Ecke sitzt der kleine Keimling."
+            },
+            {
+                title: "Station 2: Der Mähdrescher beschriften",
+                type: "diagram_maehdrescher",
+                desc: "Beschrifte die 5 Bauteile des Mähdreschers auf dem Bild.",
+                words: ["Kabine", "Korntank", "Schneidewerk", "Dreschtrommel", "Schüttler"],
+                tip: "1: Hier sitzt der Fahrer (Kabine). 2: Oben werden die Körner gesammelt (Korntank). 3: Vorne wird gemäht (Schneidewerk). 4: Innen wird gedroschen (Dreschtrommel). 5: Hinten wird gesiebt (Schüttler)."
+            },
+            {
+                title: "Station 3: Die Getreidepflanze (Ähre & Rispe)",
+                type: "diagram_pflanze",
+                desc: "Beschrifte alle 7 Teile der beiden Getreidepflanzen.",
+                words: ["Grannen", "Ähre", "Rispe", "Halm", "Blätter", "Stängelknoten", "Wurzeln"],
+                tip: "Oben an der Ähre sind die feinen Grannen (1). Links ist die Ähre (2), rechts die verzweigte Rispe (3). Der Stängel heißt Halm (4), daran sind Blätter (5) und Verdickungen (Stängelknoten, 6). Unten sind die Wurzeln (7)."
+            },
+            {
+                title: "Station 4: Lückentext – Vom Korn zum Mehl",
+                type: "cloze_text",
+                desc: "Setze die passenden Wörter in den Text aus deinem Arbeitsblatt ein.",
+                words: ["Getreide", "Arbeit", "Sense", "Rechen", "Garben", "Wagen", "Säcke", "Mühle", "Mehl"],
+                tip: "Im Spätsommer ist das Getreide reif. Früher war diese Arbeit mühsam: Man schnitt mit der Sense, harkte mit dem Rechen zu Garben, lud sie auf einen Wagen, füllte die Körner in Säcke und fuhr zur Mühle für das Mehl."
+            },
+            {
+                title: "Station 5: Das große Getreide-Rätsel (Teil 1)",
+                type: "fill_list",
+                desc: "Beantworte die ersten vier Fragen aus deinem Rätselblatt!",
+                words: ["Roggen", "Weizen", "Gerste", "Hafer"],
+                items: [
+                    { q: "1. Welches Getreide hat graue Körner?", a: "Roggen" },
+                    { q: "2. Welches Getreide hat keine Grannen?", a: "Weizen" },
+                    { q: "3. Welches Getreide braucht man zur Bierherstellung?", a: "Gerste" },
+                    { q: "4. Welches Getreide ist ein sehr gutes Tierfutter?", a: "Hafer" }
+                ],
+                tip: "Graue Körner = Roggen; keine Grannen = Weizen; Bier = Gerste; Pferde-/Tierfutter = Hafer."
+            },
+            {
+                title: "Station 6: Das große Getreide-Rätsel (Teil 2)",
+                type: "fill_list",
+                desc: "Beantworte die nächsten vier Fragen aus deinem Heft!",
+                words: ["Hirse", "Mais", "Feld", "Tiere"],
+                items: [
+                    { q: "5. Aus welchem Getreide besteht Fladenbrot?", a: "Hirse" },
+                    { q: "6. Welches Getreide wächst an Kolben?", a: "Mais" },
+                    { q: "7. Wo werden Getreidekörner ausgesät?", a: "Feld" },
+                    { q: "8. Nicht nur für Menschen ist Getreide wichtig, sondern auch für...?", a: "Tiere" }
+                ],
+                tip: "Fladenbrot = Hirse; Kolben = Mais; ausgesät auf dem Feld; wichtig für Menschen und Tiere."
+            },
+            {
+                title: "Station 7: Wie das Getreide wächst (1 bis 5)",
+                type: "order_list",
+                desc: "Bringe die 5 Schritte im Jahresverlauf in die richtige Reihenfolge (1 bis 5).",
+                steps: [
+                    { text: "Im Frühling wird es wärmer: Die Pflanze entwickelt Wurzeln, Stängel, Blätter und oben entsteht die Ähre.", order: 3 },
+                    { text: "Im Oktober und November wird das Getreide gesät. Durch Wärme und Wasser quellen die Körner auf.", order: 1 },
+                    { text: "Im Juli oder August sind die Pflanzen reif und gelb. Der Mähdrescher erntet das Getreide.", order: 4 },
+                    { text: "Nach 2–3 Wochen durchbricht der Keimling die obere Erdschicht. Danach muss die Pflanze überwintern.", order: 2 },
+                    { text: "Nachdem das Feld abgeerntet wurde, wird es nun wieder umgepflügt.", order: 5 }
+                ],
+                tip: "1: Aussaat im Oktober/November → 2: Keimling überwintert → 3: Wachstum im Frühling → 4: Ernte im Juli/August → 5: Umpflügen."
+            },
+            {
+                title: "Station 8: Arbeit des Bauern früher und heute",
+                type: "work_table",
+                desc: "Ergänze die fehlenden Werkzeuge von früher und heute.",
+                words: ["Pferd mit Egge", "Sense", "Dreschflegel", "Mähdrescher", "Getreidemühle"],
+                rows: [
+                    { step: "eggen", early: "Pferd mit Egge", late: "Traktor mit Egge", missing: "early" },
+                    { step: "ernten / mähen", early: "Sense", late: "Mähdrescher", missing: "early" },
+                    { step: "dreschen", early: "Dreschflegel", late: "Mähdrescher", missing: "late" },
+                    { step: "mahlen", early: "Wind-/Wassermühle", late: "Getreidemühle", missing: "late" }
+                ],
+                tip: "Früher eggte man mit dem Pferd mit Egge und mähte mit der Sense. Heute übernimmt der Mähdrescher das Dreschen und die große Getreidemühle das Mahlen."
+            },
+            {
+                title: "Station 9: Inhaltsstoffe des Getreidekorns",
+                type: "fill_list",
+                desc: "Ordne den drei Korn-Teilen ihre Aufgabe oder Inhaltsstoffe zu.",
+                words: ["Vitamine", "Stärke", "Keimling", "Kleie"],
+                items: [
+                    { q: "1. In der Schale stecken viele Mineralstoffe und ...?", a: "Vitamine" },
+                    { q: "2. Im Mehlkörper steckt sehr viel ... (für unser Mehl)?", a: "Stärke" },
+                    { q: "3. Aus welchem Teil wächst eine neue Pflanze?", a: "Keimling" },
+                    { q: "4. Wie nennt man die abgetrennte Schale (als Tierfutter)?", a: "Kleie" }
+                ],
+                tip: "Schale = Vitamine & Mineralstoffe; abgetrennte Schale = Kleie; Mehlkörper = Stärke; neue Pflanze = Keimling."
+            },
+            {
+                title: "Station 10: Expertenwissen (Spelze & Zahlungsmittel)",
+                type: "fill_list",
+                desc: "Löse die letzten beiden Profi-Fragen aus deinen Arbeitsblättern!",
+                words: ["Spelze", "Hirten", "Schmiede", "Hefe"],
+                items: [
+                    { q: "1. Worin sind die Körner an der Ähre von März bis Juni versteckt?", a: "Spelze" },
+                    { q: "2. Wen bezahlte man früher oft mit Getreide? Schmiede und ...?", a: "Hirten" },
+                    { q: "3. Was mischt der Bäcker in den Teig, damit das Brot luftig aufgeht?", a: "Hefe" }
+                ],
+                tip: "An der Ähre stecken die Körner in einer Spelze. Früher bezahlte man Hirten und Schmiede mit Korn. Beim Backen hilft Hefe (oder Sauerteig)."
+            }
+        ];
+
+        // --- HILFSFUNKTIONEN FÜR ADAPTIVE EINGABEFELDER ---
+        function createAdaptiveField(answer, placeholder = "...") {
+            if (!isMobileMode) {
+                return `<input type="text" class="desktop-input ans-field" data-answer="${answer}" placeholder="${placeholder}">`;
+            } else {
+                return `<span class="touch-slot ans-field" data-answer="${answer}" onclick="handleSlotClick(this)">Tippen...</span>`;
+            }
+        }
+
+        function createInlineField(answer) {
+            if (!isMobileMode) {
+                return `<input type="text" class="inline-input ans-field" data-answer="${answer}" placeholder="...">`;
+            } else {
+                return `<span class="touch-slot ans-field" data-answer="${answer}" onclick="handleSlotClick(this)">Tippen...</span>`;
+            }
+        }
+
+        function renderWordBank(words) {
+            if (!isMobileMode) {
+                return `<div class="word-bank" style="font-weight:bold; color:#78350f;">Wörter zur Hilfe: ${words.join(" • ")}</div>`;
+            }
+            const shuffled = [...words].sort(() => Math.random() - 0.5);
+            let html = `<div style="text-align:center; font-size:0.9rem; color:#78350f; margin-bottom:6px; font-weight:bold;">👇 Tippe zuerst ein Wort an und dann auf das passende Feld:</div><div class="word-bank">`;
+            shuffled.forEach(w => {
+                html += `<button type="button" class="chip" onclick="selectChip(this, '${w}')">${w}</button>`;
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        function selectChip(btn, word) {
+            if (btn.classList.contains('used')) return;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            if (selectedChip && selectedChip.btn === btn) {
+                selectedChip = null;
+            } else {
+                btn.classList.add('selected');
+                selectedChip = { btn: btn, word: word };
+            }
+        }
+
+        function handleSlotClick(slot) {
+            slot.classList.remove('is-correct', 'is-wrong');
+            // Wenn schon ein Wort drin steht, wieder freigeben
+            if (slot.dataset.value) {
+                const oldWord = slot.dataset.value;
+                document.querySelectorAll('.chip').forEach(c => {
+                    if (c.innerText === oldWord && c.classList.contains('used')) {
+                        c.classList.remove('used');
+                    }
+                });
+                slot.dataset.value = "";
+                slot.innerText = "Tippen...";
+                slot.classList.remove('filled');
+            }
+            // Falls ein Chip ausgewählt ist, einsetzen
+            if (selectedChip) {
+                slot.dataset.value = selectedChip.word;
+                slot.innerText = selectedChip.word;
+                slot.classList.add('filled');
+                selectedChip.btn.classList.remove('selected');
+                selectedChip.btn.classList.add('used');
+                selectedChip = null;
+            }
+        }
+
+        function cycleNumber(btn) {
+            btn.classList.remove('is-correct', 'is-wrong');
+            let val = parseInt(btn.dataset.value || "0", 10);
+            val = (val % 5) + 1;
+            btn.dataset.value = val;
+            btn.innerText = val;
+        }
+
+        function renderStationContent(st) {
+            selectedChip = null;
+            document.getElementById('q-title').innerText = st.title;
+            document.getElementById('feedback').innerText = "";
+            const tipBox = document.getElementById('tip-box');
+            tipBox.style.display = "none";
+            tipBox.innerText = "💡 " + st.tip;
+
+            let html = `<p class="q-desc">${st.desc}</p>`;
+
+            if (st.type === "diagram_korn") {
+                html += renderWordBank(st.words);
+                html += `<div class="diagram-layout">
+                    <svg width="210" height="250" viewBox="0 0 260 320">
+                        <path d="M110,20 C175,20 210,110 205,210 C200,275 160,300 110,300 C60,300 25,270 25,200 C25,100 55,20 110,20 Z" fill="#d97706" stroke="#78350f" stroke-width="4"/>
+                        <path d="M110,34 C162,34 190,115 186,205 C182,255 155,275 110,275 C68,275 42,250 42,195 C42,110 68,34 110,34 Z" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+                        <path d="M52,215 C75,205 115,225 122,255 C115,272 80,275 58,255 C48,242 46,225 52,215 Z" fill="#65a30d" stroke="#365314" stroke-width="3"/>
+                        <line x1="196" y1="90" x2="235" y2="90" stroke="#000" stroke-width="2.5"/>
+                        <circle cx="242" cy="90" r="14" fill="#d97706"/><text x="242" y="95" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+                        <line x1="135" y1="150" x2="235" y2="150" stroke="#000" stroke-width="2.5"/>
+                        <circle cx="242" cy="150" r="14" fill="#d97706"/><text x="242" y="155" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+                        <line x1="95" y1="245" x2="235" y2="245" stroke="#000" stroke-width="2.5"/>
+                        <circle cx="242" cy="245" r="14" fill="#d97706"/><text x="242" y="250" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+                    </svg>
+                    <div class="inputs-col">
+                        <div class="field-row"><span class="badge">1</span>${createAdaptiveField("Schale", "Äußere Hülle...")}</div>
+                        <div class="field-row"><span class="badge">2</span>${createAdaptiveField("Mehlkörper", "Größter Teil innen...")}</div>
+                        <div class="field-row"><span class="badge">3</span>${createAdaptiveField("Keimling", "Unten in der Ecke...")}</div>
+                    </div>
+                </div>`;
+            } else if (st.type === "diagram_maehdrescher") {
+                html += renderWordBank(st.words);
+                html += `<div class="diagram-layout">
+                    <svg width="310" height="195" viewBox="0 0 380 240">
+                        <rect x="135" y="75" width="165" height="75" rx="10" fill="#65a30d" stroke="#365314" stroke-width="3"/>
+                        <polygon points="185,45 275,45 285,75 175,75" fill="#eab308" stroke="#365314" stroke-width="3"/>
+                        <polygon points="120,45 175,45 175,115 110,115" fill="#bae6fd" stroke="#365314" stroke-width="3"/>
+                        <polygon points="45,155 125,105 135,125 60,175" fill="#4d7c0f" stroke="#365314" stroke-width="3"/>
+                        <circle cx="48" cy="168" r="26" fill="#fef08a" stroke="#b45309" stroke-width="3"/>
+                        <circle cx="165" cy="115" r="20" fill="#fed7aa" stroke="#9a3412" stroke-width="2.5" stroke-dasharray="4,2"/>
+                        <rect x="200" y="95" width="80" height="22" fill="#fde68a" stroke="#9a3412" stroke-width="2" stroke-dasharray="4,2"/>
+                        <circle cx="145" cy="165" r="32" fill="#1f2937"/><circle cx="145" cy="165" r="14" fill="#eab308"/>
+                        <circle cx="265" cy="175" r="22" fill="#1f2937"/><circle cx="265" cy="175" r="9" fill="#eab308"/>
+                        <circle cx="145" cy="65" r="13" fill="#d97706"/><text x="145" y="70" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+                        <circle cx="230" cy="58" r="13" fill="#d97706"/><text x="230" y="63" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+                        <circle cx="48" cy="168" r="13" fill="#d97706"/><text x="48" y="173" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+                        <circle cx="165" cy="115" r="13" fill="#d97706"/><text x="165" y="120" text-anchor="middle" fill="#fff" font-weight="bold">4</text>
+                        <circle cx="240" cy="106" r="13" fill="#d97706"/><text x="240" y="111" text-anchor="middle" fill="#fff" font-weight="bold">5</text>
+                    </svg>
+                    <div class="inputs-col">
+                        <div class="field-row"><span class="badge">1</span>${createAdaptiveField("Kabine")}</div>
+                        <div class="field-row"><span class="badge">2</span>${createAdaptiveField("Korntank")}</div>
+                        <div class="field-row"><span class="badge">3</span>${createAdaptiveField("Schneidewerk")}</div>
+                        <div class="field-row"><span class="badge">4</span>${createAdaptiveField("Dreschtrommel")}</div>
+                        <div class="field-row"><span class="badge">5</span>${createAdaptiveField("Schüttler")}</div>
+                    </div>
+                </div>`;
+            } else if (st.type === "diagram_pflanze") {
+                html += renderWordBank(st.words);
+                html += `<div class="diagram-layout">
+                    <svg width="240" height="270" viewBox="0 0 300 340">
+                        <path d="M70,300 L40,330 M70,300 L60,335 M70,300 L80,335 M70,300 L100,330" stroke="#78350f" stroke-width="3"/>
+                        <path d="M220,300 L195,330 M220,300 L220,335 M220,300 L245,330" stroke="#78350f" stroke-width="3"/>
+                        <line x1="70" y1="300" x2="70" y2="120" stroke="#ca8a04" stroke-width="6"/>
+                        <line x1="220" y1="300" x2="220" y2="130" stroke="#ca8a04" stroke-width="5"/>
+                        <rect x="60" y="55" width="20" height="68" rx="8" fill="#eab308" stroke="#854d0e" stroke-width="2"/>
+                        <line x1="65" y1="55" x2="60" y2="20" stroke="#854d0e" stroke-width="2"/>
+                        <line x1="70" y1="55" x2="70" y2="15" stroke="#854d0e" stroke-width="2"/>
+                        <line x1="75" y1="55" x2="80" y2="20" stroke="#854d0e" stroke-width="2"/>
+                        <rect x="65" y="185" width="10" height="6" fill="#713f12"/>
+                        <rect x="65" y="245" width="10" height="6" fill="#713f12"/>
+                        <path d="M70,185 Q30,165 20,195 Q45,180 70,190" fill="#65a30d"/>
+                        <path d="M70,245 Q110,220 120,250 Q95,235 70,250" fill="#65a30d"/>
+                        <path d="M220,130 L195,105 M220,130 L245,105 M220,105 L195,80 M220,105 L245,80 M220,80 L220,50" stroke="#854d0e" stroke-width="2"/>
+                        <ellipse cx="195" cy="108" rx="4" ry="7" fill="#eab308"/><ellipse cx="245" cy="108" rx="4" ry="7" fill="#eab308"/>
+                        <ellipse cx="195" cy="83" rx="4" ry="7" fill="#eab308"/><ellipse cx="245" cy="83" rx="4" ry="7" fill="#eab308"/>
+                        <ellipse cx="220" cy="50" rx="4" ry="7" fill="#eab308"/>
+                        <circle cx="95" cy="30" r="12" fill="#d97706"/><text x="95" y="34" text-anchor="middle" fill="#fff" font-weight="bold">1</text>
+                        <circle cx="98" cy="88" r="12" fill="#d97706"/><text x="98" y="92" text-anchor="middle" fill="#fff" font-weight="bold">2</text>
+                        <circle cx="170" cy="95" r="12" fill="#d97706"/><text x="170" y="99" text-anchor="middle" fill="#fff" font-weight="bold">3</text>
+                        <circle cx="90" cy="150" r="12" fill="#d97706"/><text x="90" y="154" text-anchor="middle" fill="#fff" font-weight="bold">4</text>
+                        <circle cx="30" cy="175" r="12" fill="#d97706"/><text x="30" y="179" text-anchor="middle" fill="#fff" font-weight="bold">5</text>
+                        <circle cx="92" cy="248" r="12" fill="#d97706"/><text x="92" y="252" text-anchor="middle" fill="#fff" font-weight="bold">6</text>
+                        <circle cx="98" cy="315" r="12" fill="#d97706"/><text x="98" y="319" text-anchor="middle" fill="#fff" font-weight="bold">7</text>
+                    </svg>
+                    <div class="inputs-col">
+                        <div class="field-row"><span class="badge">1</span>${createAdaptiveField("Grannen")}</div>
+                        <div class="field-row"><span class="badge">2</span>${createAdaptiveField("Ähre")}</div>
+                        <div class="field-row"><span class="badge">3</span>${createAdaptiveField("Rispe")}</div>
+                        <div class="field-row"><span class="badge">4</span>${createAdaptiveField("Halm")}</div>
+                        <div class="field-row"><span class="badge">5</span>${createAdaptiveField("Blätter")}</div>
+                        <div class="field-row"><span class="badge">6</span>${createAdaptiveField("Stängelknoten")}</div>
+                        <div class="field-row"><span class="badge">7</span>${createAdaptiveField("Wurzeln")}</div>
+                    </div>
+                </div>`;
+            } else if (st.type === "cloze_text") {
+                html += renderWordBank(st.words);
+                html += `<div style="background:white; padding:14px; border-radius:12px; border:2px solid #fcd34d; line-height:2.1; font-size:1.05rem;">
+                    Im Spätsommer ist das ${createInlineField("Getreide")} reif und kann geerntet werden. Früher war diese ${createInlineField("Arbeit")} für die Bauern sehr mühsam. Sie schnitten das Getreide mit einer ${createInlineField("Sense")} ab. Die Halme wurden mit einem ${createInlineField("Rechen")} zusammengeharkt und zu ${createInlineField("Garben")} gebunden. Anschließend wurden sie auf einen ${createInlineField("Wagen")} geladen und in die Scheune gebracht. Die gedroschenen Körner wurden in ${createInlineField("Säcke")} gefüllt. Nun brachte der Bauer sein Korn zur ${createInlineField("Mühle")}. Bald konnte der Bauer sein ${createInlineField("Mehl")} abholen.
+                </div>`;
+            } else if (st.type === "fill_list") {
+                html += renderWordBank(st.words);
+                st.items.forEach(item => {
+                    html += `<div style="background:white; border:2px solid #fcd34d; border-radius:12px; padding:10px; margin-bottom:10px;">
+                        <div style="font-weight:bold; margin-bottom:6px;">${item.q}</div>
+                        ${createAdaptiveField(item.a, "Antwort...")}
+                    </div>`;
+                });
+            } else if (st.type === "order_list") {
+                html += `<p style="font-size:0.95rem; color:#78350f; margin-bottom:10px; font-weight:bold;">${isMobileMode ? "👆 Tippe links auf das Kästchen, um die Zahlen 1 bis 5 durchzuschalten:" : "⌨️ Schreibe die Zahlen 1 bis 5 in die Kästchen:"}</p>`;
+                st.steps.forEach(step => {
+                    const ctrl = isMobileMode
+                        ? `<button type="button" class="num-tap-btn ans-field" data-answer="${step.order}" data-value="" onclick="cycleNumber(this)">?</button>`
+                        : `<input type="text" maxlength="1" class="num-input ans-field" data-answer="${step.order}" placeholder="?">`;
+                    html += `<div class="sort-row">${ctrl}<span>${step.text}</span></div>`;
+                });
+            } else if (st.type === "work_table") {
+                html += renderWordBank(st.words);
+                html += `<table class="work-table">
+                    <tr><th>Arbeitsschritt</th><th>früher</th><th>heute</th></tr>`;
+                st.rows.forEach(r => {
+                    const earlyCell = r.missing === "early" ? createAdaptiveField(r.early) : r.early;
+                    const lateCell = r.missing === "late" ? createAdaptiveField(r.late) : r.late;
+                    html += `<tr><td><strong>${r.step}</strong></td><td>${earlyCell}</td><td>${lateCell}</td></tr>`;
+                });
+                html += `</table>`;
+            }
+
+            document.getElementById('q-body').innerHTML = html;
+        }
+
+        function showTip() {
+            document.getElementById('tip-box').style.display = "block";
+        }
+
+        function checkCurrentStation() {
+            const fields = document.querySelectorAll('#q-body .ans-field');
+            let correctCount = 0;
+
+            fields.forEach(f => {
+                const expected = f.dataset.answer.trim().toLowerCase();
+                const actual = (f.tagName === "INPUT" ? f.value : (f.dataset.value || "")).trim().toLowerCase();
+
+                f.classList.remove('is-correct', 'is-wrong');
+                if (actual === expected) {
+                    f.classList.add('is-correct');
+                    correctCount++;
+                } else {
+                    f.classList.add('is-wrong');
+                }
+            });
+
+            const fb = document.getElementById('feedback');
+            if (correctCount === fields.length) {
+                fb.style.color = "#15803d";
+                fb.innerText = "🎉 Super gemacht! Alles richtig!";
+
+                if (!currentStation.solved) {
+                    currentStation.solved = true;
+                    solvedCount++;
+                    document.getElementById('score').innerText = solvedCount;
+                    currentStation.beacon.material.color.setHex(0x22c55e);
+                    currentStation.cube.material.color.setHex(0x16a34a);
+                }
+
+                setTimeout(() => {
+                    closeModal();
+                    if (solvedCount === stationsData.length) {
+                        document.getElementById('win-screen').style.display = 'flex';
+                    }
+                }, 1600);
+            } else {
+                fb.style.color = "#b91c1c";
+                fb.innerText = `Du hast ${correctCount} von ${fields.length} richtig. Schau dir die roten Felder noch einmal an!`;
+            }
+        }
+
+        // --- 3D WELT (THREE.JS) ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 35, 110);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.68));
+        const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+        dirLight.position.set(35, 55, 25);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Ackerboden & Wiese
+        const ground = new THREE.Mesh(
+            new THREE.PlaneGeometry(130, 130),
+            new THREE.MeshLambertMaterial({ color: 0x7c5832 })
+        );
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const grass = new THREE.Mesh(
+            new THREE.PlaneGeometry(320, 320),
+            new THREE.MeshLambertMaterial({ color: 0x4d7c0f })
+        );
+        grass.rotation.x = -Math.PI / 2;
+        grass.position.y = -0.05;
+        scene.add(grass);
+
+        // Getreidehalme auf dem Feld
+        const stalkGeo = new THREE.CylinderGeometry(0.06, 0.08, 1.4, 5);
+        const stalkMat = new THREE.MeshLambertMaterial({ color: 0xeab308 });
+        const earGeo = new THREE.BoxGeometry(0.16, 0.45, 0.16);
+        const earMat = new THREE.MeshLambertMaterial({ color: 0xfde047 });
+
+        for (let i = 0; i < 420; i++) {
+            const x = (Math.random() - 0.5) * 100;
+            const z = (Math.random() - 0.5) * 100;
+            if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+            const g = new THREE.Group();
+            const s = new THREE.Mesh(stalkGeo, stalkMat); s.position.y = 0.7;
+            const e = new THREE.Mesh(earGeo, earMat); e.position.y = 1.5;
+            g.add(s); g.add(e);
+            g.position.set(x, 0, z);
+            scene.add(g);
+        }
+
+        // Traktor bauen
+        const tractor = new THREE.Group();
+        const redMat = new THREE.MeshLambertMaterial({ color: 0xdc2626 });
+        const blackMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+        const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+        const rimMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 2.4), redMat);
+        body.position.set(0, 1.1, 0.3);
+        tractor.add(body);
+
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.3, 1.4), glassMat);
+        cabin.position.set(0, 2.1, -0.4);
+        tractor.add(cabin);
+
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 1.6), redMat);
+        roof.position.set(0, 2.8, -0.4);
+        tractor.add(roof);
+
+        function addWheel(r, w, x, y, z) {
+            const wg = new THREE.CylinderGeometry(r, r, w, 16);
+            wg.rotateZ(Math.PI / 2);
+            const wheel = new THREE.Mesh(wg, blackMat);
+            wheel.position.set(x, y, z);
+
+            const rg = new THREE.CylinderGeometry(r * 0.5, r * 0.5, w + 0.04, 12);
+            rg.rotateZ(Math.PI / 2);
+            wheel.add(new THREE.Mesh(rg, rimMat));
+            tractor.add(wheel);
+        }
+        addWheel(0.85, 0.5, -1.0, 0.85, -0.6);
+        addWheel(0.85, 0.5,  1.0, 0.85, -0.6);
+        addWheel(0.55, 0.4, -0.95, 0.55, 1.1);
+        addWheel(0.55, 0.4,  0.95, 0.55, 1.1);
+        scene.add(tractor);
+
+        // 10 Quiz-Stationen auf dem Feld verteilen
+        const coords = [
+            { x: -12, z: -12 }, { x:  12, z: -12 },
+            { x: -20, z:   4 }, { x:  20, z:   4 },
+            { x: -14, z:  20 }, { x:  14, z:  20 },
+            { x:   0, z: -26 }, { x:   0, z:  30 },
+            { x: -32, z: -18 }, { x:  32, z: -18 }
+        ];
+
+        const stations = [];
+        const beaconGeo = new THREE.CylinderGeometry(1.4, 1.4, 6, 16, 1, true);
+        const cubeGeo = new THREE.BoxGeometry(0.95, 0.95, 0.95);
+
+        coords.forEach((pos, idx) => {
+            const group = new THREE.Group();
+            const beacon = new THREE.Mesh(beaconGeo, new THREE.MeshBasicMaterial({
+                color: 0xfacc15, transparent: true, opacity: 0.45, side: THREE.DoubleSide
+            }));
+            beacon.position.y = 3;
+
+            const cube = new THREE.Mesh(cubeGeo, new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
+            cube.position.y = 1.8;
+
+            group.add(beacon);
+            group.add(cube);
+            group.position.set(pos.x, 0, pos.z);
+            scene.add(group);
+
+            stations.push({
+                mesh: group,
+                beacon: beacon,
+                cube: cube,
+                x: pos.x,
+                z: pos.z,
+                solved: false,
+                qIndex: idx,
+                cooldown: 0
+            });
+        });
+
+        // --- STEUERUNG (NUR PFEILTASTEN + TOUCH D-PAD) ---
+        const inputState = { up: false, down: false, left: false, right: false };
+        let isModalOpen = false;
+        let solvedCount = 0;
+        let currentStation = null;
+
+        window.addEventListener('keydown', (e) => {
+            if (isModalOpen) return;
+            if (e.key === 'ArrowUp') { inputState.up = true; e.preventDefault(); }
+            if (e.key === 'ArrowDown') { inputState.down = true; e.preventDefault(); }
+            if (e.key === 'ArrowLeft') { inputState.left = true; e.preventDefault(); }
+            if (e.key === 'ArrowRight') { inputState.right = true; e.preventDefault(); }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowUp') inputState.up = false;
+            if (e.key === 'ArrowDown') inputState.down = false;
+            if (e.key === 'ArrowLeft') inputState.left = false;
+            if (e.key === 'ArrowRight') inputState.right = false;
+        });
+
+        function bindTouchBtn(id, dir) {
+            const btn = document.getElementById(id);
+            const start = (e) => { e.preventDefault(); inputState[dir] = true; btn.classList.add('pressed'); };
+            const end = (e) => { e.preventDefault(); inputState[dir] = false; btn.classList.remove('pressed'); };
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', end, { passive: false });
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+            btn.addEventListener('mouseleave', end);
+        }
+        bindTouchBtn('btn-up', 'up');
+        bindTouchBtn('btn-down', 'down');
+        bindTouchBtn('btn-left', 'left');
+        bindTouchBtn('btn-right', 'right');
+
+        function openQuiz(st) {
+            isModalOpen = true;
+            currentStation = st;
+            inputState.up = inputState.down = inputState.left = inputState.right = false;
+            renderStationContent(stationsData[st.qIndex]);
+            document.getElementById('quiz-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('quiz-modal').style.display = 'none';
+            isModalOpen = false;
+            if (currentStation) {
+                currentStation.cooldown = 90; // Kurzer Schutz, damit das Fenster nicht sofort wieder aufspringt
+            }
+        }
+
+        let speed = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            stations.forEach(st => {
+                st.cube.rotation.y += 0.02;
+                st.cube.rotation.x += 0.01;
+                if (st.cooldown > 0) st.cooldown--;
+            });
+
+            if (!isModalOpen) {
+                if (inputState.up) speed = Math.min(speed + 0.015, 0.28);
+                else if (inputState.down) speed = Math.max(speed - 0.015, -0.18);
+                else speed *= 0.9;
+
+                if (Math.abs(speed) > 0.01) {
+                    const dir = speed > 0 ? 1 : -1;
+                    if (inputState.left) tractor.rotation.y += 0.045 * dir;
+                    if (inputState.right) tractor.rotation.y -= 0.045 * dir;
+                }
+
+                tractor.position.x += Math.sin(tractor.rotation.y) * speed;
+                tractor.position.z += Math.cos(tractor.rotation.y) * speed;
+
+                tractor.position.x = Math.max(-50, Math.min(50, tractor.position.x));
+                tractor.position.z = Math.max(-50, Math.min(50, tractor.position.z));
+
+                stations.forEach(st => {
+                    if (!st.solved && st.cooldown === 0) {
+                        const dx = tractor.position.x - st.x;
+                        const dz = tractor.position.z - st.z;
+                        if (Math.sqrt(dx * dx + dz * dz) < 2.3) {
+                            openQuiz(st);
+                        }
+                    }
+                });
+            }
+
+            const camOffset = new THREE.Vector3(0, 7.5, -12.5);
+            camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), tractor.rotation.y);
+            camera.position.lerp(tractor.position.clone().add(camOffset), 0.1);
+            camera.lookAt(tractor.position.x, tractor.position.y + 1.5, tractor.position.z);
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        updateDeviceUI();
+        animate();
+    </script>
+</body>
+</html>

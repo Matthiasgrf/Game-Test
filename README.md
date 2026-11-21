@@ -38,6 +38,20 @@ Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
   kommt `permission denied`. Neuere Supabase-Projekte vergeben sie nicht automatisch.
   `TRUNCATE` ist für Client-Rollen entzogen, weil es RLS umgeht.
 
+## Sachunterricht-Spiele (aus `3c-Sachunterricht`)
+
+Unter dem Tab **Sachunterricht** (`#/spiele`) laufen die HTML-Spiele aus dem
+Repository `3c-Sachunterricht` im iframe:
+
+| Spiel | Datei | Herkunft |
+|---|---|---|
+| 3D Getreide-Abenteuer (adaptiv) | `public/games/3c-sachunterricht/getreide-3d-adaptiv.html` | aktuelle `index.html` |
+| 3D Getreide-Abenteuer (Version 2) | `public/games/3c-sachunterricht/getreide-v2.html` | `getreide-spiel-v2.html` aus der Git-Historie |
+
+Die Dateien sind unverändert übernommen, nur three.js r128 wird lokal aus
+`public/games/vendor/` statt vom CDN geladen (läuft so auch ohne CDN-Zugriff).
+Neue Spiele: HTML-Datei nach `public/games/` legen und in `src/games/catalog.ts` eintragen.
+
 ## Einmalige Einrichtung
 
 ### 1. Supabase (Dashboard)

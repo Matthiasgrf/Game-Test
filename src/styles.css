@@ -68,3 +68,24 @@ td.actions { display: flex; gap: 6px; justify-content: flex-end; }
 .success { color: var(--success); }
 .hint { font-size: 1.2em; }
 .center { text-align: center; }
+nav { flex-wrap: wrap; }
+a.button {
+  padding: 8px 14px; border-radius: 6px; background: var(--accent); color: #fff;
+  text-decoration: none; white-space: nowrap;
+}
+.game-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.game-list li {
+  display: flex; gap: 16px; justify-content: space-between; align-items: center;
+  padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+}
+.game-list p { margin: 4px 0; }
+.player { max-width: 1200px; margin: 0 auto; }
+.player-bar {
+  display: flex; gap: 12px; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.player-bar a { color: var(--accent); }
+.player iframe {
+  width: 100%; height: calc(100vh - 140px); min-height: 420px;
+  border: 1px solid var(--border); border-radius: 10px; background: #87ceeb;
+}

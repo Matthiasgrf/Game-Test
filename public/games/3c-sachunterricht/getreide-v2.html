@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Getreide-Abenteuer – Sachunterricht 3. Klasse</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            overflow: hidden;
+            background-color: #87CEEB;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        /* HUD oben */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        .hud-box {
+            background: rgba(255, 255, 255, 0.94);
+            border: 3px solid #d97706;
+            border-radius: 16px;
+            padding: 12px 22px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: #451a03;
+        }
+        /* Quiz Modal */
+        #quiz-modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 20px;
+        }
+        .modal-card {
+            background: #fffbeb;
+            border: 5px solid #f59e0b;
+            border-radius: 24px;
+            padding: 28px;
+            max-width: 720px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+            text-align: left;
+        }
+        .modal-card h2 {
+            color: #b45309;
+            margin-bottom: 10px;
+            font-size: 1.45rem;
+            text-align: center;
+        }
+        .modal-card p.instruction {
+            font-size: 1.15rem;
+            color: #1f2937;
+            margin-bottom: 18px;
+            line-height: 1.4;
+            text-align: center;
+        }
+        /* Multiple Choice */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .option-btn {
+            background: #fef3c7;
+            border: 3px solid #f59e0b;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #451a03;
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .option-btn:hover {
+            background: #fde68a;
+            transform: scale(1.01);
+        }
+
+        /* Reihenfolge (Zahlen eingeben wie Aufgabe 3) */
+        .order-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+        .order-input {
+            width: 50px;
+            height: 42px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            border: 3px solid #b45309;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #451a03;
+        }
+        .order-text {
+            font-size: 1.05rem;
+            color: #1f2937;
+            flex: 1;
+        }
+
+        /* Zuordnung (wie Aufgabe 4) */
+        .match-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .match-right-box {
+            background: #fef3c7;
+            border: 2px dashed #d97706;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.98rem;
+            line-height: 1.5;
+        }
+        .match-left-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fde68a;
+            border: 2px solid #f59e0b;
+            border-radius: 10px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #451a03;
+        }
+        .match-select {
+            padding: 6px 10px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            border: 2px solid #b45309;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        /* Lückentext & Offene Eingabe (wie Aufgabe 1 & 5) */
+        .word-bank {
+            background: #fde68a;
+            border: 2px dashed #b45309;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            color: #78350f;
+            margin-bottom: 14px;
+            font-size: 1.05rem;
+        }
+        .cloze-text {
+            font-size: 1.1rem;
+            line-height: 2.1;
+            color: #1f2937;
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #fcd34d;
+        }
+        .text-input {
+            padding: 5px 10px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            border: 2px solid #d97706;
+            border-radius: 8px;
+            width: 165px;
+            color: #451a03;
+            background: #fefce8;
+        }
+        .open-row {
+            margin-bottom: 12px;
+            background: #fef3c7;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #f59e0b;
+        }
+        .open-row label {
+            display: block;
+            font-weight: bold;
+            color: #78350f;
+            margin-bottom: 6px;
+        }
+        .open-inputs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .open-inputs input {
+            flex: 1;
+            min-width: 180px;
+            padding: 8px 12px;
+            font-size: 1rem;
+            border: 2px solid #d97706;
+            border-radius: 8px;
+        }
+
+        /* Prüfen-Button */
+        .submit-btn {
+            display: block;
+            width: 100%;
+            margin-top: 16px;
+            background: #d97706;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover {
+            background: #b45309;
+        }
+
+        #feedback {
+            margin-top: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            min-height: 28px;
+            line-height: 1.4;
+        }
+        .correct-text { color: #15803d; }
+        .wrong-text { color: #b91c1c; }
+
+        /* Gewinn-Bildschirm */
+        #win-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        .restart-btn {
+            display: block;
+            margin: 20px auto 0;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 15px 30px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .restart-btn:hover {
+            background: #15803d;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <div class="hud-box">🚜 Steuerung: Nur Pfeiltasten (↑ ↓ ← →)</div>
+        <div class="hud-box">🌾 Stationen gelöst: <span id="score">0</span> / 8</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Quiz Fenster -->
+    <div id="quiz-modal">
+        <div class="modal-card">
+            <h2 id="q-title">Station</h2>
+            <p class="instruction" id="q-text">Aufgabenstellung</p>
+            <div id="q-body"></div>
+            <div id="feedback"></div>
+        </div>
+    </div>
+
+    <!-- Gewonnen Fenster -->
+    <div id="win-screen">
+        <div class="modal-card" style="text-align: center;">
+            <h2>🏆 Super gemacht, Getreide-Profi! 🏆</h2>
+            <p class="instruction">Du hast alle 8 Übungs-Stationen auf dem Kornfeld gemeistert und bist bestens für die Sachunterrichts-Probe vorbereitet!</p>
+            <button class="restart-btn" onclick="location.reload()">Nochmal spielen</button>
+        </div>
+    </div>
+
+    <!-- Three.js Bibliothek -->
+    <script src="../vendor/three-r128.min.js"></script>
+
+    <script>
+        // --- ABWECHSLUNGSREICHE AUFGABEN (NACH DEM ÜBUNGSBLATT) ---
+        const tasks = [
+            {
+                type: "cloze",
+                title: "Station 1: Lückentext – Die Getreidepflanze (wie Aufgabe 1)",
+                instruction: "Setze die passenden Begriffe aus dem Kasten in die Lücken ein!",
+                wordBank: "Ähre • Grannen • Halm • Rispe • Stängelknoten • Wurzeln",
+                parts: [
+                    "Alle Getreidearten haben einen langen, hohlen Stängel, den man ",
+                    " nennt. Damit er bei Wind nicht so leicht abknickt, wird er durch verdickte ",
+                    " gestützt. Unter der Erde halten die ",
+                    " die Pflanze fest und nehmen Wasser auf. Bei Weizen, Roggen und Gerste sitzen die Körner dicht nebeneinander in einer ",
+                    ". Manche Sorten haben daran lange, dünne Fäden, die ",
+                    " heißen. Beim Hafer hingegen hängen die Körner an vielen feinen Verzweigungen, einer sogenannten ",
+                    "."
+                ],
+                answers: ["Halm", "Stängelknoten", "Wurzeln", "Ähre", "Grannen", "Rispe"],
+                explanation: "Klasse! Alle 6 Pflanzenteile sind richtig eingesetzt."
+            },
+            {
+                type: "table_match",
+                title: "Station 2: Arbeit des Bauern – früher und heute (wie Aufgabe 2)",
+                instruction: "Wähle für jeden Arbeitsschritt das richtige Werkzeug von früher und heute aus!",
+                rows: [
+                    { step: "pflügen", earlyCorrect: "Pferd mit Pflug", todayCorrect: "Traktor mit Pflug" },
+                    { step: "säen", earlyCorrect: "Säen mit der Hand", todayCorrect: "Sämaschine" },
+                    { step: "ernten / mähen", earlyCorrect: "Sense", todayCorrect: "Mähdrescher" },
+                    { step: "dreschen", earlyCorrect: "Dreschflegel", todayCorrect: "Mähdrescher" },
+                    { step: "mahlen", earlyCorrect: "Wind-/Wassermühle", todayCorrect: "Getreidemühle (Fabrik)" }
+                ],
+                earlyOptions: ["Pferd mit Pflug", "Säen mit der Hand", "Sense", "Dreschflegel", "Wind-/Wassermühle"],
+                todayOptions: ["Traktor mit Pflug", "Sämaschine", "Mähdrescher", "Getreidemühle (Fabrik)"],
+                explanation: "Spitze! Du kennst den Unterschied zwischen der Arbeit früher und heute genau."
+            },
+            {
+                type: "order",
+                title: "Station 3: Wie das Getreide wächst (wie Aufgabe 3)",
+                instruction: "Bringe die Schritte in die richtige Reihenfolge, indem du die Zahlen 1 bis 5 in die Kästchen tippst!",
+                items: [
+                    { text: "Im Frühling wird es wärmer: Die Pflanze entwickelt Wurzeln, Stängel, Blätter und oben entsteht die Ähre.", correctNum: 3 },
+                    { text: "Im Oktober und November wird das Getreide gesät. Durch Wasser und Wärme quellen die Körner auf.", correctNum: 1 },
+                    { text: "Im Juli oder August sind die Pflanzen reif und gelb. Der Mähdrescher erntet das Getreide.", correctNum: 4 },
+                    { text: "Nach 2 bis 3 Wochen durchbricht der Keimling die Erde. Danach muss die kleine Pflanze überwintern.", correctNum: 2 },
+                    { text: "Nachdem das Feld abgeerntet wurde, wird der Boden wieder umgepflügt.", correctNum: 5 }
+                ],
+                explanation: "Perfekt! Die Reihenfolge 3 – 1 – 4 – 2 – 5 stimmt genau."
+            },
+            {
+                type: "letter_match",
+                title: "Station 4: So funktioniert der Mähdrescher (wie Aufgabe 4)",
+                instruction: "Ordne den vier Bestandteilen des Mähdreschers den richtigen Buchstaben (A, B, C oder D) zu!",
+                leftItems: [
+                    { name: "1. Das Schneidewerk", correctLetter: "C" },
+                    { name: "2. Die Dreschtrommel", correctLetter: "D" },
+                    { name: "3. Der Schüttler", correctLetter: "B" },
+                    { name: "4. Der Korntank", correctLetter: "A" }
+                ],
+                rightDescriptions: [
+                    "A: Hierin werden die sauberen Getreidekörner gesammelt.",
+                    "B: Er siebt das Getreide und trennt die Körner von den Halmen.",
+                    "C: Es schneidet die reifen Getreidehalme auf dem Feld ab.",
+                    "D: Sie dreht sich und schlägt die Körner aus den Ähren heraus."
+                ],
+                explanation: "Super! 1→C, 2→D, 3→B und 4→A sind komplett richtig."
+            },
+            {
+                type: "open_grain",
+                title: "Station 5: Aufbau eines Getreidekorns (wie Aufgabe 5)",
+                instruction: "Trage die drei Bestandteile des Getreidekorns ein und wähle jeweils den passenden Inhalt/die Aufgabe!",
+                parts: [
+                    {
+                        label: "1. Äußere Hülle (Name & Aufgabe):",
+                        acceptedNames: ["schale", "die schale", "fruchtschale"],
+                        contentOptions: [
+                            "Schützt das Innere; enthält Vitamine und Mineralstoffe",
+                            "Bildet den größten Teil; enthält viel Stärke für Mehl",
+                            "Daraus wächst eine neue Pflanze; enthält Fette und Eiweiße"
+                        ],
+                        correctContent: 0
+                    },
+                    {
+                        label: "2. Größter Teil innen (Name & Inhalt):",
+                        acceptedNames: ["mehlkörper", "der mehlkörper", "mehlkern"],
+                        contentOptions: [
+                            "Schützt das Innere; enthält Vitamine und Mineralstoffe",
+                            "Bildet den größten Teil; enthält viel Stärke für Mehl",
+                            "Daraus wächst eine neue Pflanze; enthält Fette und Eiweiße"
+                        ],
+                        correctContent: 1
+                    },
+                    {
+                        label: "3. In einer äußeren Ecke (Name & Aufgabe):",
+                        acceptedNames: ["keimling", "der keimling", "keim"],
+                        contentOptions: [
+                            "Schützt das Innere; enthält Vitamine und Mineralstoffe",
+                            "Bildet den größten Teil; enthält viel Stärke für Mehl",
+                            "Daraus wächst eine neue Pflanze; enthält Fette und Eiweiße"
+                        ],
+                        correctContent: 2
+                    }
+                ],
+                explanation: "Hervorragend! Schale, Mehlkörper und Keimling hast du perfekt erklärt."
+            },
+            {
+                type: "open_text",
+                title: "Station 6: Expertenfrage – Zahlungsmittel (wie Aufgabe 6a)",
+                instruction: "Beantworte die Frage! Warum wurde Getreide früher oft als Zahlungsmittel verwendet? (Tipp: Denke an die Lagerung!)",
+                placeholder: "Schreibe deine Antwort hier hinein...",
+                keywords: ["haltbar", "hält", "lange", "verdirbt nicht", "lagern"],
+                explanation: "Richtig! Getreide wurde als Zahlungsmittel genutzt, weil es sehr lange haltbar war."
+            },
+            {
+                type: "open_text",
+                title: "Station 7: Expertenfrage – Vollkornmehl (wie Aufgabe 6b)",
+                instruction: "Warum ist Vollkornmehl dunkler und gesünder als weißes Mehl? Nenne den wichtigen Bestandteil des Korns, der mitgemahlen wird!",
+                placeholder: "Beim Vollkornmehl bleibt die ... erhalten.",
+                keywords: ["schale", "vitamine", "mineralstoffe", "keimling", "ganze korn"],
+                explanation: "Genau! Beim Vollkornmehl wird die Schale (mit vielen Vitaminen und Mineralstoffen) mitgemahlen."
+            },
+            {
+                type: "mc",
+                title: "Station 8: Richtig oder Falsch – Profi-Check (wie Probearbeit Aufgabe 2)",
+                instruction: "Welche der folgenden Aussagen aus der Probearbeit ist FALSCH?",
+                options: [
+                    "Hafer gehört zu den Getreidearten mit einer Rispe.",
+                    "Früher band man die geschnittenen Halme mit einem Rechen zusammen und harkte sie mit einer Sense zu Garben.",
+                    "Im Oktober oder November wird das Wintergetreide gesät.",
+                    "Die abgetrennte Schale des Korns heißt Kleie und wird oft als Tierfutter genutzt."
+                ],
+                correct: 1,
+                explanation: "Volltreffer! Mit der Sense wurde gemäht und mit dem Rechen zusammengeharkt – nicht umgekehrt!"
+            }
+        ];
+
+        // --- 3D SZENE EINRICHTEN ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 30, 95);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // Licht
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
+        dirLight.position.set(30, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        const d = 45;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        // Boden (Acker)
+        const groundGeo = new THREE.PlaneGeometry(140, 140);
+        const groundMat = new THREE.MeshLambertMaterial({ color: 0x7c5832 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grüner Rand um das Feld
+        const grassGeo = new THREE.PlaneGeometry(300, 300);
+        const grassMat = new THREE.MeshLambertMaterial({ color: 0x4d7c0f });
+        const grass = new THREE.Mesh(grassGeo, grassMat);
+        grass.rotation.x = -Math.PI / 2;
+        grass.position.y = -0.05;
+        scene.add(grass);
+
+        // Deko: Getreidehalme auf dem Feld
+        const stalkGeo = new THREE.CylinderGeometry(0.06, 0.08, 1.4, 5);
+        const stalkMat = new THREE.MeshLambertMaterial({ color: 0xeab308 });
+        const earGeo = new THREE.BoxGeometry(0.16, 0.45, 0.16);
+        const earMat = new THREE.MeshLambertMaterial({ color: 0xfde047 });
+
+        for (let i = 0; i < 450; i++) {
+            const x = (Math.random() - 0.5) * 90;
+            const z = (Math.random() - 0.5) * 90;
+            if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+
+            const wheatGroup = new THREE.Group();
+            const stalk = new THREE.Mesh(stalkGeo, stalkMat);
+            stalk.position.y = 0.7;
+            const ear = new THREE.Mesh(earGeo, earMat);
+            ear.position.y = 1.5;
+            wheatGroup.add(stalk);
+            wheatGroup.add(ear);
+            wheatGroup.position.set(x, 0, z);
+            scene.add(wheatGroup);
+        }
+
+        // --- TRAKTOR BAUEN ---
+        const tractor = new THREE.Group();
+
+        const bodyGeo = new THREE.BoxGeometry(1.6, 1.1, 2.4);
+        const redMat = new THREE.MeshLambertMaterial({ color: 0xdc2626 });
+        const body = new THREE.Mesh(bodyGeo, redMat);
+        body.position.set(0, 1.1, 0.3);
+        body.castShadow = true;
+        tractor.add(body);
+
+        const cabinGeo = new THREE.BoxGeometry(1.5, 1.3, 1.4);
+        const glassMat = new THREE.MeshLambertMaterial({ color: 0xbae6fd });
+        const cabin = new THREE.Mesh(cabinGeo, glassMat);
+        cabin.position.set(0, 2.1, -0.4);
+        cabin.castShadow = true;
+        tractor.add(cabin);
+
+        const roofGeo = new THREE.BoxGeometry(1.7, 0.2, 1.6);
+        const roof = new THREE.Mesh(roofGeo, redMat);
+        roof.position.set(0, 2.8, -0.4);
+        tractor.add(roof);
+
+        const pipeGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.0);
+        const blackMat = new THREE.MeshLambertMaterial({ color: 0x1f2937 });
+        const pipe = new THREE.Mesh(pipeGeo, blackMat);
+        pipe.position.set(0.55, 2.0, 1.0);
+        tractor.add(pipe);
+
+        function createWheel(radius, width, x, y, z) {
+            const wheelGeo = new THREE.CylinderGeometry(radius, radius, width, 16);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheel = new THREE.Mesh(wheelGeo, blackMat);
+            wheel.position.set(x, y, z);
+            wheel.castShadow = true;
+
+            const rimGeo = new THREE.CylinderGeometry(radius * 0.5, radius * 0.5, width + 0.04, 12);
+            rimGeo.rotateZ(Math.PI / 2);
+            const rimMat = new THREE.MeshLambertMaterial({ color: 0xfacc15 });
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            wheel.add(rim);
+            return wheel;
+        }
+
+        tractor.add(createWheel(0.85, 0.5, -1.0, 0.85, -0.6));
+        tractor.add(createWheel(0.85, 0.5,  1.0, 0.85, -0.6));
+        tractor.add(createWheel(0.55, 0.4, -0.95, 0.55, 1.1));
+        tractor.add(createWheel(0.55, 0.4,  0.95, 0.55, 1.1));
+
+        scene.add(tractor);
+
+        // --- STATIONEN PLATZIEREN ---
+        const stationCoords = [
+            { x: -12, z: -12 },
+            { x:  14, z: -10 },
+            { x: -18, z:  10 },
+            { x:  16, z:  15 },
+            { x:   0, z: -24 },
+            { x: -26, z:  -4 },
+            { x:  26, z:   2 },
+            { x:   2, z:  26 }
+        ];
+
+        const stations = [];
+        const beaconGeo = new THREE.CylinderGeometry(1.4, 1.4, 6, 16, 1, true);
+        const beaconMat = new THREE.MeshBasicMaterial({
+            color: 0xfacc15,
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide
+        });
+
+        const ringGeo = new THREE.RingGeometry(1.2, 1.6, 24);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide });
+
+        stationCoords.forEach((pos, index) => {
+            const group = new THREE.Group();
+            const beacon = new THREE.Mesh(beaconGeo, beaconMat.clone());
+            beacon.position.y = 3;
+            const ring = new THREE.Mesh(ringGeo, ringMat.clone());
+            ring.position.y = 0.05;
+
+            const cubeGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+            const cubeMat = new THREE.MeshLambertMaterial({ color: 0xf59e0b });
+            const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            cube.position.y = 1.8;
+
+            group.add(beacon);
+            group.add(ring);
+            group.add(cube);
+            group.position.set(pos.x, 0, pos.z);
+            scene.add(group);
+
+            stations.push({
+                mesh: group,
+                cube: cube,
+                beacon: beacon,
+                x: pos.x,
+                z: pos.z,
+                solved: false,
+                qIndex: index
+            });
+        });
+
+        // --- STEUERUNG: NUR PFEILTASTEN ---
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        let isModalOpen = false;
+        let solvedCount = 0;
+        let currentStation = null;
+
+        window.addEventListener('keydown', (e) => {
+            if (!isModalOpen && keys.hasOwnProperty(e.key)) {
+                e.preventDefault(); // Verhindert Scrollen
+                keys[e.key] = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+
+        // --- AUFGABEN-RENDERING & AUSWERTUNG ---
+        function openTask(station) {
+            isModalOpen = true;
+            currentStation = station;
+            Object.keys(keys).forEach(k => keys[k] = false);
+
+            const task = tasks[station.qIndex];
+            document.getElementById('q-title').innerText = task.title;
+            document.getElementById('q-text').innerText = task.instruction;
+            const feedback = document.getElementById('feedback');
+            feedback.innerText = "";
+            feedback.className = "";
+
+            const bodyDiv = document.getElementById('q-body');
+            bodyDiv.innerHTML = "";
+
+            if (task.type === "cloze") {
+                const wb = document.createElement('div');
+                wb.className = 'word-bank';
+                wb.innerText = task.wordBank;
+                bodyDiv.appendChild(wb);
+
+                const clozeDiv = document.createElement('div');
+                clozeDiv.className = 'cloze-text';
+                task.parts.forEach((part, i) => {
+                    clozeDiv.appendChild(document.createTextNode(part));
+                    if (i < task.answers.length) {
+                        const inp = document.createElement('input');
+                        inp.type = 'text';
+                        inp.className = 'text-input cloze-inp';
+                        inp.placeholder = "Lücke " + (i + 1);
+                        clozeDiv.appendChild(inp);
+                    }
+                });
+                bodyDiv.appendChild(clozeDiv);
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Antworten prüfen";
+                btn.onclick = () => checkCloze(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "table_match") {
+                task.rows.forEach((row, idx) => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'order-row';
+                    rowDiv.style.justifyContent = 'space-between';
+
+                    const stepLabel = document.createElement('strong');
+                    stepLabel.style.width = '130px';
+                    stepLabel.innerText = row.step + ":";
+                    rowDiv.appendChild(stepLabel);
+
+                    // Früher Select
+                    const selEarly = document.createElement('select');
+                    selEarly.className = 'match-select early-sel';
+                    selEarly.innerHTML = '<option value="">-- früher --</option>' +
+                        task.earlyOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+                    rowDiv.appendChild(selEarly);
+
+                    // Heute Select
+                    const selToday = document.createElement('select');
+                    selToday.className = 'match-select today-sel';
+                    selToday.innerHTML = '<option value="">-- heute --</option>' +
+                        task.todayOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+                    rowDiv.appendChild(selToday);
+
+                    bodyDiv.appendChild(rowDiv);
+                });
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Tabelle prüfen";
+                btn.onclick = () => checkTableMatch(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "order") {
+                task.items.forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'order-row';
+
+                    const inp = document.createElement('input');
+                    inp.type = 'number';
+                    inp.min = 1;
+                    inp.max = 5;
+                    inp.className = 'order-input';
+                    inp.placeholder = "?";
+
+                    const txt = document.createElement('div');
+                    txt.className = 'order-text';
+                    txt.innerText = item.text;
+
+                    row.appendChild(inp);
+                    row.appendChild(txt);
+                    bodyDiv.appendChild(row);
+                });
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Reihenfolge prüfen";
+                btn.onclick = () => checkOrder(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "letter_match") {
+                const containerDiv = document.createElement('div');
+                containerDiv.className = 'match-container';
+
+                const leftCol = document.createElement('div');
+                task.leftItems.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = 'match-left-row';
+                    row.innerHTML = `<span>${item.name}</span>
+                        <select class="match-select letter-sel">
+                            <option value="">?</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>`;
+                    leftCol.appendChild(row);
+                });
+
+                const rightCol = document.createElement('div');
+                rightCol.className = 'match-right-box';
+                rightCol.innerHTML = task.rightDescriptions.map(d => `<p style="margin-bottom:8px;"><strong>${d.substring(0,2)}</strong>${d.substring(2)}</p>`).join('');
+
+                containerDiv.appendChild(leftCol);
+                containerDiv.appendChild(rightCol);
+                bodyDiv.appendChild(containerDiv);
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Zuordnung prüfen";
+                btn.onclick = () => checkLetterMatch(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "open_grain") {
+                task.parts.forEach((p) => {
+                    const row = document.createElement('div');
+                    row.className = 'open-row';
+                    row.innerHTML = `<label>${p.label}</label>`;
+
+                    const flex = document.createElement('div');
+                    flex.className = 'open-inputs';
+
+                    const nameInp = document.createElement('input');
+                    nameInp.type = 'text';
+                    nameInp.className = 'grain-name-inp';
+                    nameInp.placeholder = 'Name des Bestandteils...';
+
+                    const contentSel = document.createElement('select');
+                    contentSel.className = 'match-select grain-content-sel';
+                    contentSel.style.flex = '2';
+                    contentSel.innerHTML = '<option value="-1">-- Aufgabe / Inhalt wählen --</option>' +
+                        p.contentOptions.map((opt, i) => `<option value="${i}">${opt}</option>`).join('');
+
+                    flex.appendChild(nameInp);
+                    flex.appendChild(contentSel);
+                    row.appendChild(flex);
+                    bodyDiv.appendChild(row);
+                });
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Lösung prüfen";
+                btn.onclick = () => checkOpenGrain(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "open_text") {
+                const inp = document.createElement('input');
+                inp.type = 'text';
+                inp.id = 'open-answer-inp';
+                inp.style.width = '100%';
+                inp.style.padding = '14px';
+                inp.style.fontSize = '1.15rem';
+                inp.style.border = '3px solid #d97706';
+                inp.style.borderRadius = '12px';
+                inp.placeholder = task.placeholder;
+                bodyDiv.appendChild(inp);
+
+                const btn = document.createElement('button');
+                btn.className = 'submit-btn';
+                btn.innerText = "Antwort abschicken";
+                btn.onclick = () => checkOpenText(task);
+                bodyDiv.appendChild(btn);
+
+            } else if (task.type === "mc") {
+                const grid = document.createElement('div');
+                grid.className = 'options-grid';
+                task.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => {
+                        if (idx === task.correct) {
+                            completeStation(task.explanation);
+                        } else {
+                            showError("❌ Diese Aussage stimmt! Gesucht ist die FALSCHE Aussage.");
+                        }
+                    };
+                    grid.appendChild(btn);
+                });
+                bodyDiv.appendChild(grid);
+            }
+
+            document.getElementById('quiz-modal').style.display = 'flex';
+        }
+
+        function checkCloze(task) {
+            const inputs = document.querySelectorAll('.cloze-inp');
+            let allCorrect = true;
+            inputs.forEach((inp, i) => {
+                const val = inp.value.trim().toLowerCase();
+                const expected = task.answers[i].toLowerCase();
+                if (val === expected) {
+                    inp.style.borderColor = '#16a34a';
+                    inp.style.backgroundColor = '#dcfce7';
+                } else {
+                    inp.style.borderColor = '#dc2626';
+                    inp.style.backgroundColor = '#fee2e2';
+                    allCorrect = false;
+                }
+            });
+            if (allCorrect) completeStation(task.explanation);
+            else showError("❌ Rot markierte Lücken stimmen noch nicht. Achte auch auf die Rechtschreibung!");
+        }
+
+        function checkTableMatch(task) {
+            const earlySels = document.querySelectorAll('.early-sel');
+            const todaySels = document.querySelectorAll('.today-sel');
+            let allCorrect = true;
+
+            task.rows.forEach((row, i) => {
+                if (earlySels[i].value === row.earlyCorrect) {
+                    earlySels[i].style.borderColor = '#16a34a';
+                } else {
+                    earlySels[i].style.borderColor = '#dc2626';
+                    allCorrect = false;
+                }
+                if (todaySels[i].value === row.todayCorrect) {
+                    todaySels[i].style.borderColor = '#16a34a';
+                } else {
+                    todaySels[i].style.borderColor = '#dc2626';
+                    allCorrect = false;
+                }
+            });
+            if (allCorrect) completeStation(task.explanation);
+            else showError("❌ Einige Felder in der Tabelle passen noch nicht ganz (rot umrandet).");
+        }
+
+        function checkOrder(task) {
+            const inputs = document.querySelectorAll('.order-input');
+            let allCorrect = true;
+            inputs.forEach((inp, i) => {
+                const val = parseInt(inp.value, 10);
+                if (val === task.items[i].correctNum) {
+                    inp.style.borderColor = '#16a34a';
+                    inp.style.backgroundColor = '#dcfce7';
+                } else {
+                    inp.style.borderColor = '#dc2626';
+                    inp.style.backgroundColor = '#fee2e2';
+                    allCorrect = false;
+                }
+            });
+            if (allCorrect) completeStation(task.explanation);
+            else showError("❌ Die Reihenfolge stimmt noch nicht ganz. Überlege: Womit beginnt das Getreidejahr im Herbst?");
+        }
+
+        function checkLetterMatch(task) {
+            const sels = document.querySelectorAll('.letter-sel');
+            let allCorrect = true;
+            sels.forEach((sel, i) => {
+                if (sel.value === task.leftItems[i].correctLetter) {
+                    sel.style.borderColor = '#16a34a';
+                } else {
+                    sel.style.borderColor = '#dc2626';
+                    allCorrect = false;
+                }
+            });
+            if (allCorrect) completeStation(task.explanation);
+            else showError("❌ Die rot markierten Buchstaben passen noch nicht.");
+        }
+
+        function checkOpenGrain(task) {
+            const nameInps = document.querySelectorAll('.grain-name-inp');
+            const contentSels = document.querySelectorAll('.grain-content-sel');
+            let allCorrect = true;
+
+            task.parts.forEach((p, i) => {
+                const val = nameInps[i].value.trim().toLowerCase();
+                if (p.acceptedNames.includes(val)) {
+                    nameInps[i].style.borderColor = '#16a34a';
+                    nameInps[i].style.backgroundColor = '#dcfce7';
+                } else {
+                    nameInps[i].style.borderColor = '#dc2626';
+                    nameInps[i].style.backgroundColor = '#fee2e2';
+                    allCorrect = false;
+                }
+
+                if (parseInt(contentSels[i].value, 10) === p.correctContent) {
+                    contentSels[i].style.borderColor = '#16a34a';
+                } else {
+                    contentSels[i].style.borderColor = '#dc2626';
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect) completeStation(task.explanation);
+            else showError("❌ Prüfe noch einmal die Namen (Schale, Mehlkörper, Keimling) und ihre Aufgaben!");
+        }
+
+        function checkOpenText(task) {
+            const val = document.getElementById('open-answer-inp').value.trim().toLowerCase();
+            if (val.length < 3) {
+                showError("❌ Bitte schreibe eine kurze Antwort in das Feld!");
+                return;
+            }
+            const hasKeyword = task.keywords.some(kw => val.includes(kw));
+            if (hasKeyword) {
+                completeStation(task.explanation);
+            } else {
+                showError("❌ Noch nicht ganz! Lies dir den Tipp in der Frage noch einmal genau durch.");
+            }
+        }
+
+        function showError(msg) {
+            const feedback = document.getElementById('feedback');
+            feedback.className = "wrong-text";
+            feedback.innerText = msg;
+        }
+
+        function completeStation(explanation) {
+            const feedback = document.getElementById('feedback');
+            feedback.className = "correct-text";
+            feedback.innerText = "✅ " + explanation;
+
+            if (!currentStation.solved) {
+                currentStation.solved = true;
+                solvedCount++;
+                document.getElementById('score').innerText = solvedCount;
+                currentStation.beacon.material.color.setHex(0x22c55e);
+                currentStation.cube.material.color.setHex(0x16a34a);
+            }
+
+            setTimeout(() => {
+                document.getElementById('quiz-modal').style.display = 'none';
+                isModalOpen = false;
+
+                if (solvedCount === tasks.length) {
+                    document.getElementById('win-screen').style.display = 'flex';
+                }
+            }, 2400);
+        }
+
+        // --- ANIMATIONS-SCHLEIFE ---
+        let speed = 0;
+        const maxSpeed = 0.28;
+        const turnSpeed = 0.045;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            stations.forEach(st => {
+                st.cube.rotation.y += 0.02;
+                st.cube.rotation.x += 0.01;
+            });
+
+            if (!isModalOpen) {
+                if (keys.ArrowUp) {
+                    speed = Math.min(speed + 0.015, maxSpeed);
+                } else if (keys.ArrowDown) {
+                    speed = Math.max(speed - 0.015, -maxSpeed * 0.6);
+                } else {
+                    speed *= 0.9;
+                }
+
+                if (Math.abs(speed) > 0.01) {
+                    const dir = speed > 0 ? 1 : -1;
+                    if (keys.ArrowLeft) tractor.rotation.y += turnSpeed * dir;
+                    if (keys.ArrowRight) tractor.rotation.y -= turnSpeed * dir;
+                }
+
+                tractor.position.x += Math.sin(tractor.rotation.y) * speed;
+                tractor.position.z += Math.cos(tractor.rotation.y) * speed;
+
+                tractor.position.x = Math.max(-45, Math.min(45, tractor.position.x));
+                tractor.position.z = Math.max(-45, Math.min(45, tractor.position.z));
+
+                stations.forEach(st => {
+                    if (!st.solved) {
+                        const dx = tractor.position.x - st.x;
+                        const dz = tractor.position.z - st.z;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        if (dist < 2.2) {
+                            openTask(st);
+                        }
+                    }
+                });
+            }
+
+            const camOffset = new THREE.Vector3(0, 7, -12);
+            camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), tractor.rotation.y);
+            const targetCamPos = tractor.position.clone().add(camOffset);
+            camera.position.lerp(targetCamPos, 0.1);
+            camera.lookAt(tractor.position.x, tractor.position.y + 1.5, tractor.position.z);
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
