@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import Highscores from "./pages/Highscores";
 import Admin from "./pages/Admin";
+import AdminStats from "./pages/AdminStats";
 import GameGate from "./games/GameGate";
 import HtmlGame from "./games/HtmlGame";
 import { GAMES } from "./games/catalog";
@@ -61,6 +62,7 @@ export default function App() {
         ))}
         <Route path="/highscores" element={<Highscores />} />
         <Route path="/admin" element={isAdmin ? <Admin /> : <Navigate to="/" />} />
+        <Route path="/admin/statistik" element={isAdmin ? <AdminStats /> : <Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </HashRouter>

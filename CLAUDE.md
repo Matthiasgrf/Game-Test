@@ -12,6 +12,8 @@ src/games/games.json          Liste aller Spiele – steuert Übersicht, Routen,
 src/games/catalog.ts          Typen und abgeleitete Felder (path, image, html) zu games.json
 src/games/scores.ts           saveScore / loadMyScores – Ergebnisse speichern (Tabelle game_scores)
 src/games/states.ts           loadState / saveState – Spielstand pro Spieler (Tabelle game_states)
+src/games/plays.ts            useGamePlay – meldet Spielstart + Spielzeit (Tabelle game_plays, für die Statistik)
+src/pages/AdminStats.tsx      Admin-Dashboard #/admin/statistik, Zahlen aus der DB-Funktion admin_stats
 src/games/HtmlGame.tsx        zeigt HTML-Spiele im iframe, nimmt deren Ergebnisse an
 src/games/<key>/index.tsx     React-Spiel (export default), wird automatisch als Route #/spiele/<key> geladen
 public/games/<key>/           pro Spiel: readme.md, thumbnail.jpg (900×600), bei HTML-Spielen index.html

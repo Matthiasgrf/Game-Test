@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { supabase, type Category, type Group, type Profile, type Role } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import { GAMES } from "../games/catalog";
+import AdminTabs from "./AdminTabs";
 
 // Tabellen user_groups / game_groups: Schreiben ist per RLS nur Admins erlaubt.
 const pairKey = (a: string | number, b: string | number) => `${a}|${b}`;
@@ -188,6 +189,7 @@ export default function Admin() {
 
   return (
     <main className="card">
+      <AdminTabs />
       <h2>Benutzerverwaltung</h2>
 
       <form onSubmit={onCreate} className="row wrap">
