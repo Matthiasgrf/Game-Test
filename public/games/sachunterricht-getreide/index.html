@@ -2,9 +2,10 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <script src="../shared/zoom-schutz.js"></script>
     <script src="../shared/game-test.js"></script>
+    <link rel="stylesheet" href="../shared/kit/theme.css">
     <title>3D Getreide-Abenteuer – Adaptiv (PC & Tablet/Handy)</title>
     <style>
         * {
@@ -28,9 +29,9 @@
         /* HUD oben */
         #hud {
             position: absolute;
-            top: 14px;
-            left: 14px;
-            right: 14px;
+            top: var(--gt-top);
+            left: var(--gt-left);
+            right: calc(var(--gt-bar-space) + 4px);   /* oben rechts: Leiste des Kits */
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
@@ -65,15 +66,15 @@
             font-size: 0.92rem;
             padding: 6px 12px;
         }
-        .mode-btn:hover {
-            background: #fde68a;
+        @media (hover: hover) and (pointer: fine) {
+            .mode-btn:hover { background: #fde68a; }
         }
 
         /* Touch D-Pad für Mobilgeräte */
         #touch-controls {
             display: none;
             position: absolute;
-            bottom: 22px;
+            bottom: calc(22px + env(safe-area-inset-bottom));
             left: 22px;
             right: 22px;
             justify-content: space-between;
@@ -345,7 +346,7 @@
             font-weight: bold;
             cursor: pointer;
         }
-        .btn-primary:hover { background: #15803d; }
+        @media (hover: hover) and (pointer: fine) { .btn-primary:hover { background: #15803d; } }
         .btn-tip {
             background: #e0f2fe;
             color: #075985;
@@ -391,7 +392,6 @@
 
     <!-- HUD -->
     <div id="hud">
-        <a class="hud-box home-link" href="../../#/" target="_top">🏠 Alle Spiele</a>
         <div class="hud-box" id="controls-hint">🚜 Pfeiltasten (↑ ↓ ← →) zum Fahren</div>
         <div class="hud-box">🌾 Stationen: <span id="score">0</span> / 10</div>
         <button class="mode-btn" id="mode-toggle-btn" onclick="toggleInputMode()">📱 Modus: Auto</button>
@@ -410,6 +410,18 @@
     </div>
 
     <div id="canvas-container"></div>
+
+    <!-- Start (Kit-Stil, docs/GAME_STANDARD.md) -->
+    <section class="gt-screen" data-screen="start">
+        <div class="gt-card">
+            <div class="gt-emoji" aria-hidden="true">🚜🌾</div>
+            <h1>Getreide-Abenteuer</h1>
+            <p>Fahre mit dem Traktor über das Feld und löse an <b>10 Stationen</b> Aufgaben rund ums Getreide.</p>
+            <p class="gt-small">💻 Pfeiltasten (↑ ↓ ← →) zum Fahren · 📱 Pfeile unten antippen</p>
+            <div class="gt-row"><button type="button" class="gt-btn" id="startBtn">▶ Los geht's!</button></div>
+            <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+        </div>
+    </section>
 
     <!-- Quiz Modal -->
     <div id="quiz-modal">
@@ -791,12 +803,14 @@
 
         // Game-Test: Fehlversuche und Zeit für die Bestenliste
         let fehler = 0;
-        const startZeit = Date.now();
+        let startZeit = Date.now(), pausiertSeit = 0;
         function zeigeErgebnis() {
             const sekunden = Math.min(86400, Math.round((Date.now() - startZeit) / 1000));
             const zeit = sekunden >= 60 ? `${Math.floor(sekunden / 60)} min ${sekunden % 60} s` : `${sekunden} s`;
             document.getElementById('win-stats').innerText = `Fehlversuche: ${fehler} · Zeit: ${zeit}`;
             if (window.GameTest) GameTest.reportScore({ points: fehler, seconds: sekunden });
+            gewonnen = true;
+            if (kit) { kit.setState('end'); kit.sound.gewonnen(); }
         }
 
         function checkCurrentStation() {
@@ -820,6 +834,7 @@
             if (correctCount === fields.length) {
                 fb.style.color = "#15803d";
                 fb.innerText = "🎉 Super gemacht! Alles richtig!";
+                if (kit) kit.sound.richtig();
 
                 if (!currentStation.solved) {
                     currentStation.solved = true;
@@ -838,6 +853,7 @@
                 }, 1600);
             } else {
                 if (!currentStation.solved) fehler++;
+                if (kit) kit.sound.falsch();
                 fb.style.color = "#b91c1c";
                 fb.innerText = `Du hast ${correctCount} von ${fields.length} richtig. Schau dir die roten Felder noch einmal an!`;
             }
@@ -851,6 +867,7 @@
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));   /* scharf auf iPad/iPhone */
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
@@ -1024,29 +1041,40 @@
             }
         }
 
-        let speed = 0;
-        function animate() {
-            requestAnimationFrame(animate);
+        let speed = 0, last = performance.now(), raf = 0, lastDraw = 0, paused = false;
+        let spielLaeuft = false, gewonnen = false, kit = null, quality = null;
+        function animate(now = performance.now()) {
+            raf = 0;
+            if (paused) return;                                   /* Pause: nichts zeichnen */
+            raf = requestAnimationFrame(animate);
+            const ruhig = !spielLaeuft || isModalOpen || gewonnen;
+            if (ruhig && now - lastDraw < 50) return;              /* Start, Fragen, Ende: 20 Bilder/s */
+            lastDraw = now;
+            const real = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, real);
+            last = now;
+            if (quality && !ruhig) quality.frame(real);
+            /* Bewegung pro Sekunde statt pro Bild: k = 1 bei 60 Bildern/s (wie bisher), 0,5 bei 120 Hz */
+            const k = dt * 60;
 
             stations.forEach(st => {
-                st.cube.rotation.y += 0.02;
-                st.cube.rotation.x += 0.01;
-                if (st.cooldown > 0) st.cooldown--;
+                st.cube.rotation.y += 0.02 * k;
+                st.cube.rotation.x += 0.01 * k;
+                if (st.cooldown > 0) st.cooldown = Math.max(0, st.cooldown - k);
             });
 
-            if (!isModalOpen) {
-                if (inputState.up) speed = Math.min(speed + 0.015, 0.28);
-                else if (inputState.down) speed = Math.max(speed - 0.015, -0.18);
-                else speed *= 0.9;
+            if (!isModalOpen && spielLaeuft) {
+                if (inputState.up) speed = Math.min(speed + 0.015 * k, 0.28);
+                else if (inputState.down) speed = Math.max(speed - 0.015 * k, -0.18);
+                else speed *= Math.pow(0.9, k);
 
                 if (Math.abs(speed) > 0.01) {
                     const dir = speed > 0 ? 1 : -1;
-                    if (inputState.left) tractor.rotation.y += 0.045 * dir;
-                    if (inputState.right) tractor.rotation.y -= 0.045 * dir;
+                    if (inputState.left) tractor.rotation.y += 0.045 * dir * k;
+                    if (inputState.right) tractor.rotation.y -= 0.045 * dir * k;
                 }
 
-                tractor.position.x += Math.sin(tractor.rotation.y) * speed;
-                tractor.position.z += Math.cos(tractor.rotation.y) * speed;
+                tractor.position.x += Math.sin(tractor.rotation.y) * speed * k;
+                tractor.position.z += Math.cos(tractor.rotation.y) * speed * k;
 
                 tractor.position.x = Math.max(-50, Math.min(50, tractor.position.x));
                 tractor.position.z = Math.max(-50, Math.min(50, tractor.position.z));
@@ -1064,7 +1092,7 @@
 
             const camOffset = new THREE.Vector3(0, 7.5, -12.5);
             camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), tractor.rotation.y);
-            camera.position.lerp(tractor.position.clone().add(camOffset), 0.1);
+            camera.position.lerp(tractor.position.clone().add(camOffset), 1 - Math.pow(0.9, k));
             camera.lookAt(tractor.position.x, tractor.position.y + 1.5, tractor.position.z);
 
             renderer.render(scene, camera);
@@ -1075,6 +1103,28 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        /* ---------- Start und Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild,
+           „Alle Spiele“, Pause-Fenster, automatische Pause, Klänge, Detailstufe ---------- */
+        document.getElementById('startBtn').addEventListener('click', () => {
+            spielLaeuft = true;
+            startZeit = Date.now();
+            document.querySelector('[data-screen="start"]').hidden = true;
+            if (kit) kit.setState('play');
+        });
+        import('../shared/kit/kit.js').then((m) => {
+            kit = m.startKit({
+                key: 'sachunterricht-getreide', orientation: 'any',
+                pause() { paused = true; pausiertSeit = Date.now(); },
+                resume() {
+                    paused = false; last = performance.now();
+                    if (spielLaeuft && !gewonnen) startZeit += Date.now() - pausiertSeit;   /* Pause zählt nicht zur Zeit */
+                    if (!raf) raf = requestAnimationFrame(animate);
+                },
+            });
+            quality = m.createQuality({ renderer });
+            kit.setState(gewonnen ? 'end' : spielLaeuft ? 'play' : 'menu');
+        }).catch(() => {});
 
         updateDeviceUI();
         animate();

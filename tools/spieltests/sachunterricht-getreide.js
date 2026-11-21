@@ -11,7 +11,9 @@ export default async function (t) {
     await page.goto(t.url, { waitUntil: 'load' });
     const game = await t.frame(page);
     await game.waitForFunction(() => typeof stations !== 'undefined' && stations.length === 10);
-    t.check(`${size}: „🏠 Alle Spiele“ während des Spiels`, await game.locator('#hud a[href="../../#/"][target="_top"]').isVisible());
+    t.check(`${size}: Start-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('[data-screen="start"] a[href="../../#/"][target="_top"]').isVisible());
+    await game.click('#startBtn');
+    t.check(`${size}: „🏠 Alle Spiele“ während des Spiels (Leiste des Kits)`, await game.locator('.gt-bar a[href="../../#/"][target="_top"]').isVisible());
 
     for (let i = 0; i < 10; i++) {
       await game.evaluate((i) => openQuiz(stations[i]), i);
