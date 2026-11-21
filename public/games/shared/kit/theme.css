@@ -90,7 +90,7 @@ html.gt [hidden] { display: none !important; }
 /* Schmale Handys: Vollbild nur im Pause-Fenster, damit oben Platz für die Anzeigen bleibt */
 @media (max-width: 520px) {
   :root { --gt-bar-space: 172px; }
-  .gt-bar .gt-full { display: none; }
+  .gt-icon.gt-full { display: none; }   /* auch, wenn die Knöpfe in einer eigenen Leiste des Spiels sitzen */
 }
 .gt-bar {
   position: fixed; z-index: 60; top: var(--gt-top); right: var(--gt-right);

@@ -28,7 +28,9 @@
      sound          nur für Spiele mit eigener Ton-Logik: { setMuted(m) } – wird beim Start und bei jedem
                     Umschalten mit der gemeinsamen Einstellung aufgerufen
      bar            false = keine Leiste; ein Element = Knöpfe dort hinein statt oben rechts
-     home           false = kein 🏠 in der Leiste (wenn das Spiel einen eigenen Link zeigt) */
+     home           false = kein 🏠 in der Leiste (wenn das Spiel einen eigenen Link zeigt)
+     pauseScreen    false = das Spiel zeigt in pause() ein eigenes Pause-Fenster (z. B. mit „Aufgeben“);
+                    dessen „Weiter“-Knopf ruft kit.resume() auf */
 
 import { createViewport, fitCanvas, board } from './viewport.js';
 import { createLoop } from './loop.js';
@@ -57,7 +59,7 @@ const el = (tag, attrs = {}, html = '') => {
 };
 
 export function startKit(options = {}) {
-  const { key, orientation = 'any', saveKey, pause: onPause = () => {}, resume: onResume = () => {}, sound: gameSound, bar = true, home = true } = options;
+  const { key, orientation = 'any', saveKey, pause: onPause = () => {}, resume: onResume = () => {}, sound: gameSound, bar = true, home = true, pauseScreen: ownPauseScreen = true } = options;
   if (!key) throw new Error('startKit: key fehlt');
   const root = document.documentElement;
   root.classList.add('gt');
@@ -133,11 +135,13 @@ export function startKit(options = {}) {
     pause() {
       if (state !== 'play' || paused) return;
       paused = true;
-      pauseScreen.hidden = false;
       sound.suspend();
       onPause();
       updateBar();
-      pauseScreen.querySelector('[data-gt="weiter"]').focus({ preventScroll: true, focusVisible: false });
+      if (ownPauseScreen) {
+        pauseScreen.hidden = false;
+        pauseScreen.querySelector('[data-gt="weiter"]').focus({ preventScroll: true, focusVisible: false });
+      }
     },
     resume() {
       if (!paused || orient.wrong) return;
