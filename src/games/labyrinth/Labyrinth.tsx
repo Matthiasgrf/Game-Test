@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } 
 import { Link } from "react-router-dom";
 import { DX, DY, E, N, S, W, canMove, generateMaze, idx, type Cell, type Dir, type Maze } from "./maze";
 import { isMuted, setMuted, sounds } from "./sound";
-import { supabase } from "../../lib/supabase";
+import { loadMyScores, saveScore } from "../scores";
 import { useAuth } from "../../auth/AuthProvider";
 import "./labyrinth.css";
 
@@ -92,16 +92,16 @@ export default function Labyrinth() {
   const userId = profile?.id;
   useEffect(() => {
     if (!userId) return;
-    supabase
-      .from("labyrinth_scores")
-      .select("mode, stars, seconds")
-      .eq("user_id", userId)
-      .then(({ data }) => {
+    loadMyScores("labyrinth", userId)
+      .then((rows) => {
         const b: Record<string, Best> = {};
-        for (const r of (data ?? []) as (Best & { mode: string })[])
-          if (better(r, b[r.mode])) b[r.mode] = { stars: r.stars, seconds: r.seconds };
+        for (const r of rows) {
+          const mine = { stars: r.points, seconds: r.seconds ?? 0 };
+          if (better(mine, b[r.variant])) b[r.variant] = mine;
+        }
         setBest(b);
-      });
+      })
+      .catch(() => {});
   }, [userId]);
 
   // Ref spiegelt den aktuellen Zustand, damit Tastatur-/Touch-Handler
@@ -146,12 +146,10 @@ export default function Labyrinth() {
         const record = better(mine, best[mode.id]);
         if (record) setBest((b) => ({ ...b, [mode.id]: mine }));
         setResult({ stars: total, maxStars, seconds, record });
-        // Ergebnis speichern – user_id setzt die DB per default auf auth.uid()
+        // Ergebnis speichern (Tabelle game_scores, Variante = Stufe)
         setSaveState("saving");
-        void supabase
-          .from("labyrinth_scores")
-          .insert({ mode: mode.id, stars: total, max_stars: maxStars, seconds })
-          .then(({ error }) => setSaveState(error ? "error" : "saved"));
+        void saveScore("labyrinth", { variant: mode.id, points: total, maxPoints: maxStars, seconds })
+          .then((error) => setSaveState(error ? "error" : "saved"));
         sounds.trophy();
         setPhase("finished");
       } else {

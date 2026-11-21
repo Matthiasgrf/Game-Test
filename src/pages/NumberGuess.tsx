@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { saveScore } from "../games/scores";
 
 const newSecret = () => Math.floor(Math.random() * 100) + 1;
 
@@ -27,10 +27,8 @@ export default function NumberGuess() {
     else {
       setHint(`Richtig! ${secret} in ${tries} Versuchen.`);
       setWon(true);
-      // user_id wird in der DB per default auf auth.uid() gesetzt,
-      // die RLS-Policy erlaubt nur Inserts fuer den eigenen User.
-      const { error } = await supabase.from("scores").insert({ attempts: tries });
-      setSaveMsg(error ? `Fehler beim Speichern: ${error.message}` : "Score gespeichert ✔");
+      const error = await saveScore("zahlenraten", { points: tries });
+      setSaveMsg(error ? `Fehler beim Speichern: ${error}` : "Score gespeichert ✔");
     }
   };
 

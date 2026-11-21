@@ -100,3 +100,20 @@ h2.section { margin-top: 32px; }
 }
 .chip.on { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
 .form-groups { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+.game-tile-img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
+.game-tile-body .game-tile-age + .game-tile-age { margin-left: 6px; }
+
+/* Eigenständige HTML-Spiele (src/games/HtmlGame.tsx): bildschirmfüllend über der App */
+.html-game { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 10; background: #000; }
+.html-game-toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 11;
+  max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px;
+  background: var(--success); color: #fff; font-weight: 600; box-shadow: 0 6px 18px #0004;
+}
+.html-game-toast.error { background: var(--danger); }
+
+/* Schmale Handys: Tabellen kompakter, damit nichts über den Rand ragt */
+@media (max-width: 480px) {
+  .card { padding: 16px; }
+  th, td { padding: 6px 4px; font-size: 0.9em; }
+}
