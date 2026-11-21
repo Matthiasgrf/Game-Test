@@ -14,6 +14,7 @@
      --alter "<text>"      z. B. "3. Klasse" (Standard) oder "ab 5 Jahren"
      --gruppe "<Name>"     Spiel für diese Gruppe freigeben, z. B. "Klasse-3c" (mehrfach möglich)
      --emoji "<emoji>"     Emoji für Tabs und Admin (Standard 🎲)
+     --kategorie "<Name>"  Kategorie in der Übersicht, z. B. "Mathe" (muss in der Tabelle categories stehen)
 
    Beispiel: node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c */
 import fs from 'node:fs';
@@ -25,6 +26,7 @@ const key = args.shift();
 const title = args.shift();
 let react = false, highscore = true, age = '3. Klasse', emoji = '🎲';
 const groups = [];
+let category = null;
 while (args.length) {
   const a = args.shift();
   if (a === '--react') react = true;
@@ -32,10 +34,11 @@ while (args.length) {
   else if (a === '--alter') age = args.shift();
   else if (a === '--gruppe') groups.push(args.shift());
   else if (a === '--emoji') emoji = args.shift();
+  else if (a === '--kategorie') category = args.shift();
   else { console.log(`✗ Unbekannte Option: ${a}`); process.exit(1); }
 }
 if (!key || !title || title.startsWith('--')) {
-  console.log('Aufruf: node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "<text>"] [--gruppe "<Name>"] [--emoji "<emoji>"]');
+  console.log('Aufruf: node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "<text>"] [--gruppe "<Name>"] [--emoji "<emoji>"] [--kategorie "<Name>"]');
   process.exit(1);
 }
 if (!/^[a-z0-9_-]{1,40}$/.test(key)) {
@@ -102,11 +105,15 @@ else {
   const release = groups.length
     ? `\n-- Freigabe für Gruppen (weitere später im Tab Admin)\ninsert into public.game_groups (game_key, group_id)\nselect '${key}', g.id from public.groups g\nwhere g.name in (${groups.map((n) => `'${sql(n)}'`).join(', ')})\non conflict do nothing;\n`
     : '\n-- Freigabe für Gruppen: im Tab Admin, oder hier mit --gruppe "<Name>" beim Anlegen.\n';
+  const categoryInsert = category
+    ? `\n-- Kategorie in der Übersicht (ändern im Tab Admin)\ninsert into public.game_categories (game_key, category_id)\nselect '${key}', c.id from public.categories c\nwhere c.name = '${sql(category)}'\non conflict do nothing;\n`
+    : '\n-- Kategorie in der Übersicht: im Tab Admin, oder hier mit --kategorie "<Name>" beim Anlegen.\n';
   fs.writeFileSync(file, fs.readFileSync(path.join(VORLAGE, 'migration.sql'), 'utf8')
     .split('SPIEL_KEY').join(key)
     .split('SPIEL_TITEL').join(title.replace(/\n/g, ' '))
     .split('SPIEL_MODUS').join(highscore ? 'low' : 'none')
-    .split('SPIEL_FREIGABE').join(release));
+    .split('SPIEL_FREIGABE').join(release)
+    .split('SPIEL_KATEGORIE').join(categoryInsert));
   console.log(`  neu:     ${rel(file)}`);
 }
 

@@ -7,3 +7,4 @@
 
 insert into public.games (key, highscore) values ('SPIEL_KEY', 'SPIEL_MODUS');
 SPIEL_FREIGABE
+SPIEL_KATEGORIE

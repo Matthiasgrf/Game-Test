@@ -27,3 +27,10 @@ export interface Group {
   id: number;
   name: string;
 }
+
+export interface Category {
+  id: number;
+  name: string;
+  emoji: string;
+  sort_order: number;
+}
