@@ -48,5 +48,20 @@
       "showTime": true,
       "rule": "Bestes Ergebnis je Spieler: wenigste Fehlversuche, bei Gleichstand die schnellste Zeit."
     }
+  },
+  {
+    "key": "rohr-flitzer",
+    "type": "react",
+    "title": "Rohr-Flitzer",
+    "description": "Lenke die Kackwurst durch die verstopften Abflussrohre von Haus Buchhammer bis in die Kanalisation!",
+    "age": "ab 6 Jahren",
+    "emoji": "💩🚽",
+    "color": "linear-gradient(135deg, #d8b48a, #8d6e63)",
+    "highscore": {
+      "better": "low",
+      "pointsLabel": "Sekunden",
+      "pointsIcon": "⏱",
+      "rule": "Bestes Ergebnis je Spieler: schnellste Zeit bis in die Kanalisation."
+    }
   }
 ]
