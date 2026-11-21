@@ -1,0 +1,43 @@
+/* Rohr-Flitzer */
+.rohr { max-width: 520px; }
+.rohr .presents { margin: 0 0 2px; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; }
+.rohr-hud { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0; font-variant-numeric: tabular-nums; font-size: 1.1em; }
+.rohr-hud .muted { font-size: 0.75em; }
+.rohr-stage { position: relative; }
+.rohr-stage canvas {
+  display: block; width: 100%; max-height: 75vh; object-fit: contain;
+  border-radius: 8px; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.rohr-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px;
+  align-items: center; justify-content: center; text-align: center; padding: 16px;
+  background: rgba(20, 22, 27, 0.55); color: #fff; border-radius: 8px;
+}
+.rohr-overlay .big { font-size: 1.6em; font-weight: 700; margin: 0; }
+.rohr-overlay p { margin: 0; }
+.rohr-overlay .muted { color: #d0d4da; }
+.rohr-overlay button { font-size: 1.1em; padding: 10px 18px; }
+.rohr .small { font-size: 0.85em; }
+.rohr-dpad {
+  display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 48px);
+  gap: 6px; justify-content: center; margin-top: 12px; touch-action: none;
+}
+.rohr-dpad button { font-size: 1.2em; padding: 0; user-select: none; -webkit-user-select: none; }
+.rohr-dpad-up { grid-column: 2; grid-row: 1; }
+.rohr-dpad-left { grid-column: 1; grid-row: 2; }
+.rohr-dpad-down { grid-column: 2; grid-row: 2; }
+.rohr-dpad-right { grid-column: 3; grid-row: 2; }
+
+@media (pointer: coarse) {
+  .rohr-stage canvas { max-height: 58vh; }
+  .rohr-hud .muted { display: none; }
+}
+/* Handy: Spielfeld und Steuerkreuz sollen ohne Scrollen sichtbar sein */
+@media (max-width: 600px) {
+  .rohr { padding: 14px; }
+  .rohr > p.muted:not(.presents) { font-size: 0.85em; margin: 4px 0; }
+  .rohr h2 { margin-bottom: 4px; }
+  .rohr-stage canvas { max-height: 50vh; }
+  .rohr-hud { margin: 4px 0; }
+  .rohr-dpad { margin-top: 8px; grid-template-rows: repeat(2, 44px); }
+}
