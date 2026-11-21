@@ -8,7 +8,10 @@
    Server, Highscore melden) und ob die Migrationen jedes Spiel in der Tabelle games anlegen –
    mit derselben Highscore-Art wie in games.json. */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
+import { execFileSync } from 'node:child_process';
 import { ROOT, GAMES_JSON, SRC_GAMES, PUBLIC_GAMES, dbModes, loadGames } from './lib.js';
 
 const errors = [];
@@ -80,6 +83,38 @@ function checkEntry(g, where) {
   }
 }
 
+/* Syntax prüfen (Lint ohne zusätzliche Werkzeuge): klassische Skripte mit vm.Script, ES-Module mit node --check.
+   Findet Tippfehler schon in den schnellen Checks, bevor ein Browser startet. */
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'check-'));
+process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true }));
+function checkSyntax(where, code, { module = false, file = null } = {}) {
+  try {
+    if (!module) { new vm.Script(code, { filename: where }); return; }
+    let target = file;
+    if (!target) { target = path.join(TMP, `${Math.random().toString(36).slice(2)}.mjs`); fs.writeFileSync(target, code); }
+    execFileSync(process.execPath, ['--check', target], { stdio: 'pipe' });
+  } catch (e) {
+    const text = String(e.stderr || e.message).split('\n').find((l) => /Error/.test(l)) || String(e.message).split('\n')[0];
+    err(where, `Syntaxfehler: ${text.trim()}`);
+  }
+}
+
+/* Eigene Skripte eines Spiels: inline in index.html und .js-Dateien im Ordner (ohne fertige Bibliotheken *.min.js) */
+function checkScripts(dir, html, where) {
+  let n = 0;
+  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attrs = m[1];
+    if (/\bsrc\s*=/.test(attrs) || !m[2].trim()) continue;
+    const type = (/\btype\s*=\s*["']([^"']+)["']/i.exec(attrs) || [])[1] || '';
+    if (type && !/^(module|text\/javascript|application\/javascript)$/i.test(type)) continue;
+    checkSyntax(`${where} (Skript ${++n})`, m[2], { module: type === 'module' });
+  }
+  for (const f of fs.readdirSync(dir, { recursive: true })) {
+    if (!/\.m?js$/.test(f) || /\.min\.js$/.test(f) || f.split(path.sep).includes('vendor')) continue;
+    checkSyntax(rel(path.join(dir, f)), null, { module: true, file: path.join(dir, f) });
+  }
+}
+
 function checkHtmlGame(g, dir) {
   const file = path.join(dir, 'index.html');
   const where = rel(file);
@@ -121,6 +156,7 @@ function checkHtmlGame(g, dir) {
     if (!target.startsWith(PUBLIC_GAMES)) err(where, `Pfad "${ref}" zeigt aus public/games/ heraus.`);
     else if (!fs.existsSync(target)) err(where, `Datei "${ref}" gibt es nicht.`);
   }
+  checkScripts(dir, html, where);
   return html;
 }
 
@@ -219,6 +255,10 @@ function main() {
       keyOwner[k] = g.key;
     });
   });
+
+  /* Gemeinsame Skripte (ohne Bibliotheken in vendor/) */
+  const shared = path.join(PUBLIC_GAMES, 'shared');
+  if (fs.existsSync(shared)) checkScripts(shared, '', 'public/games/shared');
 
   /* Ordner ohne Eintrag */
   for (const d of fs.readdirSync(PUBLIC_GAMES, { withFileTypes: true })) {
