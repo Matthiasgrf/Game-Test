@@ -21,8 +21,10 @@ try {
     process.exit(0);
   }
   run('node', ['tools/smoke.js', '--groesse', 'handy']);
-  if (result.durchspielen.length) run('node', ['tools/spieltest.js', result.durchspielen.join(',')]);
-  else console.log('\nKeine Durchspiel-Tests betroffen.');
+  const games = result.durchspielen.filter((k) => k !== 'vorlage');
+  if (games.length) run('node', ['tools/spieltest.js', games.join(',')]);
+  if (result.durchspielen.includes('vorlage')) run('node', ['tools/vorlage-test.js']);
+  if (!result.durchspielen.length) console.log('\nKeine Durchspiel-Tests betroffen.');
 } catch {
   process.exit(1);
 }

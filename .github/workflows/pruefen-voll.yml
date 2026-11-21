@@ -104,6 +104,27 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  vorlage:
+    name: Vorlage (neues Spiel anlegen und prüfen)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Browser installieren (nur wenn nicht im Cache)
+        run: npx playwright install --only-shell chromium
+      - name: Neues Spiel aus der Vorlage besteht alle Prüfungen
+        run: node tools/vorlage-test.js
+
   webkit:
     name: iPhone und iPad (WebKit)
     runs-on: ubuntu-latest

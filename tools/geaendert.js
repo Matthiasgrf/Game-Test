@@ -17,6 +17,7 @@
      Werkzeug, das Durchspiel-Tests einbinden (flugtest)  → die Spiele, deren Test es einbindet
      src/games/games.json                                 → Spiele mit geändertem Eintrag (+ Übersicht)
      alles andere: App (src/), shared/, Vorlage, Werkzeuge, Workflows, package.json … → alle Spiele
+   Zusätzlich: Vorlage, Kit oder neues-spiel.js geändert → "vorlage" in durchspielen (tools/vorlage-test.js).
    Ergebnis (JSON): { basis, dateien, alle, browser, spiele: [betroffene keys], durchspielen: [keys mit Test], gruende } */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -110,14 +111,16 @@ function classify(files, base) {
       all = true; browser = true; reasons.push(`${f}: betrifft alle Spiele`);
     }
   }
-  const play = all ? testKeys : testKeys.filter((k) => affected.has(k));
+  const play = (all ? testKeys : testKeys.filter((k) => affected.has(k))).filter((k) => games.has(k));
   const touched = all ? [...games] : [...games].filter((k) => affected.has(k));
-  return { all, browser, touched, play: play.filter((k) => games.has(k)), reasons };
+  /* Die Vorlage selbst prüfen, wenn sie, das Kit oder das Anlege-Werkzeug sich ändern */
+  if (files.some((f) => /^(tools\/vorlage\/|tools\/neues-spiel\.js|tools\/vorlage-test\.js|public\/games\/shared\/kit\/)/.test(f))) play.push('vorlage');
+  return { all, browser, touched, play, reasons };
 }
 
 const base = findBase();
 const allKeys = loadGames().map((g) => g.key);
-const everything = (why) => ({ basis: base.text, dateien: null, alle: true, browser: true, spiele: allKeys, durchspielen: testKeys.filter((k) => allKeys.includes(k)), gruende: [why] });
+const everything = (why) => ({ basis: base.text, dateien: null, alle: true, browser: true, spiele: allKeys, durchspielen: [...testKeys.filter((k) => allKeys.includes(k)), 'vorlage'], gruende: [why] });
 let result;
 if (!base.ref) {
   result = everything(base.text);

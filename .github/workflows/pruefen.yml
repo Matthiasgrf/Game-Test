@@ -91,7 +91,12 @@ jobs:
       - name: Browser installieren (nur wenn nicht im Cache)
         run: npx playwright install --only-shell chromium
       - name: Durchspielen
-        run: node tools/spieltest.js ${{ matrix.spiel }}
+        run: |
+          if [ "${{ matrix.spiel }}" = vorlage ]; then
+            node tools/vorlage-test.js   # neues Spiel aus der Vorlage anlegen und alles prüfen
+          else
+            node tools/spieltest.js "${{ matrix.spiel }}"
+          fi
       - name: Screenshots hochladen
         if: always()
         uses: actions/upload-artifact@v4

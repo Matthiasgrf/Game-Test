@@ -5,141 +5,60 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>SPIEL_TITEL</title>
 <style>
-/* Vorlage für ein HTML-Spiel in Game-Test: ein einfaches Quiz mit allem, was jedes Spiel braucht –
-   Start-, Spiel- und Gewinn-Bildschirm, Link „Alle Spiele“ an allen drei Stellen, Fortschritt,
-   freundliches Feedback, große Knöpfe für Touch, Ergebnis an die App melden (Highscore). */
-*{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#16324f;
-  background:linear-gradient(#69b9ee,#d6ecfb) fixed;display:flex;flex-direction:column;min-height:100%}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
-.pill{background:#fff;border-radius:999px;padding:8px 16px;font-weight:700;font-size:16px;color:inherit;
-  text-decoration:none;box-shadow:0 3px 10px rgba(22,50,79,.2)}
-main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px 14px 24px}
-.card{background:#fff;border-radius:24px;padding:24px;max-width:560px;width:100%;text-align:center;
-  box-shadow:0 8px 24px rgba(22,50,79,.25)}
-h1{margin:0 0 10px;font-size:clamp(26px,5vw,36px)}
-p{font-size:18px;line-height:1.4;margin:10px 0}
-.btn{display:block;width:100%;margin:10px 0 0;padding:14px 18px;min-height:52px;font:inherit;font-size:19px;font-weight:700;
-  color:#16324f;background:#eef7fd;border:3px solid #b9dcf5;border-radius:16px;cursor:pointer;text-decoration:none}
-.btn.main{background:#ff8a1f;border-color:#ff8a1f;color:#fff}
-.btn.right{background:#d8f5d2;border-color:#4caf50}
-.btn.wrong{background:#ffe0dc;border-color:#e57368}
-.btn:focus-visible,.pill:focus-visible{outline:4px solid #16324f;outline-offset:2px}
-#feedback{min-height:54px;font-weight:700}
-[hidden]{display:none!important}
+/* Vorlage für ein Spiel nach docs/GAME_STANDARD.md: Szene bildschirmfüllend (<canvas> in .gt-stage),
+   Anzeigen und Steuerung darüber, Fenster für Start, Frage und Ende. Aussehen, Leiste (Pause, Ton, Vollbild,
+   Alle Spiele) und Pause-Fenster kommen aus dem Kit. Eigenes Aussehen nur über die Variablen aus theme.css: */
+:root {
+  /* z. B. --gt-sky-1: #ffd8a8; --gt-primary-1: #8ce99a; --gt-primary-2: #2fb457; */
+}
 </style>
 </head>
 <body>
-<div class="bar" id="bar" hidden>
-  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
-  <span class="pill" id="progress"></span>
+<div class="gt-stage"><canvas id="szene" aria-label="Spielfeld"></canvas></div>
+
+<!-- Anzeigen über der Szene (oben links; oben rechts liegt die Leiste des Kits) -->
+<div class="gt-hud" id="hud" hidden>
+  <span class="gt-pill" id="fortschritt">⭐ 0 / 0</span>
 </div>
-<main>
-  <section class="card" id="start">
+
+<!-- Steuerung für Touch (am Computer ausgeblendet): links ◀ ▶, rechts ▲ ▼ -->
+<div class="gt-controls gt-left gt-touch-only" id="steuerung-links" hidden></div>
+<div class="gt-controls gt-right gt-touch-only" id="steuerung-rechts" hidden></div>
+
+<section class="gt-screen" data-screen="start">
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🚀⭐</div>
     <h1>SPIEL_TITEL</h1>
-    <p>TODO: Erkläre in zwei kurzen Sätzen, was zu tun ist.</p>
-    <button class="btn main" id="startBtn">▶ Los geht's!</button>
-    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
-  </section>
+    <p>TODO: In zwei kurzen Sätzen erklären, was zu tun ist.</p>
+    <p class="gt-small">💻 Pfeiltasten · 📱 Knöpfe unten oder auf einen Stern tippen</p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="start">▶ Los geht's!</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
 
-  <section class="card" id="game" hidden>
-    <h1 id="question"></h1>
-    <div id="answers"></div>
-    <p id="feedback" aria-live="polite"></p>
-    <button class="btn main" id="nextBtn" hidden>Weiter ➜</button>
-  </section>
+<section class="gt-screen" data-screen="frage" hidden>
+  <div class="gt-card" role="dialog" aria-labelledby="frage-text">
+    <h2 id="frage-text"></h2>
+    <div id="antworten"></div>
+    <p class="gt-feedback" id="rueckmeldung" aria-live="polite"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="weiter" hidden>Weiter ➜</button></div>
+  </div>
+</section>
 
-  <section class="card" id="win" hidden>
-    <div style="font-size:70px">🏆</div>
+<section class="gt-screen" data-screen="ende" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🏆</div>
     <h1>Geschafft!</h1>
-    <p>Du hast alle Fragen gelöst. Super gemacht!</p>
-    <p id="result"></p>
-    <button class="btn main" id="againBtn">🔄 Nochmal spielen</button>
-    <a class="btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
-  </section>
-</main>
+    <p>Du hast alle Sterne gesammelt. Super gemacht!</p>
+    <p id="ergebnis"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
 
-<script>
-(function () {
-  /* TODO: eigene Fragen. q = Frage, a = Antworten, r = Nummer der richtigen Antwort (ab 0),
-     e = kurze Erklärung, die nach der richtigen Antwort erscheint. */
-  var QUESTIONS = [
-    { q: 'Wie viele Tage hat eine Woche?', a: ['5', '7', '10'], r: 1, e: 'Eine Woche hat 7 Tage: von Montag bis Sonntag.' },
-    { q: 'Welche Jahreszeit kommt nach dem Winter?', a: ['Frühling', 'Herbst', 'Sommer'], r: 0, e: 'Nach dem Winter kommt der Frühling. Dann blühen die ersten Blumen.' },
-    { q: 'Was ist 6 · 4?', a: ['18', '24', '28'], r: 1, e: '6 · 4 = 24.' }
-  ];
-
-  var $ = function (id) { return document.getElementById(id); };
-  var index = 0;
-  var mistakes = 0;
-  var startedAt = 0;
-
-  /* Zugang für den Durchspiel-Test (tools/spieltests/SPIEL_KEY.js) */
-  window.SPIEL = { questions: QUESTIONS };
-
-  function show(screen) {
-    ['start', 'game', 'win'].forEach(function (id) { $(id).hidden = id !== screen; });
-    $('bar').hidden = screen !== 'game';
-  }
-
-  function start() {
-    index = 0;
-    mistakes = 0;
-    startedAt = Date.now();
-    ask();
-  }
-
-  function finish() {
-    var seconds = Math.round((Date.now() - startedAt) / 1000);
-    $('result').textContent = 'Fehlversuche: ' + mistakes + ' · Zeit: ' + seconds + ' s';
-    /* HIGHSCORE-START */
-    /* Ergebnis an Game-Test melden – erscheint in der Bestenliste (weniger Fehlversuche sind besser) */
-    if (window.GameTest) GameTest.reportScore({ points: mistakes, seconds: seconds });
-    /* HIGHSCORE-ENDE */
-    show('win');
-  }
-
-  function ask() {
-    if (index >= QUESTIONS.length) { finish(); return; }
-    var item = QUESTIONS[index];
-    $('progress').textContent = 'Frage ' + (index + 1) + ' / ' + QUESTIONS.length;
-    $('question').textContent = item.q;
-    $('feedback').textContent = '';
-    $('nextBtn').hidden = true;
-    $('answers').innerHTML = '';
-    item.a.forEach(function (text, i) {
-      var b = document.createElement('button');
-      b.className = 'btn';
-      b.textContent = text;
-      b.addEventListener('click', function () { answer(b, i === item.r, item); });
-      $('answers').appendChild(b);
-    });
-    show('game');
-  }
-
-  function answer(button, correct, item) {
-    if (correct) {
-      button.classList.add('right');
-      [].forEach.call($('answers').children, function (b) { b.disabled = true; });
-      $('feedback').textContent = '✅ Richtig! ' + item.e;
-      $('nextBtn').hidden = false;
-      $('nextBtn').focus();
-    } else {
-      mistakes++;
-      button.classList.add('wrong');
-      button.disabled = true;
-      $('feedback').textContent = '🤔 Noch nicht ganz. Versuch es noch einmal!';
-    }
-  }
-
-  $('startBtn').addEventListener('click', start);
-  $('nextBtn').addEventListener('click', function () { index++; ask(); });
-  $('againBtn').addEventListener('click', start);
-})();
-</script>
+<script type="module" src="game.js"></script>
 </body>
 </html>
