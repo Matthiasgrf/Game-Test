@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Flug über die Welt – Länder und Hauptstädte der Welt</title>
 <style>
 :root{--mw:150px;--top:max(10px,env(safe-area-inset-top))}
@@ -15,7 +16,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
 .hud{position:fixed;z-index:5;pointer-events:none}
 .hidden{display:none!important}
-#left{top:var(--top);left:10px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:calc(100vw - var(--mw) - 36px)}
+#left{top:var(--top);left:10px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:calc(100vw - var(--gt-bar-space) - 20px)}
 #mission{background:rgba(255,255,255,.93);border-radius:18px;padding:8px 14px 8px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:100%}
 #arrow{width:46px;height:46px;flex:none;transition:transform .08s linear}
 #mission .lbl{font-size:12px;opacity:.7;line-height:1}
@@ -23,7 +24,7 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe
 #mission .tgt.long{font-size:15px}
 #mission .dst{font-size:12px;opacity:.7}
 #score{background:rgba(255,255,255,.93);border-radius:14px;padding:6px 12px;font-weight:800;font-size:15px;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-#mini{top:var(--top);right:10px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid #fff;background:#3b9fd8;width:var(--mw);height:auto}
+#mini{top:calc(var(--top) + 58px);right:10px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid #fff;background:#3b9fd8;width:var(--mw);height:auto}
 .btnrow{position:fixed;z-index:6;bottom:calc(20px + env(safe-area-inset-bottom))}
 .ctl{width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,.55);border:4px solid rgba(255,255,255,.95);font-size:42px;color:#16324f;display:flex;align-items:center;justify-content:center;touch-action:none;box-shadow:0 4px 12px rgba(0,0,0,.25);font-weight:900}
 .ctl.on{background:rgba(255,200,60,.9)}
@@ -69,10 +70,8 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe
   </div>
   <div id="score" class="hidden">⭐ <span id="sc">0</span> &nbsp;·&nbsp; 🗺️ <span id="cnt">0</span>/<span id="tot">0</span> &nbsp;·&nbsp; 🏛️ <span id="bwc">0</span>/<span id="bwt">10</span></div>
   <button id="bN" class="hidden">🎲 Anderes Ziel</button>
-  <a id="bH" class="hidden" href="../../#/" target="_top">🏠 Alle Spiele</a>
 </div>
 <canvas id="mini" class="hud hidden" width="360" height="177"></canvas>
-<button id="bM" class="hidden" title="Ton an/aus">🔊</button>
 <div id="bL" class="btnrow ctl hidden">◀</div>
 <div id="bR" class="btnrow ctl hidden">▶</div>
 <div id="bB" class="btnrow ctl hidden">🚀</div>
@@ -342,7 +341,7 @@ Object.keys(GEO.g).forEach(function(code){
 var state='loading',score=0,visited={},target=null,curPin=null,lockId=null,muted=false;
 var SAVE='weltflug_v1';
 function load(){try{var s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){visited=s.visited||{};score=s.score||0;Object.keys(visited).forEach(function(k){if(!BYID[k])delete visited[k];});bwSeen={};Object.keys(s.bw||{}).forEach(function(k){if(BWBY[k])bwSeen[k]=1;});}}catch(e){}}
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({visited:visited,score:score,bw:bwSeen}));}catch(e){}}
+function save(){var d={visited:visited,score:score,bw:bwSeen};try{localStorage.setItem(SAVE,JSON.stringify(d));}catch(e){}if(window.GameTest)GameTest.saveState(d);}
 /* Game-Test: Punktestand an die Bestenliste melden (nach jedem neuen Ziel) */
 function melde(){if(window.GameTest&&score>0)GameTest.reportScore({points:score});}
 function visitedCount(){return Object.keys(visited).length;}
@@ -1037,7 +1036,6 @@ addEventListener('keyup',function(e){
 addEventListener('blur',function(){input.left=input.right=input.boost=input.slow=false;});
 $('land').addEventListener('click',function(){if(state==='fly'&&nearC)landAt(nearC);});
 function landAt(n){if(n.pin.bw)startBW(n);else startLanding(n);}
-$('bM').addEventListener('click',function(){muted=!muted;$('bM').textContent=muted?'🔇':'🔊';});
 $('bN').addEventListener('click',function(){if(state==='fly'){chooseTarget(true);refreshPins();}});
 
 var toastT=null;
@@ -1203,12 +1201,12 @@ function openQuiz(c,qs){
   showQ();
 }
 function showWin(){
-  state='win';
+  state='win';kitState();
   var ov=$('ov');ov.classList.remove('hidden');
   ov.innerHTML='<div class="card"><div style="font-size:70px">🏆</div><h1>Du bist Welt-Meister!</h1><p>Du hast alle '+NC+' Länder der Welt besucht und ihre Hauptstädte gelernt.</p><p class="stars">⭐ '+score+'</p></div>';
   var card=ov.firstChild;
   var b=document.createElement('button');b.className='btn';b.textContent='Nochmal spielen';
-  b.addEventListener('click',function(){visited={};bwSeen={};refreshBW();score=0;save();updateScore();ov.classList.add('hidden');chooseTarget(false);refreshPins();state='fly';});
+  b.addEventListener('click',function(){visited={};bwSeen={};refreshBW();score=0;save();updateScore();ov.classList.add('hidden');chooseTarget(false);refreshPins();state='fly';kitState();});
   card.appendChild(b);
   var home=document.createElement('a');home.className='btn alt';home.href='../../#/';home.target='_top';home.textContent='🏠 Alle Spiele';home.style.textDecoration='none';card.appendChild(home);
   tone([523,659,784,1047,1319]);
@@ -1233,8 +1231,8 @@ function showStart(){
   function go(reset){
     if(reset){visited={};bwSeen={};refreshBW();score=0;save();}
     ov.classList.add('hidden');
-    ['mission','score','mini','bM','bN','bH','bL','bR','bB'].forEach(function(id){$(id).classList.remove('hidden');});
-    updateScore();chooseTarget(false);refreshPins();state='fly';
+    ['mission','score','mini','bN','bL','bR','bB'].forEach(function(id){$(id).classList.remove('hidden');});
+    updateScore();chooseTarget(false);refreshPins();state='fly';kitState();
     try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.resume)ac.resume();}catch(e){}
   }
   var b=document.createElement('button');b.className='btn';b.textContent=has?'Weiterspielen ('+visitedCount()+'/'+NC+')':'Los geht’s!';
@@ -1375,12 +1373,32 @@ function drawMini(t){
   miniCtx.fillStyle='#e53935';miniCtx.fill();miniCtx.lineWidth=2;miniCtx.strokeStyle='#fff';miniCtx.stroke();miniCtx.restore();
 }
 
-function frame(){
-  requestAnimationFrame(frame);
-  var dt=Math.min(clock.getDelta(),0.05);
+function frame(now){
+  raf=0;
+  if(paused)return;                      /* Pause: kein Zeichnen, das Gerät bleibt kühl */
+  raf=requestAnimationFrame(frame);
+  /* Menü und offene Fenster (Fragen, Gewinn): die Szene lebt nur mit 20 Bildern/s weiter */
+  if(state!=='fly'&&state!=='landing'&&now&&now-lastDraw<50)return;
+  lastDraw=now||0;
+  var raw=clock.getDelta(),dt=Math.min(raw,0.05);
+  if(quality&&state==='fly')quality.frame(raw);
   update(dt,clock.elapsedTime);
   renderer.render(scene,camera);
 }
+
+/* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und
+   „Alle Spiele“, Pause-Fenster, automatische Pause im Hintergrund, Detailstufe auf schwachen Geräten.
+   Der Ton-Knopf der Leiste schaltet die gemeinsame Ton-Einstellung aller Spiele (muted). ---------- */
+var kit=null,quality=null,paused=false,raf=0,lastDraw=0;
+function kitState(){if(kit)kit.setState(state==='menu'||state==='loading'?'menu':state==='win'?'end':'play');}
+import('../shared/kit/kit.js').then(function(m){
+  kit=m.startKit({key:'weltflug',orientation:'any',
+    pause:function(){paused=true;},
+    resume:function(){paused=false;clock.getDelta();if(!raf)frame();},
+    sound:{setMuted:function(v){muted=v;}}});
+  quality=m.createQuality({renderer:renderer});
+  kitState();
+}).catch(function(){});
 
 /* ---------- Start ---------- */
 load();

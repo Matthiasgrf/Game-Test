@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Flug über Deutschland – Bundesländer und Hauptstädte</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
@@ -12,13 +13,13 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
 .hud{position:fixed;z-index:5;pointer-events:none}
 .hidden{display:none!important}
-#mission{top:max(10px,env(safe-area-inset-top));left:10px;background:rgba(255,255,255,.93);border-radius:18px;padding:8px 14px 8px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:calc(100vw - 190px)}
+#mission{top:max(10px,env(safe-area-inset-top));left:10px;background:rgba(255,255,255,.93);border-radius:18px;padding:8px 14px 8px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.2);max-width:calc(100vw - var(--gt-bar-space) - 20px)}
 #arrow{width:46px;height:46px;flex:none;transition:transform .08s linear}
 #mission .lbl{font-size:12px;opacity:.7;line-height:1}
 #mission .tgt{font-size:20px;font-weight:800;line-height:1.15}
 #mission .dst{font-size:12px;opacity:.7}
 #score{top:calc(max(10px,env(safe-area-inset-top)) + 70px);left:10px;background:rgba(255,255,255,.93);border-radius:14px;padding:6px 12px;font-weight:800;font-size:15px;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-#mini{top:max(10px,env(safe-area-inset-top));right:10px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid #fff;background:#3b9fd8;width:140px;height:auto}
+#mini{top:calc(max(10px,env(safe-area-inset-top)) + 58px);right:10px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid #fff;background:#3b9fd8;width:140px;height:auto}
 .btnrow{position:fixed;z-index:6;bottom:calc(20px + env(safe-area-inset-bottom))}
 .ctl{width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,.55);border:4px solid rgba(255,255,255,.95);font-size:42px;color:#16324f;display:flex;align-items:center;justify-content:center;touch-action:none;box-shadow:0 4px 12px rgba(0,0,0,.25);font-weight:900}
 .ctl.on{background:rgba(255,200,60,.9)}
@@ -62,8 +63,6 @@ html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe
 </div>
 <div id="score" class="hud hidden">⭐ <span id="sc">0</span> &nbsp;·&nbsp; 🗺️ <span id="cnt">0</span>/<span id="tot">0</span></div>
 <canvas id="mini" class="hud hidden" width="300" height="300"></canvas>
-<button id="bM" class="hidden" title="Ton an/aus">🔊</button>
-<a id="bH" class="hidden" href="../../#/" target="_top">🏠 Alle Spiele</a>
 <button id="bN" class="hidden">🎲 Anderes Ziel</button>
 <div id="bL" class="btnrow ctl hidden">◀</div>
 <div id="bR" class="btnrow ctl hidden">▶</div>
@@ -160,7 +159,7 @@ function drawMap(ctx,w,h,mode){
 var state='loading',score=0,visited={},target=null,curPin=null,lockId=null,muted=false;
 var SAVE='deutschlandflug_v1';
 function load(){try{var s=JSON.parse(localStorage.getItem(SAVE)||'null');if(s){visited=s.visited||{};score=s.score||0;}}catch(e){}}
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({visited:visited,score:score}));}catch(e){}}
+function save(){var d={visited:visited,score:score};try{localStorage.setItem(SAVE,JSON.stringify(d));}catch(e){}if(window.GameTest)GameTest.saveState(d);}
 /* Game-Test: Punktestand an die Bestenliste melden (nach jedem neuen Ziel) */
 function melde(){if(window.GameTest&&score>0)GameTest.reportScore({points:score});}
 function visitedCount(){return Object.keys(visited).length;}
@@ -372,7 +371,6 @@ addEventListener('keyup',function(e){
 });
 addEventListener('blur',function(){input.left=input.right=input.boost=input.slow=false;});
 $('land').addEventListener('click',function(){if(state==='fly'&&nearC)startLanding(nearC);});
-$('bM').addEventListener('click',function(){muted=!muted;$('bM').textContent=muted?'🔇':'🔊';});
 $('bN').addEventListener('click',function(){chooseTarget(true);refreshPins();});
 
 var toastT=null;
@@ -595,12 +593,12 @@ function openQuiz(c,qs){
 }
 function homeBtn(card){var home=document.createElement('a');home.className='btn alt';home.href='../../#/';home.target='_top';home.textContent='🏠 Alle Spiele';card.appendChild(home);}
 function showWin(){
-  state='win';
+  state='win';kitState();
   var ov=$('ov');ov.classList.remove('hidden');
   ov.innerHTML='<div class="card"><div style="font-size:70px">🏆</div><h1>Du bist Deutschland-Profi!</h1><p>Du hast alle '+NC+' Bundesländer besucht und ihre Flaggen und Hauptstädte gelernt.</p><p class="stars">⭐ '+score+'</p></div>';
   var card=ov.firstChild;
   var b=document.createElement('button');b.className='btn';b.textContent='Nochmal spielen';
-  b.addEventListener('click',function(){visited={};score=0;save();updateScore();ov.classList.add('hidden');chooseTarget(false);refreshPins();state='fly';});
+  b.addEventListener('click',function(){visited={};score=0;save();updateScore();ov.classList.add('hidden');chooseTarget(false);refreshPins();state='fly';kitState();});
   card.appendChild(b);
   homeBtn(card);
   tone([523,659,784,1047,1319]);
@@ -623,8 +621,8 @@ function showStart(){
   function go(reset){
     if(reset){visited={};score=0;save();}
     ov.classList.add('hidden');
-    ['mission','score','mini','bM','bN','bH','bL','bR','bB'].forEach(function(id){$(id).classList.remove('hidden');});
-    updateScore();chooseTarget(false);refreshPins();state='fly';
+    ['mission','score','mini','bN','bL','bR','bB'].forEach(function(id){$(id).classList.remove('hidden');});
+    updateScore();chooseTarget(false);refreshPins();state='fly';kitState();
     try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.resume)ac.resume();}catch(e){}
   }
   var b=document.createElement('button');b.className='btn';b.textContent=has?'Weiterspielen ('+visitedCount()+'/'+NC+')':'Los geht’s!';
@@ -735,15 +733,35 @@ function drawMini(t){
   miniCtx.fillStyle='#e53935';miniCtx.fill();miniCtx.lineWidth=2;miniCtx.strokeStyle='#fff';miniCtx.stroke();miniCtx.restore();
 }
 
-function frame(){
-  requestAnimationFrame(frame);
-  var dt=Math.min(clock.getDelta(),0.05);
+function frame(now){
+  raf=0;
+  if(paused)return;                      /* Pause: kein Zeichnen, das Gerät bleibt kühl */
+  raf=requestAnimationFrame(frame);
+  /* Menü und offene Fenster (Fragen, Gewinn): die Szene lebt nur mit 20 Bildern/s weiter */
+  if(state!=='fly'&&state!=='landing'&&now&&now-lastDraw<50)return;
+  lastDraw=now||0;
+  var raw=clock.getDelta(),dt=Math.min(raw,0.05);
+  if(quality&&state==='fly')quality.frame(raw);
   update(dt,clock.elapsedTime);
   renderer.render(scene,camera);
 }
 
 /* Für Tests */
 window.__dfl={C:C,P:P,flagURL:flagURL,startLanding:startLanding,get state(){return state;}};
+
+/* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und
+   „Alle Spiele“, Pause-Fenster, automatische Pause im Hintergrund, Detailstufe auf schwachen Geräten.
+   Der Ton-Knopf der Leiste schaltet die gemeinsame Ton-Einstellung aller Spiele (muted). ---------- */
+var kit=null,quality=null,paused=false,raf=0,lastDraw=0;
+function kitState(){if(kit)kit.setState(state==='menu'||state==='loading'?'menu':state==='win'?'end':'play');}
+import('../shared/kit/kit.js').then(function(m){
+  kit=m.startKit({key:'deutschlandflug',orientation:'any',
+    pause:function(){paused=true;},
+    resume:function(){paused=false;clock.getDelta();if(!raf)frame();},
+    sound:{setMuted:function(v){muted=v;}}});
+  quality=m.createQuality({renderer:renderer});
+  kitState();
+}).catch(function(){});
 
 /* ---------- Start ---------- */
 load();
