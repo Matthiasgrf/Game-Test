@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
+<title>Flatter, der Schmetterling</title>
+<style>
+/* Flatter, der Schmetterling – 3D-Blumenwiese (Three.js) mit Anzeigen und Steuerung darüber,
+   Fenster für Start, Tier-Memory, Labyrinth, Aufgabe geschafft und Ende. Aussehen aus dem Kit (theme.css). */
+:root {
+  --gt-sky-1: #8fd3ff; --gt-sky-2: #fdf0ff;
+  --gt-primary-1: #ff9ad5; --gt-primary-2: #e64ea6;
+  --gt-secondary-1: #8fc9ff; --gt-secondary-2: #4d8fe0;
+  --gt-accent: #ff6fb5;
+  --gt-active: rgba(255, 140, 200, .9);
+}
+#szene { position: absolute; inset: 0; }
+
+/* Anzeigen */
+.gt-hud { flex-wrap: nowrap; }
+.gt-pill { font-size: 17px; padding: 7px 12px; }
+@media (max-width: 520px) { html #hinweis { font-size: 16px; } #hud .gt-pill { font-size: 15px; padding: 6px 9px; } #hud { gap: 5px; } }
+#hud-fuchs { background: #ffe3c4; }
+#kompass { position: fixed; z-index: 50; left: 50%; bottom: calc(var(--gt-bottom) + 6px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; pointer-events: none; }
+#kompass-pfeil { display: inline-block; font-size: 22px; line-height: 1; color: var(--gt-primary-2); transition: transform .1s linear; }
+#hinweis { position: fixed; z-index: 50; left: 50%; top: calc(var(--gt-top) + 70px); transform: translateX(-50%); max-width: calc(100% - 40px);
+  padding: 10px 18px; border-radius: 16px; background: rgba(255, 255, 255, .94); box-shadow: var(--gt-shadow);
+  font-size: 19px; font-weight: 800; text-align: center; pointer-events: none; opacity: 0; transition: opacity .3s; }
+#hinweis.zeigen { opacity: 1; }
+#punkt-plus { position: fixed; z-index: 51; left: 50%; top: 44%; transform: translateX(-50%); font-size: 26px; font-weight: 900;
+  color: #fff; text-shadow: 0 2px 6px rgba(150, 0, 90, .7); pointer-events: none; opacity: 0; }
+#punkt-plus.zeigen { animation: plus .9s ease-out; }
+@keyframes plus { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.8); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -40px) scale(1.15); } }
+
+/* Steuerknüppel (links) und Schnapp-Knopf (rechts), nur auf Touch-Geräten */
+#joy { width: 136px; height: 136px; border-radius: 50%; position: relative; pointer-events: auto; touch-action: none;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .7), rgba(255, 220, 245, .45));
+  border: 4px solid rgba(255, 255, 255, .95); box-shadow: 0 6px 14px rgba(0, 0, 0, .25); }
+#joy::before { content: "▲"; position: absolute; top: 6px; left: 0; right: 0; text-align: center; color: var(--gt-primary-2); font-size: 15px; }
+#joy-knopf { position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffd1ec, var(--gt-primary-2)); border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .3); pointer-events: none; }
+#schnapp { width: 112px; height: 112px; flex-direction: column; font-size: 16px; line-height: 1.1; }
+#schnapp span { font-size: 40px; }
+
+/* Fenster */
+.gt-card .punkte-liste { text-align: left; display: inline-block; margin: 4px 0; font-size: 17px; line-height: 1.5; }
+.gt-card .gross { font-size: 26px; font-weight: 900; color: var(--gt-primary-2); }
+
+/* Tier-Memory: 5 × 4 Karten (quer) bzw. 4 × 5 (hoch) */
+#memory .gt-card { max-width: 820px; padding: 10px 12px; width: auto; }
+.mem-kopf { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; margin-bottom: 8px; }
+.mem-kopf h2 { margin: 0; font-size: 21px; }
+#mem-raster { display: grid; gap: var(--mem-gap, 8px); grid-template-columns: repeat(var(--mem-cols, 5), var(--mem-w, 80px)); justify-content: center; perspective: 800px; }
+.mem-karte { width: var(--mem-w, 80px); height: var(--mem-w, 80px); padding: 0; border: 0; background: none; cursor: pointer; position: relative; touch-action: manipulation; }
+.mem-innen { position: absolute; inset: 0; transition: transform .35s; transform-style: preserve-3d; }
+.mem-karte.offen .mem-innen, .mem-karte.fertig .mem-innen { transform: rotateY(180deg); }
+.mem-seite { position: absolute; inset: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(80, 0, 60, .25); }
+.mem-ruecken { background: radial-gradient(circle at 30% 25%, #ffc4e6, #c86bfa 60%, #7a4bd6); font-size: calc(var(--mem-w, 80px) * .45); }
+.mem-vorne { transform: rotateY(180deg); background: linear-gradient(160deg, #fffdf2, #e2f6ff); font-size: calc(var(--mem-w, 80px) * .62); }
+.mem-karte.fertig .mem-vorne { background: linear-gradient(160deg, #e9ffe3, #b9f3c8); border-color: var(--gt-good); }
+.mem-karte:focus-visible { outline: 4px solid var(--gt-ink); outline-offset: 2px; border-radius: 14px; }
+
+/* Labyrinth: Szene füllt den Bildschirm, das Labyrinth liegt mittig darin */
+/* unter der Leiste des Kits (z-index 60): Pause und Alle Spiele bleiben im Labyrinth erreichbar */
+#labyrinth { padding: 0; background: none; z-index: 56; }
+#lab-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+#lab-kopf { position: fixed; z-index: 57; top: var(--gt-top); left: var(--gt-left); max-width: calc(100% - var(--gt-bar-space) - 20px); }
+#lab-steuer { z-index: 57; }
+#lab-steuer .gt-ctl { width: 64px; height: 64px; font-size: 30px; }
+.lab-kreuz { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); gap: 6px; pointer-events: none; }
+.lab-kreuz .gt-ctl:nth-child(1) { grid-column: 2; grid-row: 1; }
+.lab-kreuz .gt-ctl:nth-child(2) { grid-column: 1; grid-row: 2; }
+.lab-kreuz .gt-ctl:nth-child(3) { grid-column: 2; grid-row: 2; }
+.lab-kreuz .gt-ctl:nth-child(4) { grid-column: 3; grid-row: 2; }
+.gt-screen[data-screen="labyrinth"] { animation: none; }
+#fehler3d { color: var(--gt-bad); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="gt-stage" id="buehne"><canvas id="szene" aria-label="Blumenwiese mit dem Schmetterling"></canvas></div>
+
+<!-- Anzeigen über der Szene (oben links; oben rechts liegt die Leiste des Kits) -->
+<div class="gt-hud" id="hud" hidden>
+  <span class="gt-pill" id="hud-punkte" aria-label="Punkte">⭐ 0</span>
+  <span class="gt-pill" id="hud-herzen" aria-label="Herzen">❤️ 3</span>
+  <span class="gt-pill" id="hud-aufgaben" aria-label="Zauberblumen">🌸 0/4</span>
+  <span class="gt-pill" id="hud-fuchs" hidden>🦊 60</span>
+</div>
+<div class="gt-pill" id="kompass" hidden><span id="kompass-pfeil">⬆</span><span id="kompass-text">🌸</span></div>
+<div id="hinweis" role="status" aria-live="polite"></div>
+<div id="punkt-plus" aria-hidden="true"></div>
+
+<!-- Steuerung für Touch (am Computer ausgeblendet) -->
+<div class="gt-controls gt-left gt-touch-only" id="steuerung-links" hidden>
+  <div id="joy" role="application" aria-label="Steuerknüppel zum Fliegen"><div id="joy-knopf"></div></div>
+</div>
+<div class="gt-controls gt-right gt-touch-only" id="steuerung-rechts" hidden>
+  <button type="button" class="gt-ctl" id="schnapp" aria-label="Schnappen"><span>😋</span>Schnapp!</button>
+</div>
+
+<section class="gt-screen" data-screen="start">
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🦋🌸🦄</div>
+    <h1>Flatter, der Schmetterling</h1>
+    <p>Flieg über die Blumenwiese. Sammle Münzen und flieg durch die Herzen.</p>
+    <p>Die Quallen kannst du schnappen. 😋 Ein Einhorn schickt dir den Fuchs als Helfer.</p>
+    <p>In den 4 Zauberblumen warten Tier-Memory und Labyrinthe auf dich.</p>
+    <p class="gt-small" id="start-steuerung">💻 Pfeiltasten: fliegen · Leertaste: schnappen</p>
+    <p class="gt-small" id="fehler3d" hidden>Dein Gerät kann die 3D-Wiese leider nicht zeigen.</p>
+    <p class="gt-small" id="rekord" hidden></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="start">▶ Los geht's!</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="memory" id="memory" hidden>
+  <div class="gt-card" role="dialog" aria-labelledby="mem-titel">
+    <div class="mem-kopf">
+      <h2 id="mem-titel">🃏 Tier-Memory</h2>
+      <span class="gt-pill" id="mem-paare">Paare 0/10</span>
+      <span class="gt-pill" id="mem-zuege">Züge 0</span>
+    </div>
+    <div id="mem-raster"></div>
+    <p class="gt-feedback" id="mem-rueckmeldung" aria-live="polite">Finde immer zwei gleiche Tiere!</p>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="labyrinth" id="labyrinth" hidden>
+  <canvas id="lab-canvas" aria-label="Labyrinth: Bring den Schmetterling zur Blume"></canvas>
+  <div class="gt-hud" id="lab-kopf"><span class="gt-pill">🌀 Flieg zur Blume 🌷</span><span class="gt-pill" id="lab-schritte">Schritte 0</span></div>
+  <div class="gt-controls gt-right gt-touch-only" id="lab-steuer"><div class="lab-kreuz" id="lab-kreuz"></div></div>
+</section>
+
+<section class="gt-screen" data-screen="geschafft" hidden>
+  <div class="gt-card" role="dialog" aria-labelledby="geschafft-titel">
+    <div class="gt-emoji" aria-hidden="true" id="geschafft-emoji">🌟</div>
+    <h2 id="geschafft-titel">Super gemacht!</h2>
+    <p id="geschafft-text"></p>
+    <p class="gross" id="geschafft-punkte"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="weiter">Weiter fliegen ➜</button></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="ende" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🏆🦋</div>
+    <h1>Geschafft!</h1>
+    <p>Du hast alle 4 Zauberblumen gelöst. Super gemacht!</p>
+    <p class="gross" id="ergebnis"></p>
+    <div class="punkte-liste" id="ergebnis-liste"></div>
+    <p class="gt-small" id="ergebnis-zeit"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<script src="../shared/vendor/three-r128.min.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
