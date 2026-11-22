@@ -30,7 +30,9 @@
      bar            false = keine Leiste; ein Element = Knöpfe dort hinein statt oben rechts
      home           false = kein 🏠 in der Leiste (wenn das Spiel einen eigenen Link zeigt)
      pauseScreen    false = das Spiel zeigt in pause() ein eigenes Pause-Fenster (z. B. mit „Aufgeben“);
-                    dessen „Weiter“-Knopf ruft kit.resume() auf */
+                    dessen „Weiter“-Knopf ruft kit.resume() auf
+     pauseButtons   weitere Knöpfe im Pause-Fenster, z. B. [{ label: '↩ Andere Stufe', action: () => … }]:
+                    ein Klick setzt das Spiel fort (resume) und ruft dann action() auf */
 
 import { createViewport, fitCanvas, board } from './viewport.js';
 import { createLoop } from './loop.js';
@@ -59,7 +61,7 @@ const el = (tag, attrs = {}, html = '') => {
 };
 
 export function startKit(options = {}) {
-  const { key, orientation = 'any', saveKey, pause: onPause = () => {}, resume: onResume = () => {}, sound: gameSound, bar = true, home = true, pauseScreen: ownPauseScreen = true } = options;
+  const { key, orientation = 'any', saveKey, pause: onPause = () => {}, resume: onResume = () => {}, sound: gameSound, bar = true, home = true, pauseScreen: ownPauseScreen = true, pauseButtons = [] } = options;
   if (!key) throw new Error('startKit: key fehlt');
   const root = document.documentElement;
   root.classList.add('gt');
@@ -95,6 +97,7 @@ export function startKit(options = {}) {
       <div class="gt-row">
         <button type="button" class="gt-btn" data-gt="weiter">▶ Weiter</button>
       </div>
+      <div class="gt-row" data-gt="extra"></div>
       <div class="gt-row">
         <button type="button" class="gt-btn gt-alt" data-gt="ton"></button>
         ${fullscreen.available ? `<button type="button" class="gt-btn gt-alt" data-gt="vollbild">${ICON.full} Vollbild</button>` : ''}
@@ -105,6 +108,13 @@ export function startKit(options = {}) {
   pauseScreen.querySelector('[data-gt="weiter"]').addEventListener('click', () => api.resume());
   pauseScreen.querySelector('[data-gt="ton"]').addEventListener('click', () => sound.toggle());
   pauseScreen.querySelector('[data-gt="vollbild"]')?.addEventListener('click', () => fullscreen.toggle());
+  const extraRow = pauseScreen.querySelector('[data-gt="extra"]');
+  extraRow.hidden = !pauseButtons.length;
+  for (const { label, action } of pauseButtons) {
+    const b = extraRow.appendChild(el('button', { type: 'button', class: 'gt-btn gt-alt' }));
+    b.textContent = label;
+    b.addEventListener('click', () => { api.resume(); action(); });
+  }
 
   function updateSoundLabels() {
     const label = sound.muted ? '🔇' : '🔊';
