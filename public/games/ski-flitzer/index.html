@@ -27,6 +27,15 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#87CEEB;
 #timeBox.hurry{border-color:#dc2626;color:#b91c1c;animation:pulse .5s infinite alternate}
 @keyframes pulse{to{transform:scale(1.08)}}
 button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
+#restartBtn{min-height:52px;min-width:52px;padding:6px 14px;font-size:1.15rem}
+#restartBtn:active{transform:scale(.94)}
+@media (hover:hover) and (pointer:fine){#restartBtn:hover{background:#e0f2fe}}
+@media (max-width:520px){#restartBtn .lbl{display:none}#restartBtn{padding:6px 10px}
+  .hud-box.big{min-width:0;font-size:1.1rem;padding:6px 10px}#hud,.hud-group{gap:6px}}
+#turboBox{position:absolute;left:50%;top:calc(76px + env(safe-area-inset-top));transform:translateX(-50%);z-index:6;
+  pointer-events:none;border-color:#15803d;color:#166534;background:rgba(220,252,231,.95);font-size:1.2rem;
+  animation:turbo .4s infinite alternate}
+@keyframes turbo{to{transform:translateX(-50%) scale(1.08)}}
 
 /* Touch-Steuerung */
 #touch{position:absolute;left:16px;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));display:flex;
@@ -74,8 +83,10 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   <div class="hud-group">
     <div class="hud-box big" id="timeBox">⏱ <span id="time">40</span></div>
     <div class="hud-box big">⭐ <span id="points">0</span></div>
+    <button type="button" class="hud-box" id="restartBtn" aria-label="Neu starten" title="Neu starten (R)">🔄<span class="lbl"> Neustart</span></button>
   </div>
 </div>
+<div class="hud-box" id="turboBox" hidden>🌲 Zirben-Turbo! ×2</div>
 
 <div id="touch" hidden>
   <button class="steer-btn" id="btnLeft" aria-label="links">◀</button>
@@ -91,6 +102,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     <p>Die Kackwurst saust auf Skiern den Berg hinunter! Du hast <b>40 Sekunden</b>.
       Sammle so viel ein, wie du kannst.</p>
     <div class="legend" id="legend"></div>
+    <p>🌲 Der <b>Zirbenschnaps</b> gibt dir einen Turbo: 3 Sekunden lang schneller und doppelte Punkte!</p>
     <p>⛄ Schneemänner und Strohballen bremsen dich. Im Tiefschnee neben der Piste wirst du langsam.</p>
     <p class="hint" id="controlsHint"></p>
     <button class="btn main" id="startBtn">▶ Los geht's!</button>
@@ -136,6 +148,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     { id: 'kaiserschmarrn', name: 'Kaiserschmarrn', emoji: '🥞', pts: 20, w: 2 },
     { id: 'groestl', name: 'Tiroler Gröstl', emoji: '🍳', pts: 20, w: 2 },
     { id: 'schnitzel', name: 'Wiener Schnitzel', emoji: '🥩', pts: 25, w: 2 },
+    { id: 'zirbe', name: 'Zirbenschnaps', emoji: '🥃', pts: 25, w: 1.6, turbo: true },
     { id: 'sachertorte', name: 'Sachertorte', emoji: '🍰', pts: 30, w: 1 }
   ];
   var ITEM_BY_ID = {};
@@ -587,6 +600,27 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       var white = part(g, new THREE.CylinderGeometry(0.3, 0.3, 0.04, 14), 0xffffff, 0, 0.18, 0); white.scale.z = 0.85;
       var yolk = part(g, new THREE.SphereGeometry(0.13, 10, 6), 0xf59e0b, 0, 0.21, 0); yolk.scale.y = 0.6;
     },
+    zirbe: function (g) {
+      /* Flasche mit rotbraunem Zirbenschnaps und Zirbenzapfen darin, daneben ein Stamperl */
+      var glass = { transparent: true, opacity: 0.6 };
+      part(g, new THREE.CylinderGeometry(0.3, 0.32, 0.9, 16), 0x9cc9b4, 0, 0.45, 0, 0, 0, 0, glass);
+      part(g, new THREE.CylinderGeometry(0.27, 0.29, 0.66, 16), 0xa33a12, 0, 0.35, 0, 0, 0, 0, { transparent: true, opacity: 0.85 });
+      part(g, new THREE.CylinderGeometry(0.1, 0.28, 0.25, 16), 0x9cc9b4, 0, 1.02, 0, 0, 0, 0, glass);
+      part(g, new THREE.CylinderGeometry(0.09, 0.09, 0.28, 12), 0x9cc9b4, 0, 1.25, 0, 0, 0, 0, glass);
+      part(g, new THREE.CylinderGeometry(0.1, 0.08, 0.16, 10), 0x92400e, 0, 1.45, 0);
+      var cone = new THREE.Group();
+      cone.position.set(0, 0.45, 0);
+      for (var i = 0; i < 4; i++) {
+        var sc = part(cone, new THREE.SphereGeometry(0.17 - i * 0.03, 8, 6), i % 2 ? 0x7c2d12 : 0x9a3412, 0, -0.15 + i * 0.12, 0);
+        sc.scale.y = 0.7;
+      }
+      g.add(cone);
+      var label = part(g, new THREE.CylinderGeometry(0.315, 0.335, 0.22, 16, 1, true), 0x166534, 0, 0.55, 0);
+      label.material = label.material.clone(); label.material.side = THREE.DoubleSide;
+      part(g, new THREE.ConeGeometry(0.08, 0.16, 6), 0xbbf7d0, 0, 0.56, 0.33, Math.PI / 2, 0, 0);
+      part(g, new THREE.CylinderGeometry(0.15, 0.12, 0.26, 12), 0x9cc9b4, 0.55, 0.13, 0.1, 0, 0, 0, glass);
+      part(g, new THREE.CylinderGeometry(0.13, 0.11, 0.16, 12), 0xa33a12, 0.55, 0.09, 0.1, 0, 0, 0, { transparent: true, opacity: 0.85 });
+    },
     sachertorte: function (g) {
       plate(g);
       part(g, new THREE.CylinderGeometry(0.6, 0.6, 0.45, 12, 1, false, 0, 1.0), 0x3b1d0e, 0, 0.28, -0.25);
@@ -598,7 +632,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   ITEMS.forEach(function (it) {
     var g = new THREE.Group(), inner = new THREE.Group();
     BUILD[it.id](inner);
-    inner.scale.setScalar(1.6);
+    inner.scale.setScalar(it.id === 'zirbe' ? 2.1 : 1.6);   // die Flasche ist schmal – etwas größer, damit man sie erkennt
     g.add(inner);
     var sh = new THREE.Mesh(new THREE.CircleGeometry(0.8, 14), shadow.material);
     sh.rotation.x = -Math.PI / 2;
@@ -759,6 +793,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   var phase = 'menu';           // menu, countdown, play, finish, end
   var timeLeft = DURATION, countdown = 0, finishTimer = 0;
   var speed = 0, lat = 0, latV = 0, crashTimer = 0, safeTimer = 0;   // lat = Abstand zur Pistenmitte (Welt-x)
+  var TURBO_TIME = 3, turboTimer = 0;                                   // Zirben-Turbo: schneller, doppelte Punkte
   var points = 0, counts = {}, collected = 0, crashes = 0;
   var camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 
@@ -766,7 +801,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     player.position.set(cx(0), height(cx(0), 0), 0);
     player.rotation.set(0, 0, 0);
     body.rotation.set(0, 0, 0);
-    speed = 0; lat = 0; latV = 0; crashTimer = 0; safeTimer = 0;
+    speed = 0; lat = 0; latV = 0; crashTimer = 0; safeTimer = 0; turboTimer = 0;
   }
   function start() {
     ensureAudio();
@@ -795,6 +830,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     $('time').textContent = Math.ceil(timeLeft);
     $('points').textContent = points;
     $('timeBox').classList.toggle('hurry', phase === 'play' && timeLeft <= 5);
+    $('turboBox').hidden = !(turboTimer > 0 && phase === 'play');
   }
   function popup(text, bad) {
     var v = player.position.clone(); v.y += 2.2; v.project(camera);
@@ -808,17 +844,24 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   }
 
   function collect(o) {
-    var it = o.data.item;
+    var it = o.data.item, pts = turboTimer > 0 ? it.pts * 2 : it.pts;
     o.gone = true;
-    points += it.pts;
+    points += pts;
     collected++;
     counts[it.id] = (counts[it.id] || 0) + 1;
-    popup('+' + it.pts + ' ' + it.emoji + ' ' + it.name);
-    tone(500 + it.pts * 18, 0.18, 'triangle', 0.14, 900 + it.pts * 25);
+    if (it.turbo) {
+      turboTimer = TURBO_TIME;
+      popup('+' + pts + ' ' + it.emoji + ' Zirben-Turbo!');
+      tone(440, 0.12, 'square', 0.1); setTimeout(function () { tone(660, 0.12, 'square', 0.1); }, 110); setTimeout(function () { tone(990, 0.25, 'square', 0.1); }, 220);
+    } else {
+      popup('+' + pts + ' ' + it.emoji + ' ' + it.name + (pts > it.pts ? ' ×2' : ''));
+      tone(500 + it.pts * 18, 0.18, 'triangle', 0.14, 900 + it.pts * 25);
+    }
     updateHud();
   }
   function crash() {
     crashes++;
+    turboTimer = 0;
     crashTimer = 0.9;
     safeTimer = 2.0;
     speed = Math.min(speed, 4);
@@ -880,6 +923,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
     if (phase === 'play' || phase === 'finish') {
       var offPiste = Math.abs(lat) > PW;
       var target = phase === 'finish' ? 0 : offPiste ? 9 : Math.min(27, 15 + (DURATION - timeLeft) * 0.35);
+      if (turboTimer > 0 && phase === 'play') { turboTimer -= dt; target += 9; safeTimer = Math.max(safeTimer, 0.1); }
       if (crashTimer > 0) { crashTimer -= dt; target = 3; }
       speed += (target - speed) * Math.min(1, dt * (phase === 'finish' ? 2.5 : target < speed ? 2 : 0.7));
       // Seitlich: Lenken ändert nur den Abstand zur Pistenmitte, die Kurven fährt die Wurst von selbst mit.
@@ -902,6 +946,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       body.rotation.x = -0.12 - speed * 0.006;
       body.rotation.y = crashTimer > 0 ? (0.9 - crashTimer) * Math.PI * 2.2 : 0;
       body.userData.tail.rotation.y = Math.sin(performance.now() / 90) * 0.4;
+      if (turboTimer > 0) emitSpray(2, (Math.random() - 0.5) * 2);
       if (speed > 6 && (Math.abs(input) > 0.5 || offPiste || phase === 'finish') && Math.random() < 0.7) emitSpray(1, input || (Math.random() - 0.5));
 
       // Einsammeln und Zusammenstöße
@@ -936,12 +981,13 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       wantLook.set(p.x, p.y + 0.9, p.z);
     } else {
       // von hinten, mit gleichem Abstand zur Pistenmitte wie die Wurst (die Piste macht Kurven)
-      var portrait = window.innerWidth < window.innerHeight, behind = portrait ? 6 : 8.5;
+      var portrait = window.innerWidth < window.innerHeight, behind = portrait ? 6.5 : 8.5;
       var off = p.x - cx(p.z), cz = p.z - behind, follow = portrait ? 1 : 0.75, camX = cx(cz) + off * follow;
-      var camY = Math.max(height(camX, cz), p.y + behind * SLOPE) + (portrait ? 3.3 : 4.6);
+      var camY = Math.max(height(camX, cz), p.y + behind * SLOPE) + (portrait ? 5.0 : 4.6);
       wantPos.set(camX, camY, cz);
-      var lz = p.z + 12;
-      wantLook.set(cx(lz) + off * (portrait ? 1 : 0.6), height(cx(lz), lz) + (portrait ? 2.2 : 1.2), lz);
+      // Hochkant: Blick weiter nach vorne – die Wurst sitzt im unteren Drittel, oben sieht man, was kommt
+      var lz = p.z + (portrait ? 18 : 12);
+      wantLook.set(cx(lz) + off * (portrait ? 1 : 0.6), height(cx(lz), lz) + (portrait ? 3.0 : 1.2), lz);
     }
     var f = instant ? 1 : Math.min(1, dt * 4);
     camPos.lerp(wantPos, f);
@@ -974,6 +1020,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   import('../shared/kit/kit.js').then(function (m) {
     kit = m.startKit({
       key: 'ski-flitzer', orientation: 'any',
+      pauseButtons: [{ label: '🔄 Neu starten', action: function () { restart(); } }],
       pause: function () { paused = true; if (audio && audio.suspend) audio.suspend(); },
       resume: function () { paused = false; last = performance.now(); if (audio && audio.resume) audio.resume(); if (!raf) raf = requestAnimationFrame(loop); },
       sound: { setMuted: function (m) { soundOn = !m; if (soundOn) ensureAudio(); } }
@@ -992,11 +1039,27 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
 
   $('startBtn').addEventListener('click', start);
   $('againBtn').addEventListener('click', start);
+  /* Neustart mitten im Spiel: Lauf abbrechen und sofort neu beginnen (zählt nicht für die Bestenliste) */
+  function restart() {
+    if (phase === 'menu' || phase === 'end') return;
+    keys.left = keys.right = false; touchSteer.left = touchSteer.right = false; pointerSteer = {};
+    ['btnLeft', 'btnRight'].forEach(function (id) { $(id).classList.remove('pressed'); });
+    start();
+    $('restartBtn').blur();
+  }
+  $('restartBtn').addEventListener('click', restart);
+  window.addEventListener('keydown', function (e) { if ((e.key === 'r' || e.key === 'R') && !paused) restart(); });
 
   /* Zugang für den Durchspiel-Test (tools/spieltests/ski-flitzer.js) */
   window.SPIEL = {
     items: ITEMS,
     duration: DURATION,
+    restart: function () { restart(); },
+    /* legt ein Ding direkt vor die Wurst (zum Testen, z. B. 'zirbe') */
+    place: function (id, ahead) {
+      var z = player.position.z + (ahead || 7);
+      spawnList.splice(spawnIndex, 0, { kind: 'item', item: ITEM_BY_ID[id], z: z, x: cx(z) + lat });
+    },
     timeScale: 1,
     autopilot: false,
     /* Bildgröße und Position der Wurst auf dem Bildschirm (-1 … 1 = sichtbar) */
@@ -1006,7 +1069,7 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       return { canvas: [canvas.clientWidth, canvas.clientHeight], screen: [window.innerWidth, window.innerHeight], player: [v.x, v.y], pisteMitte: [c.x, c.y] };
     },
     state: function () {
-      return { phase: phase, x: player.position.x, z: player.position.z, seite: -(player.position.x - cx(player.position.z)), points: points, collected: collected, timeLeft: timeLeft, crashes: crashes };
+      return { phase: phase, turbo: turboTimer > 0, x: player.position.x, z: player.position.z, seite: -(player.position.x - cx(player.position.z)), points: points, collected: collected, timeLeft: timeLeft, crashes: crashes };
     }
   };
 
