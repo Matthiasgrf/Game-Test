@@ -28,6 +28,9 @@ export interface HighscoreConfig {
   pointsLabel: string;
   /** Zeichen vor den Punkten, z. B. "⭐" */
   pointsIcon?: string;
+  /** Nachkommastellen der Punkte: gespeichert wird punkte × 10^pointsDecimals als ganze Zahl,
+   *  z. B. 2 = Hundertstelsekunden (1234 → „12,34“) */
+  pointsDecimals?: number;
   /** Spalte „Zeit“ anzeigen (Gleichstand entscheidet immer die kürzere Zeit) */
   showTime?: boolean;
   /** Varianten mit eigener Bestenliste, z. B. Schwierigkeitsstufen */

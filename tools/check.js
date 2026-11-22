@@ -88,6 +88,7 @@ function checkEntry(g, where) {
   if (!['high', 'low'].includes(h.better)) err(where, 'highscore.better muss "high" oder "low" sein.');
   if (typeof h.pointsLabel !== 'string' || !h.pointsLabel.trim()) err(where, 'highscore.pointsLabel fehlt (Spaltenüberschrift).');
   if (typeof h.rule !== 'string' || !h.rule.trim()) err(where, 'highscore.rule fehlt (Erklärung über der Bestenliste).');
+  if (h.pointsDecimals !== undefined && ![0, 1, 2, 3].includes(h.pointsDecimals)) err(where, 'highscore.pointsDecimals muss 0, 1, 2 oder 3 sein (Punkte werden × 10^pointsDecimals als ganze Zahl gespeichert).');
   if (h.variants !== undefined) {
     if (!Array.isArray(h.variants) || !h.variants.length) err(where, 'highscore.variants muss eine nicht leere Liste sein.');
     else h.variants.forEach((v) => {
