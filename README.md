@@ -85,7 +85,7 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 
 | Spiel | Art | Gruppe | Beschreibung |
 |---|---|---|---|
-| Labyrinth-Abenteuer | React, `src/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
+| Labyrinth-Abenteuer | HTML, `public/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
 | Elisabeth von Thüringen | HTML, `public/games/elisabeth/` | Klasse-3c | `public/games/elisabeth/readme.md` |
 | Flug über Europa | HTML, `public/games/europaflug/` | Klasse-3c | `public/games/europaflug/readme.md` |
 | Getreide-Abenteuer | HTML, `public/games/sachunterricht-getreide/` | Klasse-3c | `public/games/sachunterricht-getreide/readme.md` |
@@ -137,7 +137,7 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
 node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c
 ```
 
-Das legt aus `tools/vorlage/` ein lauffähiges Quiz an (HTML, mit `--react` als React-Spiel),
+Das legt aus `tools/vorlage/` ein lauffähiges Quiz an (HTML-Spiel mit dem Kit),
 dazu readme.md, den Eintrag in games.json, die Migration für die Tabelle `games` und einen
 Durchspiel-Test. `--ohne-highscore` legt ein Spiel ohne Bestenliste an. Die vollständige
 Checkliste und die Regeln für Spiele stehen in **`CLAUDE.md`**.

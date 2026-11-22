@@ -21,7 +21,7 @@ src/games/states.ts           loadState / saveState – Spielstand pro Spieler (
 src/games/plays.ts            useGamePlay – meldet Spielstart + Spielzeit (Tabelle game_plays, für die Statistik)
 src/pages/AdminStats.tsx      Admin-Dashboard #/admin/statistik, Zahlen aus der DB-Funktion admin_stats
 src/games/HtmlGame.tsx        zeigt HTML-Spiele im iframe, nimmt deren Ergebnisse an
-src/games/<key>/index.tsx     React-Spiel – nur Altbestand (Labyrinth, Rohr-Flitzer), neue Spiele sind HTML-Spiele
+src/games/<key>/index.tsx     React-Spiel – nur Altbestand (Rohr-Flitzer), neue Spiele sind HTML-Spiele
 public/games/<key>/           pro Spiel: index.html, game.js, assets/, readme.md, thumbnail.jpg (900×600)
 public/games/shared/kit/      gemeinsame Bausteine: theme.css (Design), kit.js (startKit: Leiste, Pause, Ton,
                               Vollbild, Auto-Pause, Drehen-Hinweis), viewport, loop, input, sound, storage, quality
@@ -58,8 +58,8 @@ Auto-Pause, Drehen-Hinweis, Eingaben, Ton, Speicher und Design – nichts davon 
 | Zurück zur Übersicht | Leiste des Kits, im Start- und Ende-Fenster `<a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>` |
 
 Altbestand (in `tools/check.js` → `ALTBESTAND`): ältere Spiele melden noch direkt über
-`GameTest.reportScore(...)` / `GameTest.saveState(...)` (`public/games/shared/game-test.js`); Labyrinth und Rohr-Flitzer
-sind React-Spiele (`src/games/<key>/`, `saveScore` aus `scores.ts`). Beim Umstellen auf das Kit (Spielregeln und
+`GameTest.reportScore(...)` / `GameTest.saveState(...)` (`public/games/shared/game-test.js`); Rohr-Flitzer
+ist ein React-Spiel (`src/games/rohr-flitzer/`, `saveScore` aus `scores.ts`). Beim Umstellen auf das Kit (Spielregeln und
 Inhalte bleiben gleich) aus der Liste streichen.
 
 ## Highscores

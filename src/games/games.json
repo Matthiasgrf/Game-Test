@@ -1,7 +1,7 @@
 [
   {
     "key": "labyrinth",
-    "type": "react",
+    "type": "html",
     "title": "Labyrinth-Abenteuer",
     "description": "Führe die Tiere durch 5 Labyrinthe und sammle Sterne!",
     "age": "ab 5 Jahren",
