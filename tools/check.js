@@ -30,9 +30,7 @@ const MAX_BYTES = 3 * 1024 * 1024; // Ladegröße je Spiel (3D-Spiele dürfen be
 /* Spiele, die noch nicht auf den Standard (docs/GAME_STANDARD.md, Kit in public/games/shared/kit/) umgestellt
    sind: Standard-Regeln nur als Hinweis. Nach der Umstellung eines Spiels hier austragen – neue Spiele kommen
    nie auf diese Liste. */
-const ALTBESTAND = [
-  'rohr-flitzer',
-];
+const ALTBESTAND = [];
 
 /* Breite und Höhe aus einer JPEG-Datei lesen (SOF-Abschnitt). */
 function jpegSize(buf) {
@@ -74,7 +72,7 @@ function checkEntry(g, where) {
   if (!ZIELGRUPPEN.includes(g.zielgruppe)) err(where, `zielgruppe muss ${ZIELGRUPPEN.map((z) => `"${z}"`).join(' oder ')} sein.`);
   if (!ORIENTATIONS.includes(g.orientation)) err(where, `orientation muss ${ORIENTATIONS.map((z) => `"${z}"`).join(', ')} sein (beste Ausrichtung fürs Spiel).`);
   if (!STATUS.includes(g.status)) err(where, `status muss ${STATUS.map((z) => `"${z}"`).join(', ')} sein.`);
-  if (g.type === 'react' && !ALTBESTAND.includes(g.key)) err(where, 'neue Spiele sind HTML-Spiele mit dem Kit (type "html", siehe docs/GAME_STANDARD.md).');
+  if (g.type === 'react' && !ALTBESTAND.includes(g.key) && !g.highscore?.serverScored) err(where, 'Spiele sind HTML-Spiele mit dem Kit (type "html", siehe docs/GAME_STANDARD.md) – React nur für Spiele mit "serverScored": true (Spiellogik in der Datenbank).');
   if (/TODO/.test(`${g.title} ${g.description}`)) err(where, 'enthält noch „TODO“.');
   if (g.description && g.description.length > 140) warn(where, `Beschreibung ist lang (${g.description.length} Zeichen) – ein kurzer Satz passt besser auf die Kachel.`);
   if ('saveKey' in g) {

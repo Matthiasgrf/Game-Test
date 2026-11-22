@@ -44,8 +44,6 @@ const SIZES = {
 /* Spiele mit Spielfläche (<canvas>) sollen auf Tablet und Handy den Bildschirm nutzen: Die größte Spielfläche
    muss mindestens so viel der Bildschirmfläche bedecken (0.6 = 60 %). Kleinere Canvas (Vorschau, Deko) zählen nicht. */
 const MIN_PLAY_AREA = 0.6;
-/* Ältere Spiele, die das noch nicht schaffen: nur Warnung statt Fehler. Nach dem Umbau hier austragen. */
-const PLAY_AREA_WARN_ONLY = ['rohr-flitzer'];
 
 const { keys, opts } = parseArgs(process.argv.slice(2), ['nur-seiten', 'zeichnen']);
 const browserName = opts.browser || 'chromium';
@@ -167,7 +165,7 @@ async function checkCanvas(target, problems) {
 
 /* Spielfläche zu klein: typischer Fehler ist ein festes Hochformat-Raster mit Rand, Anzeigen darüber und
    Steuerkreuz darunter – auf dem Handy bleibt dann nur ein kleines Feld (vor allem quer). */
-async function checkPlayArea(target, g, size, problems, warnings) {
+async function checkPlayArea(target, size, problems) {
   if (!size.isMobile) return;
   const share = await target.evaluate(() => {
     /* Nur sichtbare Spielflächen (versteckte Canvas, z. B. für ein Bonus-Spiel, haben die Größe 0). */
@@ -180,7 +178,7 @@ async function checkPlayArea(target, g, size, problems, warnings) {
     return areas.length ? Math.max(...areas) / (innerWidth * innerHeight) : null;
   });
   if (share !== null && share < MIN_PLAY_AREA) {
-    (PLAY_AREA_WARN_ONLY.includes(g.key) ? warnings : problems).push(`Spielfläche bedeckt nur ${Math.round(share * 100)} % des Bildschirms (mindestens ${MIN_PLAY_AREA * 100} %) – Spielszene bildschirmfüllend zeichnen, Anzeigen und Steuerung darüberlegen (siehe CLAUDE.md „Aussehen auf Handy und Tablet“).`);
+    problems.push(`Spielfläche bedeckt nur ${Math.round(share * 100)} % des Bildschirms (mindestens ${MIN_PLAY_AREA * 100} %) – Spielszene bildschirmfüllend zeichnen, Anzeigen und Steuerung darüberlegen (siehe CLAUDE.md „Aussehen auf Handy und Tablet“).`);
   }
 }
 
@@ -188,7 +186,7 @@ const checkGame = (g, size) => async (page, problems, warnings) => {
   if (g.type === 'html') {
     const frame = await gameFrame(page);
     await checkCanvas(frame, problems);
-    await checkPlayArea(frame, g, size, problems, warnings);
+    await checkPlayArea(frame, size, problems);
     const links = frame.locator('a[href="../../#/"]');
     let visible = false;
     for (let i = 0; i < await links.count(); i++) if (await links.nth(i).isVisible()) visible = true;
@@ -197,7 +195,7 @@ const checkGame = (g, size) => async (page, problems, warnings) => {
     const link = page.locator('main a[href="#/"]', { hasText: 'Alle Spiele' });
     if (!(await link.count()) || !(await link.first().isVisible())) problems.push('Kein sichtbarer Link „🏠 Alle Spiele“ zur Übersicht.');
     await checkCanvas(page, problems);
-    await checkPlayArea(page, g, size, problems, warnings);
+    await checkPlayArea(page, size, problems);
     await noOverflow(page, problems);
   }
 };
