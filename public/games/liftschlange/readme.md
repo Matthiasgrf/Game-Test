@@ -26,7 +26,7 @@ dem Feld (hoch: Steuerkreuz unten, quer: rechts).
 
 Highscore: Punkte (mehr ist besser, bei Gleichstand die kürzere Zeit). Jedes Ergebnis geht per
 `GameTest.reportScore` auf die gemeinsame Seite „Highscores“ der App – das Spiel hat keine eigene Bestenliste.
-Start- und Game-Over-Bildschirm verlinken dorthin. „Score teilen“ kopiert einen Text in die Zwischenablage
+Im Spiel gibt es keinen Link dorthin. „Score teilen“ kopiert einen Text in die Zwischenablage
 (für die WhatsApp-Gruppe).
 
 Anpassen: alle Einstellungen stehen oben im Skript unter „EINSTELLUNGEN“ – Urlaubsdatum `URLAUB_START`,
