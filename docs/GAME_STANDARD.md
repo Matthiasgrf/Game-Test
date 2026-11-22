@@ -31,7 +31,7 @@ tools/vorlage/                  Vorlage für neue Spiele (lauffähiges Mini-Spie
 tools/spieltests/<key>.js       Durchspiel-Test je Spiel
 ```
 
-**Felder in `games.json`** (✓): `key` (a-z 0-9 - _, wie in der Datenbank), `type` (`"html"`; `"react"` nur Altbestand),
+**Felder in `games.json`** (✓): `key` (a-z 0-9 - _, wie in der Datenbank), `type` (`"html"`; `"react"` nur für Spiele mit `serverScored`, derzeit keins),
 `title`, `description` (ein Satz), `age` (z. B. „3. Klasse“), `emoji`, `color`, `highscore` (Einstellungen oder `null`),
 optional `saveKey`, und neu:
 
@@ -181,10 +181,11 @@ Ein Spiel (neu oder umgebaut) ist fertig, wenn:
 
 ## 11. Altbestand
 
-Spiele von vor diesem Standard stehen in `tools/check.js` in der Liste `ALTBESTAND`: Für sie sind die neuen Regeln
+Spiele von vor diesem Standard standen in `tools/check.js` in der Liste `ALTBESTAND`: Für sie waren die neuen Regeln
 nur Hinweise (`[Altbestand]`). Beim Umstellen eines Spiels (Kit einbinden, Pause/Ton/Vollbild/Drehen-Hinweis,
-Retina, dt, kein Seiten-Scrollen; Spielregeln und Fragen bleiben gleich) wird es aus der Liste gestrichen – ab dann
-gelten die Regeln als Fehler. Neue Spiele kommen nie auf die Liste.
+Retina, dt, kein Seiten-Scrollen; Spielregeln und Fragen bleiben gleich) wurde es aus der Liste gestrichen – ab dann
+gelten die Regeln als Fehler. Seit November 2026 sind alle 13 Spiele umgestellt (auch die früheren React-Spiele
+Labyrinth und Rohr-Flitzer) und die Liste ist leer. Neue Spiele kommen nie auf die Liste.
 
 ## 12. Test-Strategie
 

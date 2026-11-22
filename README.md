@@ -95,14 +95,16 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 | Bauer Franz und die Getreideernte | HTML, `public/games/sachunterricht-getreideernte/` | Klasse-3c | `public/games/sachunterricht-getreideernte/readme.md` |
 | Die Formen-Werkstatt | HTML, `public/games/mathe-formen/` | Klasse-3c | `public/games/mathe-formen/readme.md` |
 | Die Wortmonster | HTML, `public/games/deutsch-wortmonster/` | Klasse-3c | `public/games/deutsch-wortmonster/readme.md` |
+| Rohr-Flitzer | HTML, `public/games/rohr-flitzer/` | Fisser-Flitzer | `public/games/rohr-flitzer/readme.md` |
+| Ski-Flitzer | HTML, `public/games/ski-flitzer/` | Fisser-Flitzer | `public/games/ski-flitzer/readme.md` |
+| Liftschlange | HTML, `public/games/liftschlange/` | Freigabe im Admin (ab 18) | `public/games/liftschlange/readme.md` |
 
-Es gibt zwei Arten von Spielen:
-
-- **React-Spiel** (`"type": "react"`): `src/games/<key>/index.tsx` mit `export default`. Die App lädt es
-  automatisch als Route `#/spiele/<key>`, erst wenn es geöffnet wird.
-- **HTML-Spiel** (`"type": "html"`): eine eigenständige Datei `public/games/<key>/index.html`, ohne Build.
-  `src/games/HtmlGame.tsx` zeigt sie bildschirmfüllend in einem iframe. Der Link „🏠 Alle Spiele“
-  zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
+Alle Spiele sind **HTML-Spiele** (`"type": "html"`): `public/games/<key>/index.html` mit `game.js`, ohne Build,
+gebaut mit dem gemeinsamen Kit (`public/games/shared/kit/`, Regeln in `docs/GAME_STANDARD.md`).
+`src/games/HtmlGame.tsx` zeigt sie bildschirmfüllend in einem iframe. Der Link „🏠 Alle Spiele“
+zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
+React-Spiele (`"type": "react"`, `src/games/<key>/index.tsx`, die App lädt sie als Route `#/spiele/<key>`)
+gibt es nur noch für Spiele, deren Spiellogik in der Datenbank läuft (`"serverScored"`) – derzeit keins.
 
 ### Highscores (für alle Spiele)
 Alle Spiele speichern in **eine** Tabelle, `game_scores`
@@ -123,9 +125,8 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
 - In `src/games/games.json` beschreibt `highscore: { better, pointsLabel, pointsIcon?, showTime?, variants?, rule }`
   die Anzeige. `highscore: null` heißt: kein Highscore, das Spiel erscheint dann nicht unter **Highscores**.
   `tools/check.js` prüft, dass games.json und die Tabelle `games` (Migrationen) zusammenpassen.
-- Speichern aus React: `saveScore(key, { points, maxPoints?, seconds?, variant? })` (`src/games/scores.ts`).
-- Speichern aus HTML-Spielen: `public/games/shared/game-test.js` einbinden und am Ende
-  `GameTest.reportScore({ points, maxPoints?, seconds?, variant? })` aufrufen. Das Spiel schickt das
+- Speichern aus HTML-Spielen: am Ende `kit.storage.saveScore({ points, maxPoints?, seconds?, variant? })`
+  (ältere Spiele rufen direkt `GameTest.reportScore(...)` aus `public/games/shared/game-test.js` auf). Das Spiel schickt das
   Ergebnis per `postMessage` an die App. Die App nimmt nur Nachrichten aus dem eigenen iframe
   an, prüft die Werte und speichert sie für den eingeloggten Spieler.
 - Die alten Tabellen `scores` / `labyrinth_scores` (und ihre Views) werden nicht mehr benutzt.
