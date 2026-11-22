@@ -235,6 +235,41 @@
         #next-btn { display: none; margin-top: 12px; }
         .wrong { color: #b91c1c; }
 
+        /* Aufgabenarten */
+        #fix-container { display: none; margin-top: 12px; }
+        #check-btn { display: none; margin-top: 14px; background: #2563eb; border-color: #1e3a8a; box-shadow: 0 4px 0 #1e3a8a; }
+        .options-grid.tf { flex-direction: row; justify-content: center; }
+        .options-grid.tf .option-btn { flex: 1; max-width: 230px; }
+        button.option-btn.selected { background: #2563eb; border-color: #1e3a8a; box-shadow: 0 4px 0 #1e3a8a; }
+        button.option-btn.selected::before { content: "✔ "; }
+        button.right, button.right:disabled { background: #16a34a !important; border-color: #14532d !important; color: white !important; opacity: 1; }
+        button.wrong-btn, button.wrong-btn:disabled { background: #dc2626 !important; border-color: #7f1d1d !important; color: white; opacity: .8; }
+        .order-btn[data-nr]::before, .pair-btn[data-nr]::before {
+            content: attr(data-nr); display: inline-block; min-width: 1.5em; margin-right: 6px; padding: 0 4px;
+            border-radius: 999px; background: white; color: #15803d; font-weight: bold;
+        }
+        .word-wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 16px; }
+        .word-btn {
+            background: white; color: #451a03; border: 2px solid #fbbf24; border-radius: 10px;
+            padding: 8px 10px; min-height: 44px; font-size: 1.12rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 3px 0 #f59e0b;
+        }
+        .word-btn:disabled { color: #451a03; opacity: 1; cursor: default; }
+        .word-btn.found { background: #fee2e2; border-color: #dc2626; box-shadow: 0 3px 0 #b91c1c; text-decoration: line-through; }
+        .word-btn.found.fixed { background: #dcfce7; border-color: #16a34a; box-shadow: 0 3px 0 #15803d; text-decoration: none; }
+        .pairs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .pairs-col { display: flex; flex-direction: column; gap: 8px; }
+        .pair-btn {
+            background: white; color: #451a03; border: 3px solid #f59e0b; border-radius: 12px;
+            padding: 8px 8px; min-height: 52px; font-size: 1rem; font-weight: bold; cursor: pointer; text-align: left;
+            box-shadow: 0 3px 0 #b45309;
+        }
+        .pair-btn.picked { background: #2563eb; color: white; border-color: #1e3a8a; }
+        .flash { animation: wackeln .4s; background: #fecaca !important; }
+        @keyframes wackeln { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+        #feedback.hint { color: #1d4ed8; }
+        #question-text { font-weight: bold; }
+
         @media (max-width: 600px) {
             .hud-box {
                 font-size: 0.92rem;
@@ -253,6 +288,8 @@
                 font-size: 1rem;
                 padding: 11px 14px;
             }
+            .pair-btn { font-size: 0.88rem; padding: 7px 6px; }
+            .word-btn { font-size: 1rem; padding: 7px 8px; }
             #controls-hint {
                 font-size: 0.85rem;
                 padding: 7px 12px;
@@ -314,6 +351,7 @@
         <h1>🏰 Großes Elisabeth-Quiz (3. Klasse)</h1>
         <p>Begleite <b>Elisabeth von Thüringen</b> auf einer Reise durch ihr ganzes Leben – von ihrer Kindheit bis zu ihrem Wirken in Marburg!</p>
         <p>Besuche alle <b><span class="station-count">20</span> Stationen</b> in der 3D-Welt und werde zum Profi für den Religionsunterricht.</p>
+        <p>📖 <b>Lies genau!</b> Die Aufgaben werden jedes Mal neu gemischt. Mal sollst du einen Fehler finden, mal Sätze ordnen, mal entscheiden: Stimmt das?</p>
         <button class="action-btn" onclick="startGame()">Abenteuer starten! 🚀</button>
         <a class="action-btn" href="../../#/" target="_top">🏠 Alle Spiele</a>
     </div>
@@ -325,6 +363,8 @@
         <div id="step-progress"></div>
         <p id="question-text">Hier steht die Frage.</p>
         <div class="options-grid" id="options-container"></div>
+        <div class="options-grid" id="fix-container"></div>
+        <button class="action-btn" id="check-btn" onclick="checkMulti()">Prüfen ✓</button>
         <div id="feedback"></div>
         <button class="action-btn" id="next-btn" onclick="nextStep()">Weiter ➜</button>
     </div>
@@ -363,58 +403,84 @@
         }
 
         // --- STATIONEN (RELIGION 3. KLASSE) ---
-        // Eine Station hat entweder eine Frage (question/options/correct/explanation)
-        // oder mehrere Fragen nacheinander (steps: [ {question, options, correct, explanation}, … ]).
-        // Die Stationen stehen in der Reihenfolge von Elisabeths Leben; ihre Plätze auf der Wiese
-        // werden unten automatisch berechnet.
+        // Jede Station hat eine oder mehrere Aufgaben (steps), in der Reihenfolge von Elisabeths Leben.
+        // Aufgabenarten (type):
+        //   "mc"    eine Antwort wählen – options: die richtige steht hier ZUERST, im Spiel wird gemischt
+        //   "tf"    Stimmt oder stimmt nicht? – yes: wahrer Satz, no: falscher Satz; das Spiel nimmt zufällig einen
+        //   "find"  Fehler finden – text mit [falschem Wort], dann das richtige Wort wählen (fix: richtiges zuerst)
+        //   "order" Reihenfolge – items in der richtigen Reihenfolge, im Spiel gemischt
+        //   "multi" alle richtigen antippen – right / wrong, dann „Prüfen“
+        //   "pairs" Satzanfang und Satzende verbinden
+        //   { variants: [Aufgabe, Aufgabe] } – das Spiel nimmt zufällig eine davon
+        // Weil jedes Spiel neu mischt und auswählt, hilft Auswendiglernen nicht: genau lesen!
         const stationsData = [
             {
                 topic: "Biografie: Herkunft",
-                title: "Woher kam Elisabeth?",
-                question: "Elisabeth war eine echte Königstochter. Aus welchem Land kam sie als Kind nach Thüringen?",
-                options: [
-                    "Aus Ungarn",
-                    "Aus Spanien",
-                    "Aus Schweden"
-                ],
-                correct: 0,
-                explanation: "Richtig! Sie wurde als Prinzessin in Ungarn geboren und kam schon mit 4 Jahren nach Thüringen."
+                title: "Eine Prinzessin aus Ungarn",
+                steps: [
+                    {
+                        type: "tf",
+                        yes: "Elisabeth wurde in Ungarn geboren.",
+                        no: "Elisabeth wurde in Thüringen geboren.",
+                        explanation: "Elisabeth kam in Ungarn zur Welt. Nach Thüringen kam sie erst später."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Elisabeths Vater war ein König.",
+                        no: "Elisabeths Vater war ein armer Bauer.",
+                        explanation: "Ihr Vater war König von Ungarn. Elisabeth war also eine Prinzessin."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Elisabeth lebte vor mehr als 800 Jahren.",
+                        no: "Elisabeth lebte vor ungefähr 100 Jahren.",
+                        explanation: "Elisabeth wurde im Jahr 1207 geboren. Das ist mehr als 800 Jahre her."
+                    }
+                ]
             },
             {
                 topic: "Von Ungarn auf die Wartburg",
-                title: "Elisabeths Eltern",
-                question: "Vor mehr als 800 Jahren wurde Elisabeth auf einer Burg in Ungarn geboren. Wie hießen ihre Eltern?",
-                options: [
-                    "Vater Andreas und Mutter Gertrud",
-                    "Vater Ludwig und Mutter Sophie",
-                    "Vater Walter und Mutter Maria"
-                ],
-                correct: 0,
-                explanation: "Richtig! Ihr Vater Andreas war König von Ungarn. Ihre Mutter hieß Gertrud."
+                title: "Vater und Mutter",
+                steps: [
+                    {
+                        variants: [
+                            {
+                                type: "find",
+                                text: "Elisabeths Vater hieß Andreas. Ihre Mutter hieß [Sophie].",
+                                fix: ["Gertrud", "Maria", "Walter"],
+                                explanation: "Ihre Mutter hieß Gertrud. Sophie war die Landgräfin auf der Wartburg."
+                            },
+                            {
+                                type: "find",
+                                text: "Elisabeths Vater [Ludwig] war König von Ungarn. Ihre Mutter hieß Gertrud.",
+                                fix: ["Andreas", "Herrmann", "Walter"],
+                                explanation: "Ihr Vater hieß Andreas. Ludwig wurde später Elisabeths Ehemann."
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 topic: "Von Ungarn auf die Wartburg",
                 title: "Besuch am Königshof",
                 steps: [
                     {
-                        question: "Als Elisabeth 4 Jahre alt war, kamen fremde Leute aus Deutschland an den ungarischen Königshof. Wer hatte sie geschickt?",
+                        question: "Elisabeth ist 4 Jahre alt. Ritter aus Thüringen kommen an den Königshof in Ungarn. Warum sind sie da?",
                         options: [
-                            "Der Landgraf von Thüringen schickte Ritter",
-                            "Der Papst schickte Mönche",
-                            "Der König von England schickte Soldaten"
+                            "Sie sollen Elisabeth als Braut für Herrmann holen.",
+                            "Sie sollen Elisabeth als Dienerin für die Burg holen.",
+                            "Sie sollen Elisabeth in eine Schule nach Thüringen bringen."
                         ],
-                        correct: 0,
-                        explanation: "Genau! Elisabeth sollte später einmal die Frau seines ältesten Sohnes Herrmann werden."
+                        explanation: "Genau! Elisabeth sollte später Herrmann heiraten, den ältesten Sohn des Landgrafen."
                     },
                     {
-                        question: "Ungarn ist mächtig, Thüringen ist mächtig. Warum sollte Elisabeth nach Thüringen heiraten?",
+                        question: "Ungarn und Thüringen sind beide mächtig. Warum soll ein Kind aus Ungarn nach Thüringen heiraten?",
                         options: [
-                            "Damit sie dort Ritterin wird",
-                            "Durch die Heirat werden die Länder miteinander verbunden und noch stärker",
-                            "Weil es in Ungarn keine Prinzen gab"
+                            "Die Länder halten dann zusammen und werden noch stärker.",
+                            "Die Länder sollen dann gegeneinander kämpfen.",
+                            "In Ungarn gibt es dann eine Prinzessin weniger zu ernähren."
                         ],
-                        correct: 1,
-                        explanation: "Super! Die Heirat sollte Ungarn und Thüringen verbinden. So werden beide noch stärker."
+                        explanation: "Richtig! Eine Heirat verbindet zwei Länder. Zusammen sind sie stärker."
                     }
                 ]
             },
@@ -423,24 +489,20 @@
                 title: "Allein in ein fremdes Land",
                 steps: [
                     {
-                        question: "Elisabeth ist erst 4 Jahre alt. Sie muss ohne ihre Eltern und Geschwister in ein fremdes Land reisen. Was denkt sie wohl?",
-                        options: [
-                            "„Hurra, endlich Ferien!“",
-                            "„Ich habe Angst! Mögen mich meine Eltern nicht mehr?“",
-                            "„Das ist mir ganz egal.“"
-                        ],
-                        correct: 1,
-                        explanation: "Ja! Elisabeth hatte bestimmt Angst und war traurig. Sie fragte sich: Warum muss ich gehen?"
+                        type: "multi",
+                        question: "Elisabeth kommt nach Thüringen. Was ist dort für sie fremd?\nTippe ALLE richtigen Antworten an. Dann tippe auf „Prüfen“.",
+                        right: ["die Sprache", "die Menschen auf der Burg", "das Land"],
+                        wrong: ["ihr eigener Name"],
+                        explanation: "Richtig! Land, Sprache und Menschen waren neu. Nur ihren Namen hat sie mitgebracht."
                     },
                     {
-                        question: "Was war für Elisabeth in Thüringen alles fremd?",
+                        question: "Elisabeth fragt sich: „Werden die Menschen auf der Wartburg nett zu mir sein?“\nWelches Gefühl steckt in diesem Satz?",
                         options: [
-                            "Nichts, sie kannte dort schon alle",
-                            "Nur das Wetter",
-                            "Das Land, die Sprache und die Familie"
+                            "Sorge",
+                            "Wut",
+                            "Langeweile"
                         ],
-                        correct: 2,
-                        explanation: "Richtig! Sie fragte sich: Werden die Menschen auf der Wartburg auch nett und gut zu mir sein?"
+                        explanation: "Genau! Elisabeth macht sich Sorgen. Sie weiß nicht, was sie erwartet."
                     }
                 ]
             },
@@ -449,275 +511,437 @@
                 title: "Die lange Reise",
                 steps: [
                     {
-                        question: "Mit wem machte sich Elisabeth auf die lange Reise zur Wartburg?",
-                        options: [
-                            "Mit Ritter Walter und einem kostbaren Brautschatz",
-                            "Mit ihren Eltern und Geschwistern",
-                            "Ganz allein zu Fuß"
+                        type: "order",
+                        question: "Was geschah zuerst, was danach? Tippe die Sätze in der richtigen Reihenfolge an.",
+                        items: [
+                            "Ritter aus Thüringen kommen nach Ungarn.",
+                            "Elisabeth verabschiedet sich von ihren Eltern.",
+                            "Ritter Walter bringt sie mit dem Brautschatz zur Wartburg.",
+                            "Landgräfin Sophie sorgt auf der Wartburg für Elisabeth."
                         ],
-                        correct: 0,
-                        explanation: "Genau! Ritter Walter brachte sie mit einem kostbaren Brautschatz zur Wartburg."
+                        explanation: "Super! So kam Elisabeth auf die Wartburg."
                     },
                     {
-                        question: "Elisabeth war nun am Hof des Landgrafen. Wer sorgte dort für sie?",
+                        question: "Elisabeth bringt einen kostbaren Brautschatz mit. Was ist ein Brautschatz?",
                         options: [
-                            "Königin Gertrud",
-                            "Landgräfin Sophie",
-                            "Ritter Walter"
+                            "Wertvolle Dinge, die eine Braut mit in die Ehe bringt",
+                            "Ein Spiel, bei dem die Braut einen Schatz sucht",
+                            "Ein Geschenk, das die Braut am Ende der Hochzeit verteilt"
                         ],
-                        correct: 1,
-                        explanation: "Richtig! Landgräfin Sophie sorgte für sie genauso wie für Prinz Herrmann und Prinz Ludwig."
+                        explanation: "Richtig! Gold, Schmuck und schöne Stoffe gehörten zu Elisabeths Brautschatz."
                     }
                 ]
             },
             {
                 topic: "Biografie: Leben auf der Burg",
-                title: "Die Wartburg",
-                question: "Auf welcher großen Burg lebte Elisabeth als Erwachsene mit ihrem Mann?",
-                options: [
-                    "Auf der Wartburg",
-                    "Auf Schloss Neuschwanstein",
-                    "Auf der Zugspitze"
-                ],
-                correct: 0,
-                explanation: "Genau! Auf der Wartburg bei Eisenach lebte sie als Landgräfin."
+                title: "Kindheit auf der Wartburg",
+                steps: [
+                    {
+                        type: "tf",
+                        yes: "Auf der Wartburg wuchs Elisabeth zusammen mit Herrmann und Ludwig auf.",
+                        no: "Auf der Wartburg wuchs Elisabeth ganz allein auf, ohne andere Kinder.",
+                        explanation: "Landgräfin Sophie sorgte für Elisabeth genauso wie für ihre Söhne Herrmann und Ludwig."
+                    },
+                    {
+                        question: "Die Wartburg steht hoch auf einem Berg. Welche Stadt liegt unten am Berg?",
+                        options: [
+                            "Eisenach",
+                            "Marburg",
+                            "Budapest"
+                        ],
+                        explanation: "Genau! Die Wartburg liegt bei Eisenach in Thüringen. Nach Marburg ging Elisabeth erst viel später."
+                    }
+                ]
             },
             {
                 topic: "Elisabeth heiratet Ludwig",
                 title: "Herrmann und Ludwig",
                 steps: [
                     {
-                        question: "Wen sollte Elisabeth eigentlich heiraten?",
-                        options: [
-                            "Ritter Walter",
-                            "Herrmann, den ältesten Sohn des Landgrafen",
-                            "Den König von Ungarn"
+                        type: "order",
+                        question: "Bringe die Geschichte in die richtige Reihenfolge. Tippe zuerst an, was zuerst geschah.",
+                        items: [
+                            "Elisabeth soll Herrmann heiraten.",
+                            "Herrmann wird krank und stirbt.",
+                            "Manche wollen Elisabeth zurück nach Ungarn schicken.",
+                            "Ludwig hält zu Elisabeth und heiratet sie."
                         ],
-                        correct: 1,
-                        explanation: "Richtig! Elisabeth sollte die Frau von Herrmann werden."
+                        explanation: "Genau so war es!"
                     },
                     {
-                        question: "Was geschah dann mit Herrmann?",
+                        question: "Nach Herrmanns Tod wollen manche Elisabeth nach Hause schicken. Warum darf sie trotzdem bleiben?",
                         options: [
-                            "Er wurde krank und starb",
-                            "Er zog nach Ungarn",
-                            "Er wurde ein Mönch"
+                            "Ludwig hat sie lieb gewonnen und will sie heiraten.",
+                            "Ludwig will lieber selbst nach Ungarn ziehen.",
+                            "Herrmann wird doch wieder gesund."
                         ],
-                        correct: 0,
-                        explanation: "Genau. Manche wollten Elisabeth zurück nach Ungarn schicken. Doch Ludwig hatte sie lieb gewonnen."
+                        explanation: "Richtig! Ludwig mochte Elisabeth sehr. Er wollte, dass sie bleibt."
                     }
                 ]
             },
             {
                 topic: "Biografie: Familie",
                 title: "Ihr Ehemann Ludwig",
-                question: "Wie hieß Elisabeths Ehemann, der sie bei ihrer Hilfe für die Armen unterstützte?",
-                options: [
-                    "Landgraf Ludwig",
-                    "König Artus",
-                    "Kaiser Barbarossa"
-                ],
-                correct: 0,
-                explanation: "Super! Landgraf Ludwig liebte Elisabeth sehr und erlaubte ihr, den Armen zu helfen."
+                steps: [
+                    {
+                        variants: [
+                            {
+                                type: "find",
+                                text: "Ludwig hatte Elisabeth sehr lieb. Er [verbot] ihr, den Armen zu helfen.",
+                                fix: ["erlaubte", "befahl", "verschwieg"],
+                                explanation: "Ludwig erlaubte Elisabeth, den Armen zu helfen. Er hielt zu ihr."
+                            },
+                            {
+                                type: "find",
+                                text: "Ludwig war der [Kaiser] von Thüringen. Er erlaubte Elisabeth, den Armen zu helfen.",
+                                fix: ["Landgraf", "Papst", "Bischof"],
+                                explanation: "Ludwig war Landgraf von Thüringen. Ein Landgraf regiert über ein Land."
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 topic: "Elisabeth heiratet Ludwig",
                 title: "Das Hochzeitsfest",
-                question: "Bei der Hochzeit von Elisabeth und Ludwig gab es ein großes Fest. Wen vergaß Elisabeth auch an diesem Tag nicht?",
-                options: [
-                    "Die Armen",
-                    "Ihre Puppen",
-                    "Die Ritterpferde"
-                ],
-                correct: 0,
-                explanation: "Richtig! Auch an ihrem Hochzeitstag dachte Elisabeth an die armen Menschen."
+                steps: [
+                    {
+                        question: "Elisabeth und Ludwig feiern Hochzeit. Es gibt Musik und viel zu essen. An wen denkt Elisabeth mitten im Fest?",
+                        options: [
+                            "An die Menschen, die nichts zu essen haben",
+                            "An die Musiker, die mehr Geld haben wollen",
+                            "An die Gäste, die noch nicht satt sind"
+                        ],
+                        explanation: "Richtig! Auch an ihrem Hochzeitstag vergaß Elisabeth die Armen nicht."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Bei ihrer Hochzeit war Elisabeth noch sehr jung, erst 14 Jahre alt.",
+                        no: "Bei ihrer Hochzeit war Elisabeth schon eine alte Frau.",
+                        explanation: "Elisabeth war bei der Hochzeit erst 14 Jahre alt. Damals heirateten Fürstenkinder sehr früh."
+                    }
+                ]
             },
             {
                 topic: "Glaube & Vorbild",
                 title: "Die Krone in der Kirche",
-                question: "Warum nahm Elisabeth in der Kirche ihre goldene Krone vom Kopf und legte sie ab?",
-                options: [
-                    "Weil ihr die Krone zu schwer und unbequem war",
-                    "Weil sie vor Jesus am Kreuz nicht als reiche Königin stehen wollte",
-                    "Weil sie die Krone verschenken wollte"
-                ],
-                correct: 1,
-                explanation: "Richtig! Vor Jesus, der eine Dornenkrone trug, wollte sie keine teure Goldkrone tragen."
+                steps: [
+                    {
+                        question: "In der Kirche sieht Elisabeth Jesus am Kreuz. Er trägt eine Krone aus Dornen. Elisabeth nimmt ihre goldene Krone ab. Was denkt sie wohl?",
+                        options: [
+                            "„Jesus hat gelitten. Da will ich nicht mit Gold glänzen.“",
+                            "„Meine Krone drückt. Ich lege sie lieber kurz ab.“",
+                            "„Ich will meine Krone gleich nach der Kirche verkaufen.“"
+                        ],
+                        explanation: "Genau! Vor Jesus mit der Dornenkrone wollte Elisabeth keine goldene Krone tragen."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Elisabeth wollte vor Gott nicht mehr sein als andere Menschen.",
+                        no: "Elisabeth wollte in der Kirche zeigen, dass sie reicher ist als alle anderen.",
+                        explanation: "Vor Gott sind alle Menschen gleich viel wert – ob reich oder arm."
+                    }
+                ]
             },
             {
                 topic: "Nächstenliebe im Alltag",
                 title: "Hilfe für die Armen",
-                question: "Wie half Elisabeth den armen und hungernden Menschen unterhalb der Burg?",
-                options: [
-                    "Sie verteilte Brote, Kleider und Geld an sie",
-                    "Sie lud alle zum Ritterturnier ein",
-                    "Sie schickte sie in ein anderes Land"
-                ],
-                correct: 0,
-                explanation: "Genau! Sie gab den Armen zu essen und teilte ihren Reichtum."
+                steps: [
+                    {
+                        type: "multi",
+                        question: "Wie half Elisabeth den armen Menschen? Tippe ALLE richtigen Antworten an. Dann tippe auf „Prüfen“.",
+                        right: ["Sie gab ihnen Brot.", "Sie schenkte ihnen Kleider.", "Sie gab ihnen Geld."],
+                        wrong: ["Sie lud sie zu einem Ritterturnier ein.", "Sie schickte sie weg von der Burg."],
+                        explanation: "Richtig! Elisabeth teilte Essen, Kleider und Geld mit den Armen."
+                    },
+                    {
+                        question: "Einmal gab es eine Hungersnot. Elisabeth ließ das Korn aus den Vorratskammern der Burg verteilen. Was heißt das?",
+                        options: [
+                            "Sie teilte die Vorräte der Burg mit den Hungernden.",
+                            "Sie kaufte neues Korn für die Leute auf der Burg.",
+                            "Sie versteckte das Korn gut vor den Hungernden."
+                        ],
+                        explanation: "Genau! Die Vorräte der Burg bekamen die Menschen, die hungerten."
+                    }
+                ]
             },
             {
                 topic: "Bekannte Legende",
                 title: "Das Rosenwunder",
-                question: "Elisabeth trug heimlich Brote unter ihrem Mantel. Was geschah, als sie ihren Mantel öffnen musste?",
-                options: [
-                    "Die Brote waren plötzlich verschwunden",
-                    "Im Korb lagen wunderschöne rote Rosen",
-                    "Die Brote wurden zu Goldmünzen"
-                ],
-                correct: 1,
-                explanation: "Wunderbar! Aus den Broten wurden Rosen – das nennt man das Rosenwunder."
+                steps: [
+                    {
+                        type: "order",
+                        question: "Erzähle das Rosenwunder in der richtigen Reihenfolge. Tippe die Sätze nacheinander an.",
+                        items: [
+                            "Elisabeth trägt einen Korb mit Brot unter ihrem Mantel.",
+                            "Jemand hält sie an und will wissen, was sie trägt.",
+                            "Elisabeth öffnet ihren Mantel.",
+                            "Im Korb liegen rote Rosen statt Brot."
+                        ],
+                        explanation: "Wunderbar! Aus dem Brot wurden Rosen – das ist das Rosenwunder."
+                    },
+                    {
+                        question: "Was will uns die Legende vom Rosenwunder sagen?",
+                        options: [
+                            "Gott steht Elisabeth bei, wenn sie den Armen hilft.",
+                            "Brot wird immer zu Rosen, wenn man es versteckt.",
+                            "Man soll Rosen lieber unter dem Mantel tragen."
+                        ],
+                        explanation: "Richtig! Die Legende zeigt: Gott ist auf Elisabeths Seite, wenn sie hilft."
+                    }
+                ]
             },
             {
                 topic: "Bekannte Legende",
                 title: "Der Kranke im Bett",
-                question: "Wen legte Elisabeth einmal in ihr eigenes Bett, um ihn zu pflegen?",
-                options: [
-                    "Einen schwer kranken, aussätzigen Mann",
-                    "Einen verirrten Wanderer",
-                    "Einen müden Ritter"
-                ],
-                correct: 0,
-                explanation: "Richtig! In dieser Geschichte erkannte ihr Mann in dem Kranken das Bild von Jesus."
+                steps: [
+                    {
+                        type: "find",
+                        text: "Elisabeth legte einen schwer kranken Mann in ihr eigenes Bett. Ludwig hob die Decke hoch. Da sah er im Bett [einen König mit Krone].",
+                        fix: ["Jesus am Kreuz", "einen Engel mit Flügeln", "einen schlafenden Ritter"],
+                        explanation: "Ludwig sah im Bett das Bild von Jesus am Kreuz."
+                    },
+                    {
+                        question: "Was versteht Ludwig durch dieses Erlebnis?",
+                        options: [
+                            "Wer einem Kranken hilft, der hilft Jesus.",
+                            "Kranke Menschen gehören nicht in ein Bett.",
+                            "Elisabeth soll lieber gesunde Ritter pflegen."
+                        ],
+                        explanation: "Genau! Jesus sagt: Was ihr für andere Menschen tut, das tut ihr für mich."
+                    }
+                ]
             },
             {
                 topic: "Taten der Liebe",
                 title: "Das Hospital",
-                question: "Was ließ Elisabeth am Fuß der Wartburg extra für kranke und schwache Menschen bauen?",
-                options: [
-                    "Ein Hospital (Krankenhaus)",
-                    "Eine große Schule",
-                    "Ein Rathaus"
-                ],
-                correct: 0,
-                explanation: "Super! In diesem Hospital pflegte sie die Kranken sogar selbst."
+                steps: [
+                    {
+                        type: "tf",
+                        yes: "Ein Hospital ist ein Haus für kranke und schwache Menschen.",
+                        no: "Ein Hospital ist ein Haus, in dem Ritter für Turniere üben.",
+                        explanation: "Ein Hospital ist ein Krankenhaus. Elisabeth ließ eins am Fuß der Wartburg bauen."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Im Hospital pflegte Elisabeth die Kranken mit ihren eigenen Händen.",
+                        no: "Im Hospital ließ Elisabeth nur Diener arbeiten. Sie selbst kam nie zu den Kranken.",
+                        explanation: "Elisabeth wusch und fütterte die Kranken selbst."
+                    },
+                    {
+                        question: "Elisabeth war eine reiche Landgräfin. Sie hätte Diener schicken können. Warum pflegte sie die Kranken selbst?",
+                        options: [
+                            "Sie wollte den Menschen nah sein und selbst helfen.",
+                            "Sie hatte auf der Burg gar keine Diener.",
+                            "Ludwig hatte es ihr streng befohlen."
+                        ],
+                        explanation: "Richtig! Elisabeth wollte den Kranken ganz nah sein – so wie Jesus den Menschen nah war."
+                    }
+                ]
             },
             {
                 topic: "Die Werke der Barmherzigkeit",
                 title: "Jesus sagt …",
-                intro: "Jesus sagt: Was ihr für andere Menschen tut, das tut ihr für mich. Welches Satzende gehört dazu?",
-                // Satzenden wie auf dem Arbeitsblatt; options werden beim Öffnen aus allen Satzenden gebildet
-                matching: [
-                    ["Denn ich bin hungrig gewesen …", "… und ihr habt mir zu essen gegeben."],
-                    ["Ich bin durstig gewesen …", "… und ihr habt mir zu trinken gegeben."],
-                    ["Ich bin ein Fremder gewesen …", "… und ihr habt mich aufgenommen."],
-                    ["Ich bin nackt gewesen …", "… und ihr habt mich gekleidet."],
-                    ["Ich bin krank gewesen …", "… und ihr habt mich besucht."],
-                    ["Ich bin im Gefängnis gewesen …", "… und ihr seid zu mir gekommen."]
-                ],
-                lastExplanation: "Toll! Das sind die Werke der Barmherzigkeit. Elisabeth hat sie jeden Tag getan."
+                steps: [
+                    {
+                        type: "pairs",
+                        question: "Jesus sagt: „Was ihr für andere Menschen tut, das tut ihr für mich.“\nVerbinde: Tippe links einen Satzanfang an. Dann tippe rechts das passende Ende an.",
+                        pairs: [
+                            ["Denn ich bin hungrig gewesen …", "… und ihr habt mir zu essen gegeben."],
+                            ["Ich bin durstig gewesen …", "… und ihr habt mir zu trinken gegeben."],
+                            ["Ich bin ein Fremder gewesen …", "… und ihr habt mich aufgenommen."],
+                            ["Ich bin nackt gewesen …", "… und ihr habt mich gekleidet."],
+                            ["Ich bin krank gewesen …", "… und ihr habt mich besucht."],
+                            ["Ich bin im Gefängnis gewesen …", "… und ihr seid zu mir gekommen."]
+                        ],
+                        explanation: "Toll! Das sind die Werke der Barmherzigkeit. Elisabeth hat sie jeden Tag getan."
+                    }
+                ]
             },
             {
                 topic: "Die Werke der Barmherzigkeit",
                 title: "Gute Werke heute",
                 steps: [
                     {
-                        question: "Ein Kind aus deiner Klasse ist traurig. Was ist ein gutes Werk?",
-                        options: [
-                            "Ich lache es aus",
-                            "Ich tröste es",
-                            "Ich schaue einfach weg"
+                        type: "multi",
+                        question: "Welche Kinder tun ein gutes Werk? Tippe ALLE richtigen Antworten an. Dann tippe auf „Prüfen“.",
+                        right: [
+                            "Lena tröstet ihre traurige Freundin.",
+                            "Ali teilt sein Pausenbrot mit Ben, der seins vergessen hat.",
+                            "Jonas besucht seinen kranken Opa."
                         ],
-                        correct: 1,
-                        explanation: "Richtig! „Ich bin traurig gewesen und ihr habt mich getröstet.“"
+                        wrong: [
+                            "Tim lacht über ein Kind, das hingefallen ist.",
+                            "Mia erzählt allen von Pauls schlechter Note."
+                        ],
+                        explanation: "Super! Trösten, teilen und Kranke besuchen – das sind gute Werke."
                     },
                     {
-                        question: "Ein Kind ist auf dem Schulhof hingefallen. Was ist ein gutes Werk?",
+                        question: "Ein neues Kind kommt in deine Klasse. Es kennt hier noch niemanden. Welcher Satz von Jesus passt dazu?",
                         options: [
-                            "Ich helfe ihm wieder auf",
-                            "Ich laufe schnell weiter",
-                            "Ich rufe: „Selber schuld!“"
+                            "„Ich bin ein Fremder gewesen und ihr habt mich aufgenommen.“",
+                            "„Ich bin durstig gewesen und ihr habt mir zu trinken gegeben.“",
+                            "„Ich bin im Gefängnis gewesen und ihr seid zu mir gekommen.“"
                         ],
-                        correct: 0,
-                        explanation: "Genau! „Ich bin hingefallen und ihr habt mir geholfen.“"
+                        explanation: "Genau! Wer ein neues Kind freundlich aufnimmt, tut ein Werk der Barmherzigkeit."
                     },
                     {
-                        question: "Ein Kind hat eine schlechte Mathearbeit zurückbekommen. Was ist ein gutes Werk?",
+                        question: "Ein Kind hat eine schlechte Note bekommen und ist traurig. Was ist ein gutes Werk?",
                         options: [
-                            "Ich erzähle es allen weiter",
-                            "Ich lache über das Kind",
-                            "Ich lache nicht und mache ihm Mut"
+                            "Ich lache nicht und mache ihm Mut.",
+                            "Ich frage laut, welche Note es hat.",
+                            "Ich sage ihm, dass ich besser war."
                         ],
-                        correct: 2,
-                        explanation: "Super! „Ihr habt nicht über mich gelacht.“"
-                    },
-                    {
-                        question: "Ein Mensch ist arm und hat kaum Geld. Was ist ein gutes Werk?",
-                        options: [
-                            "Wir teilen und geben ihm etwas ab",
-                            "Wir behalten alles für uns",
-                            "Wir machen uns über ihn lustig"
-                        ],
-                        correct: 0,
-                        explanation: "Prima! „Ich bin arm gewesen und ihr habt mir Geld gegeben.“ So hat es auch Elisabeth gemacht."
+                        explanation: "Prima! Mut machen und nicht auslachen – das tut gut."
                     }
                 ]
             },
             {
                 topic: "Biografie: Schicksalsschlag",
                 title: "Abschied von der Burg",
-                question: "Warum verließ Elisabeth nach einigen Jahren die Wartburg?",
-                options: [
-                    "Ihr Mann Ludwig starb und seine Familie war gegen ihre Großzügigkeit",
-                    "Die Burg wurde durch ein Feuer zerstört",
-                    "Sie wollte eine Weltreise machen"
-                ],
-                correct: 0,
-                explanation: "Richtig! Nach Ludwigs Tod musste sie mit ihren drei Kindern die Burg verlassen."
+                steps: [
+                    {
+                        type: "order",
+                        question: "Was geschah nacheinander? Tippe die Sätze in der richtigen Reihenfolge an.",
+                        items: [
+                            "Ludwig zieht mit einem Heer in ein fernes Land.",
+                            "Ludwig wird unterwegs krank und stirbt.",
+                            "Ludwigs Familie ist gegen Elisabeths Großzügigkeit.",
+                            "Elisabeth verlässt mit ihren drei Kindern die Wartburg."
+                        ],
+                        explanation: "Richtig! Ohne Ludwig musste Elisabeth die Wartburg verlassen."
+                    },
+                    {
+                        question: "Ludwigs Familie sagt: „Elisabeth gibt viel zu viel weg!“ Was meinen sie damit?",
+                        options: [
+                            "Sie verschenkt zu viel vom Reichtum der Burg.",
+                            "Sie feiert zu viele große Feste auf der Burg.",
+                            "Sie gibt ihren Kindern zu viele Geschenke."
+                        ],
+                        explanation: "Genau! Die Familie wollte den Reichtum lieber für sich behalten."
+                    }
+                ]
             },
             {
                 topic: "Biografie: Lebensende",
                 title: "Ihr Weg nach Marburg",
-                question: "In welche Stadt zog Elisabeth später, wo sie bis zu ihrem Tod für Kranke sorgte?",
-                options: [
-                    "Nach Marburg",
-                    "Nach Berlin",
-                    "Nach München"
-                ],
-                correct: 0,
-                explanation: "Genau! In Marburg gründete sie wieder ein Hospital und lebte ganz einfach."
+                steps: [
+                    {
+                        type: "find",
+                        text: "In [Berlin] gründete Elisabeth ein neues Hospital. Dort lebte sie ganz einfach und arm.",
+                        fix: ["Marburg", "München", "Ungarn"],
+                        explanation: "Elisabeth zog nach Marburg. Dort pflegte sie bis zu ihrem Tod die Kranken."
+                    },
+                    {
+                        type: "tf",
+                        yes: "Elisabeth starb in Marburg. Sie wurde nur 24 Jahre alt.",
+                        no: "Elisabeth starb in Marburg. Sie wurde 90 Jahre alt.",
+                        explanation: "Elisabeth wurde nur 24 Jahre alt. In ihrem kurzen Leben hat sie sehr vielen Menschen geholfen."
+                    }
+                ]
             },
             {
                 topic: "Religiöse Bedeutung",
                 title: "Vorbild Jesus",
-                question: "Warum wird Elisabeth in der Kirche als „Heilige“ verehrt?",
-                options: [
-                    "Weil sie eine mächtige Prinzessin war",
-                    "Weil sie wie Jesus gelebt und Nächstenliebe gezeigt hat",
-                    "Weil sie besonders viele Burgen besaß"
-                ],
-                correct: 1,
-                explanation: "Perfekt! Heilige sind Menschen, die anderen zeigen, wie man nach Gottes Willen liebt und hilft."
+                steps: [
+                    {
+                        question: "Die Kirche nennt Elisabeth eine „Heilige“. Was bedeutet das?",
+                        options: [
+                            "Sie hat so gelebt, wie Jesus es zeigt. Sie ist ein Vorbild.",
+                            "Sie hat nie einen Fehler gemacht und war nie traurig.",
+                            "Sie war besonders reich und hatte viele Burgen."
+                        ],
+                        explanation: "Richtig! Heilige zeigen uns, wie man nach Gottes Willen liebt und hilft."
+                    },
+                    {
+                        type: "multi",
+                        question: "Auf Bildern hat Elisabeth oft Dinge dabei, die an ihr Leben erinnern. Was passt? Tippe ALLE richtigen an. Dann tippe auf „Prüfen“.",
+                        right: ["Rosen", "Brot im Korb", "eine Krone"],
+                        wrong: ["ein Schwert", "ein Fußball"],
+                        explanation: "Genau! Rosen und Brot erinnern an das Rosenwunder, die Krone an die Landgräfin."
+                    }
+                ]
             },
             {
                 topic: "Kirchenjahr & Transfer",
                 title: "Der Elisabeth-Tag",
-                question: "Wann feiern wir jedes Jahr das Fest der Heiligen Elisabeth?",
-                options: [
-                    "Am 19. November",
-                    "Am 24. Dezember",
-                    "Am Ostersonntag"
-                ],
-                correct: 0,
-                explanation: "Klasse! Am 19. November denken wir an Elisabeth und teilen miteinander."
+                steps: [
+                    {
+                        question: "Elisabeth starb am 17. November. Ihr Fest feiern wir zwei Tage später. Welcher Tag ist das?",
+                        options: [
+                            "der 19. November",
+                            "der 17. November",
+                            "der 19. Dezember"
+                        ],
+                        explanation: "Klasse! Am 19. November ist Elisabeth-Tag."
+                    },
+                    {
+                        question: "Am Elisabeth-Tag teilen viele Kinder miteinander, zum Beispiel Brot. Warum passt das zu Elisabeth?",
+                        options: [
+                            "Elisabeth hat ihr Brot mit den Armen geteilt.",
+                            "Elisabeth hat auf der Burg das Brot gebacken.",
+                            "Elisabeth hat am liebsten Brot gegessen."
+                        ],
+                        explanation: "Genau! Wer teilt, macht es wie Elisabeth."
+                    }
+                ]
             }
         ];
 
-        // Fragen jeder Station als Liste (eine oder mehrere)
-        stationsData.forEach(st => {
-            if (st.matching) {
-                const endings = st.matching.map(m => m[1]);
-                st.steps = st.matching.map(([start, end], i) => ({
-                    question: (i === 0 ? st.intro + "\n\n" : "") + start,
-                    // alle Satzenden in fester, gemischter Reihenfolge – wie auf dem Arbeitsblatt
-                    options: [2, 4, 0, 5, 1, 3].map(k => endings[k]),
-                    answer: end,
-                    explanation: i === st.matching.length - 1 ? st.lastExplanation : "Richtig! " + start.replace(" …", "") + " " + end.replace("… ", "")
-                }));
-                st.steps.forEach(s => { s.correct = s.options.indexOf(s.answer); });
+        // Aufgaben fürs Spiel vorbereiten: Varianten auswählen, Antworten mischen
+        function shuffled(list) {
+            const a = list.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
             }
-            if (!st.steps) st.steps = [{ question: st.question, options: st.options, correct: st.correct, explanation: st.explanation }];
-        });
+            return a;
+        }
+        // mischen, aber nie in der Ausgangs-Reihenfolge (sonst wäre „Reihenfolge“ schon gelöst)
+        function shuffledNew(list) {
+            let a = shuffled(list);
+            for (let n = 0; n < 10 && a.every((x, i) => x === list[i]); n++) a = shuffled(list);
+            return a;
+        }
+        function prepareStep(raw) {
+            if (raw.variants) return prepareStep(raw.variants[Math.floor(Math.random() * raw.variants.length)]);
+            const type = raw.type || "mc";
+            if (type === "mc") {
+                const options = shuffled(raw.options);
+                return { type, question: raw.question, options, correct: options.indexOf(raw.options[0]), explanation: raw.explanation };
+            }
+            if (type === "tf") {
+                const isTrue = Math.random() < 0.5;
+                return {
+                    type, question: "Stimmt das?\n\n„" + (isTrue ? raw.yes : raw.no) + "“",
+                    options: ["👍 Stimmt", "👎 Stimmt nicht"], correct: isTrue ? 0 : 1,
+                    explanation: (isTrue ? "Richtig, das stimmt! " : "Richtig, das stimmt nicht! ") + raw.explanation
+                };
+            }
+            if (type === "find") {
+                const tokens = raw.text.match(/\[[^\]]+\]\S*|\S+/g);
+                const wrong = tokens.findIndex(t => t.startsWith("["));
+                const fixOptions = shuffled(raw.fix);
+                return {
+                    type, question: "Finde den Fehler! In diesem Text ist ein Teil falsch. Tippe ihn an.",
+                    tokens: tokens.map(t => t.replace(/[\[\]]/g, "")), wrong,
+                    fix: { options: fixOptions, correct: fixOptions.indexOf(raw.fix[0]) },
+                    explanation: raw.explanation
+                };
+            }
+            if (type === "order") {
+                return { type, question: raw.question, items: raw.items, options: shuffledNew(raw.items), explanation: raw.explanation };
+            }
+            if (type === "multi") {
+                const options = shuffled(raw.right.concat(raw.wrong));
+                return { type, question: raw.question, options, correctSet: raw.right.map(r => options.indexOf(r)), explanation: raw.explanation };
+            }
+            if (type === "pairs") {
+                return { type, question: raw.question, pairs: raw.pairs, left: shuffled(raw.pairs.map(p => p[0])), right: shuffledNew(raw.pairs.map(p => p[1])), explanation: raw.explanation };
+            }
+            throw new Error("Unbekannte Aufgabe: " + type);
+        }
+        stationsData.forEach(st => { st.steps = st.steps.map(prepareStep); });
 
         // Plätze auf der Wiese: Schlangenweg in Reihen zu je 5 Stationen
         stationsData.forEach((st, idx) => {
@@ -839,6 +1063,7 @@
 
         let currentStation = -1;
         let currentStep = 0;
+        let stepState = null;   // Zwischenstand der offenen Aufgabe (Reihenfolge, Auswahl, Paare …)
 
         function openStation(index) {
             isModalOpen = true;
@@ -858,26 +1083,68 @@
             document.getElementById('quiz-modal').style.display = 'block';
         }
 
+        function makeButton(cls, text, onClick) {
+            const btn = document.createElement('button');
+            btn.className = cls;
+            btn.innerText = text;
+            btn.onclick = () => onClick(btn);
+            return btn;
+        }
+
         function showStep() {
             const st = stationsData[currentStation];
             const step = st.steps[currentStep];
 
             document.getElementById('step-progress').innerText =
-                st.steps.length > 1 ? `Frage ${currentStep + 1} / ${st.steps.length}` : "";
+                st.steps.length > 1 ? `Aufgabe ${currentStep + 1} / ${st.steps.length}` : "";
             document.getElementById('question-text').innerText = step.question;
             document.getElementById('feedback').innerText = "";
+            document.getElementById('feedback').className = "";
             document.getElementById('next-btn').style.display = 'none';
+            const checkBtn = document.getElementById('check-btn');
+            checkBtn.style.display = 'none';
+            checkBtn.disabled = false;
+            const fix = document.getElementById('fix-container');
+            fix.innerHTML = "";
+            fix.style.display = 'none';
 
-            const optionsContainer = document.getElementById('options-container');
-            optionsContainer.innerHTML = "";
+            const box = document.getElementById('options-container');
+            box.innerHTML = "";
+            box.className = "options-grid";
+            stepState = { done: false };
 
-            step.options.forEach((optText, optIndex) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.innerText = optText;
-                btn.onclick = () => checkAnswer(optIndex, btn);
-                optionsContainer.appendChild(btn);
-            });
+            if (step.type === "mc" || step.type === "tf") {
+                if (step.type === "tf") box.classList.add('tf');
+                step.options.forEach((text, i) => box.appendChild(makeButton('option-btn', text, btn => answerChoice(i, btn))));
+            } else if (step.type === "multi") {
+                stepState.selected = new Set();
+                step.options.forEach((text, i) => box.appendChild(makeButton('option-btn multi-btn', text, btn => toggleMulti(i, btn))));
+                checkBtn.style.display = 'inline-block';
+            } else if (step.type === "order") {
+                stepState.next = 0;
+                box.classList.add('order');
+                step.options.forEach((text, i) => box.appendChild(makeButton('option-btn order-btn', text, btn => answerOrder(i, btn))));
+            } else if (step.type === "find") {
+                box.className = "word-wrap";
+                step.tokens.forEach((text, i) => box.appendChild(makeButton('word-btn', text, btn => answerFind(i, btn))));
+            } else if (step.type === "pairs") {
+                box.className = "pairs-grid";
+                stepState.left = null;
+                stepState.matched = 0;
+                const leftCol = document.createElement('div'), rightCol = document.createElement('div');
+                leftCol.className = rightCol.className = "pairs-col";
+                step.left.forEach((text, i) => {
+                    const b = makeButton('pair-btn', text, btn => pickLeft(i, btn));
+                    b.dataset.left = i;
+                    leftCol.appendChild(b);
+                });
+                step.right.forEach((text, i) => {
+                    const b = makeButton('pair-btn', text, btn => pickRight(i, btn));
+                    b.dataset.right = i;
+                    rightCol.appendChild(b);
+                });
+                box.append(leftCol, rightCol);
+            }
             document.getElementById('quiz-modal').scrollTop = 0;
         }
 
@@ -886,53 +1153,206 @@
             showStep();
         }
 
-        function checkAnswer(selectedOption, btnElement) {
+        function showFeedback(cls, text) {
+            const el = document.getElementById('feedback');
+            el.className = cls;
+            el.innerText = text;
+            // auf kleinen Bildschirmen die Rückmeldung ins Bild holen
+            if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+        }
+
+        function stepWrong(text) {
+            mistakes++;
+            showFeedback("wrong", "❌ " + text);
+            if (kit) kit.sound.falsch();
+        }
+
+        function markRight(btn) {
+            btn.classList.add('right');
+        }
+
+        function flashWrong(btn) {
+            btn.classList.remove('flash');
+            void btn.offsetWidth;   /* Animation neu starten */
+            btn.classList.add('flash');
+            setTimeout(() => btn.classList.remove('flash'), 450);
+        }
+
+        // Aufgabe gelöst: Rückmeldung, dann „Weiter“ oder Station schließen
+        function stepSolved() {
             const stationIndex = currentStation;
             const st = stationsData[stationIndex];
             const step = st.steps[currentStep];
-            const feedbackEl = document.getElementById('feedback');
-            const allButtons = document.querySelectorAll('.option-btn');
+            stepState.done = true;
+            document.querySelectorAll('#options-container button, #fix-container button').forEach(b => b.disabled = true);
+            document.getElementById('check-btn').style.display = 'none';
+            showFeedback("correct", "🌟 " + step.explanation);
+            if (kit) kit.sound.richtig();
 
-            if (selectedOption === step.correct) {
-                allButtons.forEach(b => b.disabled = true);
-                btnElement.style.background = "#16a34a";
-                btnElement.style.borderColor = "#14532d";
+            if (currentStep < st.steps.length - 1) {
+                const next = document.getElementById('next-btn');
+                next.style.display = 'inline-block';
+                next.focus();
+                return;
+            }
 
-                feedbackEl.className = "correct";
-                feedbackEl.innerText = "🌟 " + step.explanation;
-                if (kit) kit.sound.richtig();
+            if (!completedStations.has(stationIndex)) {
+                completedStations.add(stationIndex);
+                score++;
+                document.getElementById('score').innerText = score;
+                document.getElementById('progress').innerText = completedStations.size;
+            }
 
-                // Weitere Fragen an dieser Station: mit „Weiter“ zur nächsten
-                if (currentStep < st.steps.length - 1) {
-                    const next = document.getElementById('next-btn');
-                    next.style.display = 'inline-block';
-                    next.focus();
-                    return;
+            setTimeout(() => {
+                document.getElementById('quiz-modal').style.display = 'none';
+                isModalOpen = false;
+
+                if (completedStations.size === stationsData.length) {
+                    showEndScreen();
                 }
+            }, 2600);
+        }
 
-                if (!completedStations.has(stationIndex)) {
-                    completedStations.add(stationIndex);
-                    score++;
-                    document.getElementById('score').innerText = score;
-                    document.getElementById('progress').innerText = completedStations.size;
-                }
-
-                setTimeout(() => {
-                    document.getElementById('quiz-modal').style.display = 'none';
-                    isModalOpen = false;
-
-                    if (completedStations.size === stationsData.length) {
-                        showEndScreen();
-                    }
-                }, 2600);
+        // eine Antwort wählen / Stimmt – stimmt nicht
+        function answerChoice(i, btn) {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done) return;
+            if (i === step.correct) {
+                markRight(btn);
+                stepSolved();
             } else {
-                btnElement.style.background = "#dc2626";
-                btnElement.style.borderColor = "#7f1d1d";
-                btnElement.disabled = true;
-                mistakes++;
-                feedbackEl.className = "wrong";
-                feedbackEl.innerText = "❌ Nicht ganz! Lies noch einmal genau und probiere eine andere Antwort.";
-                if (kit) kit.sound.falsch();
+                btn.classList.add('wrong-btn');
+                btn.disabled = true;
+                stepWrong(step.type === "tf"
+                    ? "Nicht ganz! Lies den Satz noch einmal Wort für Wort."
+                    : "Nicht ganz! Lies noch einmal genau und probiere eine andere Antwort.");
+            }
+        }
+
+        // mehrere richtige Antworten antippen, dann „Prüfen“
+        function toggleMulti(i, btn) {
+            if (stepState.done) return;
+            const sel = stepState.selected;
+            if (sel.has(i)) sel.delete(i); else sel.add(i);
+            btn.classList.toggle('selected', sel.has(i));
+            document.getElementById('feedback').innerText = "";
+        }
+
+        function checkMulti() {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done) return;
+            const sel = stepState.selected;
+            if (sel.size === 0) {
+                showFeedback("hint", "👆 Tippe zuerst die richtigen Antworten an.");
+                return;
+            }
+            const buttons = document.querySelectorAll('#options-container .multi-btn');
+            const wrongPicked = [...sel].filter(i => !step.correctSet.includes(i));
+            const missing = step.correctSet.filter(i => !sel.has(i));
+            if (wrongPicked.length === 0 && missing.length === 0) {
+                step.correctSet.forEach(i => markRight(buttons[i]));
+                stepSolved();
+                return;
+            }
+            // falsch gewählte Antworten rot markieren und sperren, die richtigen bleiben gewählt
+            wrongPicked.forEach(i => {
+                sel.delete(i);
+                buttons[i].classList.remove('selected');
+                buttons[i].classList.add('wrong-btn');
+                buttons[i].disabled = true;
+            });
+            stepWrong(wrongPicked.length
+                ? "Nicht ganz! Eine Antwort passt nicht. Sie ist jetzt rot. Prüfe die anderen noch einmal."
+                : "Nicht ganz! Es fehlt noch mindestens eine richtige Antwort.");
+        }
+
+        // Sätze in der richtigen Reihenfolge antippen
+        function answerOrder(i, btn) {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done || btn.classList.contains('right')) return;
+            if (step.options[i] === step.items[stepState.next]) {
+                stepState.next++;
+                btn.dataset.nr = stepState.next;
+                markRight(btn);
+                btn.disabled = true;
+                document.getElementById('feedback').innerText = "";
+                if (stepState.next === step.items.length) stepSolved();
+                else if (kit) kit.sound.beep && kit.sound.beep(740, 0.08);
+            } else {
+                flashWrong(btn);
+                stepWrong(stepState.next === 0
+                    ? "Nicht ganz! Das kommt noch nicht zuerst. Was geschah ganz am Anfang?"
+                    : "Nicht ganz! Das kommt noch nicht dran. Was geschah direkt danach?");
+            }
+        }
+
+        // Fehler finden, dann das richtige Wort wählen
+        function answerFind(i, btn) {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done || stepState.found) return;
+            if (i !== step.wrong) {
+                flashWrong(btn);
+                stepWrong("Nicht ganz! Dieser Teil stimmt. Lies den Text noch einmal genau.");
+                return;
+            }
+            stepState.found = true;
+            btn.classList.add('found');
+            document.querySelectorAll('#options-container .word-btn').forEach(b => b.disabled = true);
+            showFeedback("hint", "🔍 Gefunden! Was muss an diese Stelle?");
+            const fix = document.getElementById('fix-container');
+            fix.style.display = 'flex';
+            step.fix.options.forEach((text, k) => fix.appendChild(makeButton('option-btn', text, b => answerFix(k, b))));
+        }
+
+        function answerFix(k, btn) {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done) return;
+            if (k === step.fix.correct) {
+                markRight(btn);
+                const found = document.querySelector('#options-container .word-btn.found');
+                if (found) {
+                    found.innerText = step.fix.options[k] + step.tokens[step.wrong].replace(/^.*?([.,!?;:]*)$/, '$1');
+                    found.classList.add('fixed');
+                }
+                stepSolved();
+            } else {
+                btn.classList.add('wrong-btn');
+                btn.disabled = true;
+                stepWrong("Nicht ganz! Denk an Elisabeths Geschichte und probiere ein anderes.");
+            }
+        }
+
+        // Satzanfang (links) und Satzende (rechts) verbinden
+        function pickLeft(i, btn) {
+            if (stepState.done || btn.classList.contains('right')) return;
+            document.querySelectorAll('#options-container .pair-btn.picked').forEach(b => b.classList.remove('picked'));
+            stepState.left = i;
+            btn.classList.add('picked');
+            showFeedback("hint", "👉 Jetzt rechts das passende Ende antippen.");
+        }
+
+        function pickRight(i, btn) {
+            const step = stationsData[currentStation].steps[currentStep];
+            if (stepState.done || btn.classList.contains('right')) return;
+            if (stepState.left === null) {
+                showFeedback("hint", "👈 Tippe zuerst links einen Satzanfang an.");
+                return;
+            }
+            const start = step.left[stepState.left];
+            const pair = step.pairs.find(p => p[0] === start);
+            if (pair[1] === step.right[i]) {
+                const leftBtn = document.querySelector(`#options-container [data-left="${stepState.left}"]`);
+                stepState.matched++;
+                [leftBtn, btn].forEach(b => { b.classList.remove('picked'); markRight(b); b.disabled = true; b.dataset.nr = stepState.matched; });
+                stepState.left = null;
+                if (stepState.matched === step.pairs.length) stepSolved();
+                else {
+                    showFeedback("correct", "✔ " + start.replace(/^Denn /, "").replace(" …", "") + " " + pair[1].replace("… ", ""));
+                    if (kit) kit.sound.richtig();
+                }
+            } else {
+                flashWrong(btn);
+                stepWrong("Nicht ganz! Dieses Ende passt nicht zum Anfang. Lies beide Teile zusammen.");
             }
         }
 
