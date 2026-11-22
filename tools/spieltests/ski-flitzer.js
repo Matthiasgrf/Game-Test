@@ -25,7 +25,7 @@ export default async function (t) {
     t.check(`${size}: Start-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('#start a[href="../../#/"]').isVisible());
 
     await game.click('#startBtn');
-    t.check(`${size}: während des Spiels „🏠 Alle Spiele“`, await game.locator('#hud a[href="../../#/"]').isVisible());
+    t.check(`${size}: während des Spiels „🏠 Alle Spiele“ (Leiste des Kits)`, await game.locator('.gt-bar a[href="../../#/"]').isVisible());
     await game.evaluate(() => { SPIEL.timeScale = 4; });
     await game.waitForFunction(() => SPIEL.state().phase === 'play', null, { timeout: 60000 });
 

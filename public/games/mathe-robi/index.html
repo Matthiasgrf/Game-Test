@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Robi in der Zahlenfabrik</title>
 <style>
 *{box-sizing:border-box}
@@ -17,7 +18,8 @@ body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#16324f;ba
   text-decoration:none;border:0;box-shadow:0 3px 10px rgba(0,0,0,.35);white-space:nowrap}
 button.pill{cursor:pointer}
 .hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;
-  padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) 0 calc(10px + env(safe-area-inset-left))}
+  padding:calc(8px + env(safe-area-inset-top)) calc(var(--gt-bar-space) + 4px) 0 calc(10px + env(safe-area-inset-left))}
+.hud #musik.off{opacity:.45;text-decoration:line-through}
 .hud .space{flex:1}
 #banner{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;
   padding:0 10px;pointer-events:none;text-align:center}
@@ -87,9 +89,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 .keys{font-size:15px;color:#4a6078}
 .turn{display:none;font-size:15px;font-weight:700;background:#fff4dc;border-radius:12px;padding:6px 10px}
 @media (orientation:portrait) and (pointer:coarse) and (max-width:600px){.turn{display:block}}
-#streak{position:absolute;right:calc(10px + env(safe-area-inset-right));top:calc(50px + env(safe-area-inset-top));font-size:15px;padding:5px 11px}
+#streak{position:absolute;right:calc(10px + env(safe-area-inset-right));top:calc(var(--gt-top) + 56px);font-size:15px;padding:5px 11px}
 [hidden]{display:none!important}
-@media (max-width:430px){.pill{font-size:14px;padding:6px 10px}.hud{gap:5px}#streak{font-size:13px;top:calc(46px + env(safe-area-inset-top))}}
+@media (max-width:430px){.pill{font-size:14px;padding:6px 10px}.hud{gap:5px}#streak{font-size:13px;top:calc(var(--gt-top) + 56px)}}
 @media (max-height:430px){.card{padding:12px 18px}.intro,.keys{display:none}h1{font-size:22px}#question{font-size:22px;padding:3px 16px}#feedback{font-size:14px;max-width:none}
   #streak{top:auto;bottom:calc(8px + env(safe-area-inset-bottom));right:50%;transform:translateX(50%)}
   .btn{min-height:46px;padding:8px 10px;font-size:17px}.group .btn{min-height:40px;padding:5px 8px;font-size:16px}.group .list{gap:6px}p{font-size:15px;margin:5px 0}.stars{font-size:40px}}
@@ -99,11 +101,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 <div id="stage">
   <canvas id="cv"></canvas>
   <div class="hud" id="hud" hidden>
-    <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
     <span class="space"></span>
     <span class="pill" id="progress"></span>
     <span class="pill" id="gears"></span>
-    <button class="pill" id="mute" aria-label="Ton an oder aus">🔊</button>
+    <button class="pill" id="musik" aria-label="Musik an oder aus">🎵</button>
   </div>
   <span class="pill" id="streak" hidden></span>
   <div id="banner" hidden>
@@ -1648,6 +1649,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   }
 
   function screen(name) {
+    if (kit) kit.setState(name === 'play' ? 'play' : name === 'win' ? 'end' : 'menu');
     $('start').hidden = name !== 'start';
     $('win').hidden = name !== 'win';
     $('shop').hidden = name !== 'shop';
@@ -1809,22 +1811,25 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   });
   $('againBtn').addEventListener('click', function () { startGame(G.topic); });
   $('topicBtn').addEventListener('click', showStart);
-  /* Ton-Knopf mit drei Zuständen: alles an → nur Geräusche (Musik aus) → alles aus. */
+  /* Ton an/aus: Leiste des Kits (gemeinsame Einstellung aller Spiele). Musik an/aus: eigener Knopf 🎵. */
   function muteLabel() {
-    $('mute').textContent = store.mute ? '🔇' : store.music ? '🔊' : '🔉';
-    $('mute').setAttribute('aria-label', store.mute ? 'Ton aus. Tippen für Ton an.' : store.music ? 'Ton und Musik an. Tippen für Musik aus.' : 'Musik aus. Tippen für Ton aus.');
+    $('musik').classList.toggle('off', !store.music);
+    $('musik').setAttribute('aria-label', store.music ? 'Musik ist an. Tippen für Musik aus.' : 'Musik ist aus. Tippen für Musik an.');
   }
-  $('mute').addEventListener('click', function () {
-    if (store.mute) { store.mute = false; store.music = true; }
-    else if (store.music) store.music = false;
-    else store.mute = true;
+  $('musik').addEventListener('click', function () {
+    store.music = !store.music;
     persist(); muteLabel(); audioOn(); musicVolume(); this.blur();
   });
   muteLabel();
 
   /* ---------- Schleife ---------- */
-  var last = 0, acc = 0;
+  var last = 0, acc = 0, raf = 0, lastDraw = 0, angehalten = false, kit = null;
   function frame(now) {
+    raf = 0;
+    if (angehalten) return;                                    /* Pause: nichts zeichnen */
+    raf = requestAnimationFrame(frame);
+    if (G.mode !== 'play' && now - lastDraw < 50) return;      /* Start, Werkstatt, Ende: 20 Bilder/s */
+    lastDraw = now;
     var dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now; acc += dt * (TEST && window.ROBI.speed || 1);     /* Zeitraffer nur für Tests */
     while (acc >= STEP) {
@@ -1834,13 +1839,28 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     draw();
     if (!$('shop').hidden) drawPreview();
     if (G.mode === 'play') hud();
-    requestAnimationFrame(frame);
   }
+
+  /* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und
+     „Alle Spiele“, Pause-Fenster, automatische Pause im Hintergrund ---------- */
+  import('../shared/kit/kit.js').then(function (m) {
+    kit = m.startKit({
+      key: 'mathe-robi', orientation: 'any', saveKey: 'mathe_robi_v1',
+      pause: function () { angehalten = true; music.on = false; input.left = input.right = false; },
+      resume: function () {
+        angehalten = false; last = performance.now();
+        music.on = !!G && G.mode === 'play' && !G.L.goal.hit;
+        if (!raf) raf = requestAnimationFrame(frame);
+      },
+      sound: { setMuted: function (m) { store.mute = m; muteLabel(); audioOn(); musicVolume(); } }
+    });
+    kit.setState(G && G.mode === 'play' ? 'play' : G && G.mode === 'win' ? 'end' : 'menu');
+  }).catch(function () {});
 
   resize();
   showStart();
   if (TEST) window.ROBI = { game: function () { return G; }, input: input, view: view, gen: GEN, bump: bump, hurt: hurt, music: music, speed: 1, step: null };
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
 })();
 </script>
 </body>

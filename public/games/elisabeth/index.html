@@ -2,9 +2,10 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <script src="../shared/zoom-schutz.js"></script>
     <script src="../shared/game-test.js"></script>
+    <link rel="stylesheet" href="../shared/kit/theme.css">
     <title>Elisabeth von Thüringen - 3D Religions-Abenteuer (3. Klasse)</title>
     <style>
         * {
@@ -24,16 +25,16 @@
             background-color: #87CEEB;
         }
         #game-canvas {
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             display: block;
         }
         /* Kopfbereich (HUD) */
         #hud {
             position: absolute;
-            top: 12px;
-            left: 12px;
-            right: 12px;
+            top: var(--gt-top);
+            left: var(--gt-left);
+            right: calc(var(--gt-bar-space) + 4px);   /* oben rechts: Leiste des Kits */
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -203,9 +204,11 @@
             transition: transform 0.1s, background 0.2s;
             box-shadow: 0 4px 0 #92400e;
         }
-        button.option-btn:hover, button.action-btn:hover {
-            background: #d97706;
-            transform: translateY(-2px);
+        @media (hover: hover) and (pointer: fine) {
+            button.option-btn:hover, button.action-btn:hover {
+                background: #d97706;
+                transform: translateY(-2px);
+            }
         }
         button.option-btn:active, button.action-btn:active {
             transform: translateY(2px);
@@ -259,8 +262,7 @@
         /* schmale Handys (360–420 px): Anzeige oben passt in eine Zeile, auch bei „20 / 20“ */
         @media (max-width: 420px) {
             #hud {
-                left: 8px;
-                right: 8px;
+                left: max(8px, env(safe-area-inset-left));
                 gap: 6px;
             }
             .hud-box {
@@ -283,7 +285,6 @@
         <div class="hud-box">🏰 Stationen: <span id="progress">0</span> / <span class="station-count">20</span></div>
     </div>
 
-    <a id="home-link" href="../../#/" target="_top">🏠 Alle Spiele</a>
 
     <div id="controls-hint">
         🖱 <b>Tippe/Klicke auf die Wiese</b> oder nutze die <b>Pfeiltasten / WASD</b>, um Elisabeth zu allen <b>goldenen Stationen</b> zu führen!
@@ -736,8 +737,14 @@
         let width, height;
 
         function resizeCanvas() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);   /* scharf auf iPad/iPhone */
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             applyDeviceControls();
         }
         window.addEventListener('resize', resizeCanvas);
@@ -1082,6 +1089,7 @@
             document.getElementById('start-modal').style.display = 'none';
             isGameActive = true;
             startedAt = Date.now();
+            if (kit) kit.setState('play');
         }
 
         let currentStation = -1;
@@ -1147,6 +1155,7 @@
 
                 feedbackEl.className = "correct";
                 feedbackEl.innerText = "🌟 " + step.explanation;
+                if (kit) kit.sound.richtig();
 
                 // Weitere Fragen an dieser Station: mit „Weiter“ zur nächsten
                 if (currentStep < st.steps.length - 1) {
@@ -1178,11 +1187,13 @@
                 mistakes++;
                 feedbackEl.className = "wrong";
                 feedbackEl.innerText = "❌ Nicht ganz! Lies noch einmal genau und probiere eine andere Antwort.";
+                if (kit) kit.sound.falsch();
             }
         }
 
         function showEndScreen() {
             isGameActive = false;
+            if (kit) { kit.setState('end'); kit.sound.gewonnen(); }
             document.getElementById('final-score-text').innerText =
                 `Du hast alle ${stationsData.length} Stationen gemeistert und ${score} von ${stationsData.length} Rosen-Punkten gesammelt!`;
             const seconds = Math.round((Date.now() - startedAt) / 1000);
@@ -1194,10 +1205,10 @@
             document.getElementById('end-modal').style.display = 'block';
         }
 
-        function update() {
+        function update(k) {
             if (!isGameActive || isModalOpen) return;
 
-            const speed = 0.13;
+            const speed = 0.13 * k;   /* k = 1 bei 60 Bildern/s (wie bisher), 0,5 bei 120 Hz */
             let moveX = 0;
             let moveZ = 0;
 
@@ -1229,7 +1240,7 @@
             }
 
             if (isMoving) {
-                player.walkAnim += 0.22;
+                player.walkAnim += 0.22 * k;
             } else {
                 player.walkAnim = 0;
             }
@@ -1239,8 +1250,9 @@
             player.z = Math.max(-12, Math.min(16, player.z));
 
             // Sanfte Kamera-Verfolgung
-            cam.x += (player.x - cam.x) * 0.08;
-            cam.z += (player.z - cam.z) * 0.08;
+            const follow = 1 - Math.pow(0.92, k);
+            cam.x += (player.x - cam.x) * follow;
+            cam.z += (player.z - cam.z) * follow;
 
             // Kollision mit Stationen prüfen
             stationsData.forEach((st, idx) => {
@@ -1253,7 +1265,16 @@
             });
         }
 
-        function render() {
+        let raf = 0, last = performance.now(), lastDraw = 0, paused = false, pausedAt = 0, kit = null;
+        function render(now = performance.now()) {
+            raf = 0;
+            if (paused) return;                                    /* Pause: nichts zeichnen */
+            raf = requestAnimationFrame(render);
+            const calm = !isGameActive || isModalOpen;
+            if (calm && now - lastDraw < 50) return;               /* Start, Fragen, Ende: 20 Bilder/s */
+            lastDraw = now;
+            const k = Math.min(0.05, Math.max(0, (now - last) / 1000)) * 60;
+            last = now;
             const time = Date.now() * 0.001;
             ctx.clearRect(0, 0, width, height);
 
@@ -1273,9 +1294,23 @@
             renderList.sort((a, b) => a.z - b.z);
             renderList.forEach(item => item.draw());
 
-            update();
-            requestAnimationFrame(render);
+            update(k);
         }
+
+        /* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und
+           „Alle Spiele“, Pause-Fenster, automatische Pause im Hintergrund, Klänge ---------- */
+        import('../shared/kit/kit.js').then((m) => {
+            kit = m.startKit({
+                key: 'elisabeth', orientation: 'any',
+                pause() { paused = true; pausedAt = Date.now(); },
+                resume() {
+                    paused = false; last = performance.now();
+                    if (isGameActive) startedAt += Date.now() - pausedAt;   /* Pause zählt nicht zur Zeit */
+                    if (!raf) raf = requestAnimationFrame(render);
+                },
+            });
+            kit.setState(isGameActive ? 'play' : 'menu');
+        }).catch(() => {});
 
         render();
     </script>

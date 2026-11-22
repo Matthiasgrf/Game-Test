@@ -12,11 +12,21 @@
                                      GameTest.saveState(store)   bei jedem Speichern, zusätzlich zu localStorage
      Die App lädt den Stand des Spielers vor dem Start aus Supabase und legt ihn unter saveKey in
      localStorage ab – das Spiel liest ihn also wie gewohnt beim Start von dort.
+   Eigene Ergebnisse (z. B. für „Dein Rekord“):  GameTest.getScores().then(function (liste) { … })
+     liste: [{ points, maxPoints, seconds, variant }] des eingeloggten Spielers; außerhalb der App [].
    Spiele ohne Highscore rufen reportScore einfach nicht auf (die App ignoriert es ohnehin).
+   Neue Spiele nutzen statt dieser Datei die Speicher-Schicht kit/storage.js (sie ruft GameTest auf).
    Außerhalb der App geöffnet (ohne iframe) passiert nichts – das Spiel läuft normal. */
 (function () {
   'use strict';
   var embedded = window.parent !== window;
+  var waiting = {};
+  var nextId = 1;
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (e.source !== window.parent || e.origin !== window.location.origin || !d || d.source !== 'game-test-app') return;
+    if (d.type === 'scores' && waiting[d.id]) { waiting[d.id](Array.isArray(d.scores) ? d.scores : []); delete waiting[d.id]; }
+  });
   window.GameTest = {
     embedded: embedded,
     reportScore: function (result) {
@@ -29,6 +39,16 @@
         seconds: result.seconds,
         variant: result.variant
       }, window.location.origin);
+    },
+    getScores: function () {
+      if (!embedded || typeof Promise === 'undefined') return typeof Promise === 'undefined' ? null : Promise.resolve([]);
+      return new Promise(function (resolve) {
+        var id = nextId++;
+        waiting[id] = resolve;
+        /* Antwortet die App nicht (ältere Version, offline), geht es ohne Ergebnisse weiter */
+        setTimeout(function () { if (waiting[id]) { waiting[id]([]); delete waiting[id]; } }, 4000);
+        window.parent.postMessage({ source: 'game-test', type: 'getScores', id: id }, window.location.origin);
+      });
     },
     saveState: function (data) {
       if (!embedded || !data || typeof data !== 'object') return;

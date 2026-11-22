@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
+<title>Rohr-Flitzer</title>
+<style>
+/* Rohr-Flitzer – die Szene (Haus Buchhammer mit Garten, Erde und Kanalisation) füllt den Bildschirm,
+   Zeit, Leiste und Pfeil-Knöpfe liegen darüber. Zeichnen: draw.js, Spiel: game.js */
+#szene { background: #74c0fc; }
+#zeit { font-variant-numeric: tabular-nums; min-width: 96px; text-align: center; font-size: 18px; }
+
+/* Pfeil-Knöpfe: hochkant eine Reihe ◀ ▲ ▼ ▶ unten, quer ◀ ▶ links und ▲ ▼ rechts. Nur auf Touch-Geräten. */
+#pad { position: fixed; z-index: 55; left: var(--gt-left); right: var(--gt-right); bottom: var(--gt-bottom);
+  display: flex; justify-content: center; gap: 10px; pointer-events: none; }
+#pad .gruppe { display: contents; }
+#pad .gt-ctl { width: 72px; height: 60px; border-radius: 18px; font-size: 28px; color: #7a4a1e;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#pad [data-dir="left"] { order: 1; } #pad [data-dir="up"] { order: 2; }
+#pad [data-dir="down"] { order: 3; } #pad [data-dir="right"] { order: 4; }
+body.quer #pad { justify-content: space-between; align-items: flex-end; }
+body.quer #pad .gruppe { display: flex; gap: 10px; }
+body.quer #padUD { flex-direction: column; }
+@media (hover: hover) and (pointer: fine) { #pad { display: none; } }
+
+.platsch { position: fixed; z-index: 70; transform: translate(-50%, -50%); pointer-events: none;
+  font-size: clamp(34px, 7vw, 46px); font-weight: 900; color: #fff; text-shadow: 0 3px 0 #2f9e44, 0 0 12px rgba(0,0,0,.55);
+  animation: auftauchen .4s ease-out; }
+.vorstellung { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #a0703f; }
+.regeln { list-style: none; padding: 0; margin: 8px auto 4px; max-width: 420px; text-align: left; font-size: 16px; line-height: 1.35; }
+.regeln li { margin: 6px 0; }
+.ergebnis { font-size: 28px !important; font-weight: 900; color: #e8590c; }
+.jubel { font-size: 60px; line-height: 1.1; animation: huepfen 1s ease-in-out infinite; }
+/* Wenig Höhe (Handy quer): Fenster kompakter, damit „Spülen!“ ohne Scrollen zu sehen ist */
+@media (max-height: 560px) {
+  .gt-card { max-width: 720px; padding: 12px 18px; }
+  .gt-card h1 { font-size: 26px; margin: 0 0 2px; }
+  .gt-card p { font-size: 15px; margin: 4px 0; }
+  .vorstellung { margin: 0 !important; }
+  .regeln { columns: 2; column-gap: 22px; max-width: 660px; font-size: 14px; margin: 4px auto; }
+  .regeln li { break-inside: avoid; margin: 0 0 6px; }
+  .jubel { font-size: 40px; }
+  .gt-card .gt-btn { margin-top: 4px; }
+}
+@keyframes auftauchen { from { transform: translate(-50%, -50%) scale(.85); opacity: 0; } }
+@keyframes huepfen { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .jubel, .platsch { animation: none; } }
+</style>
+</head>
+<body>
+<div class="gt-stage"><canvas id="szene" role="img" aria-label="Haus Buchhammer mit Abflussrohren bis in die Kanalisation"></canvas></div>
+
+<div class="gt-hud" id="hud"><span class="gt-pill" id="zeit" aria-live="off">⏱ 0,0 s</span></div>
+<div id="pad">
+  <div class="gruppe" id="padLR">
+    <button type="button" class="gt-ctl" data-dir="left" aria-label="links">◀</button>
+    <button type="button" class="gt-ctl" data-dir="right" aria-label="rechts">▶</button>
+  </div>
+  <div class="gruppe" id="padUD">
+    <button type="button" class="gt-ctl" data-dir="up" aria-label="hoch">▲</button>
+    <button type="button" class="gt-ctl" data-dir="down" aria-label="runter">▼</button>
+  </div>
+</div>
+<div class="platsch" id="platsch" hidden>Platsch!</div>
+
+<section class="gt-screen" data-screen="start">
+  <div class="gt-card">
+    <p class="vorstellung">Die Fisser-Flitzer präsentieren</p>
+    <h1>💩 Rohr-Flitzer</h1>
+    <p>Hilf der Kackwurst durch die Rohre von <b>Haus Buchhammer</b> bis in die Kanalisation!</p>
+    <ul class="regeln">
+      <li>⬅️ <b>Pfeiltaste</b> oder <b>Pfeil-Knopf gedrückt halten</b> – dann flitzt die Wurst</li>
+      <li>👆 Am Handy auch: wischen und den Finger liegen lassen</li>
+      <li>🚫 Verstopfte Rohre musst du umgehen</li>
+      <li>⏱ Sei so schnell wie möglich!</li>
+    </ul>
+    <div class="gt-row">
+      <button type="button" class="gt-btn" data-action="start">🚽 Spülen!</button>
+      <a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="win" hidden>
+  <div class="gt-card">
+    <div class="jubel" aria-hidden="true">🎉</div>
+    <h1>Platsch!</h1>
+    <p>Die Wurst ist in der Kanalisation.</p>
+    <p class="ergebnis" id="ergebnis"></p>
+    <div class="gt-row">
+      <button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button>
+      <a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
+<title>Labyrinth-Abenteuer</title>
+<style>
+/* Labyrinth-Abenteuer – Tiere durch 5 Labyrinthe führen und Sterne sammeln (ab 5 Jahren).
+   Szene bildschirmfüllend, das quadratische Labyrinth liegt so groß wie möglich darin (game.js → layout()):
+   body.hoch = Anzeigen oben, Steuerkreuz unten · body.quer = Anzeigen links, Steuerkreuz rechts.
+   Spielablauf wie in der früheren React-Fassung. */
+:root { --boden: #fff8e1; --wand: #e8590c; --spur: #ffd8a8; }
+#szene {
+  background: var(--boden);
+  background:
+    radial-gradient(circle, rgba(255,255,255,.55) 3px, transparent 3.5px) 0 0 / 30px 30px,
+    linear-gradient(160deg, var(--boden), color-mix(in srgb, var(--boden) 70%, var(--wand) 30%));
+  transition: background .4s;
+}
+#brett { position: absolute; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.18), inset 0 0 0 4px rgba(255,255,255,.9); padding: 6px; touch-action: none; }
+#brett svg { display: block; width: 100%; height: 100%; }
+#brett text { text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.stern { font-size: 5.5px; animation: funkeln 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.ziel { font-size: 7.5px; animation: pulsieren 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+#held { transition: transform .12s ease-out; }
+#held text { font-size: 7.5px; transform-box: fill-box; transform-origin: center; }
+#held text.stoss { animation: wackeln .25s; }
+
+#aufgabe { position: absolute; z-index: 1; left: 50%; transform: translateX(-50%); width: max-content; text-align: center;
+  font-weight: 800; font-size: clamp(16px, 2.4vw, 20px); line-height: 1.3; color: var(--wand); background: rgba(255,255,255,.92);
+  border-radius: 18px; padding: 7px 16px; box-shadow: var(--gt-shadow); }
+body.quer #aufgabe { left: var(--gt-left); transform: none; text-align: left; }
+#aufgabe .weg { white-space: nowrap; }
+.level { padding: 7px 10px; }
+.level span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: 0 2px;
+  border-radius: 50%; background: #e9ecef; color: #868e96; font-size: 13px; }
+.level span.jetzt { background: var(--wand); color: #fff; }
+.level span.fertig { background: #2fb457; color: #fff; }
+.sterne { font-size: 19px; padding: 6px 12px; }
+.sterne span { filter: grayscale(1); opacity: .35; display: inline-block; transition: filter .3s, opacity .3s; }
+.sterne span.an { filter: none; opacity: 1; animation: pulsieren .5s; }
+
+/* Steuerkreuz: gedrückt halten = weiterlaufen. Touch: großes Kreuz; Maus: klein wie die Pfeiltasten */
+#kreuz { position: fixed; z-index: 55; display: grid; gap: 4px; right: var(--gt-right); bottom: var(--gt-bottom);
+  grid-template-columns: repeat(3, 68px); grid-template-rows: repeat(3, 60px); grid-template-areas: ". n ." "w . e" ". s ."; }
+body.hoch #kreuz { right: auto; left: 50%; transform: translateX(-50%); }
+#kreuz .gt-ctl { width: 100%; height: 100%; border-radius: 18px; font-size: 28px; color: var(--wand); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#kreuz [data-dir="N"] { grid-area: n; } #kreuz [data-dir="W"] { grid-area: w; }
+#kreuz [data-dir="E"] { grid-area: e; } #kreuz [data-dir="S"] { grid-area: s; }
+@media (hover: hover) and (pointer: fine) {
+  #kreuz { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 46px); grid-template-areas: ". n ." "w s e"; }
+  #kreuz .gt-ctl { font-size: 20px; border-radius: 14px; }
+}
+body.pausiert *, body.pausiert *::before { animation-play-state: paused !important; }
+
+.tiere { font-size: 40px; display: flex; gap: 6px; justify-content: center; }
+.tiere span { display: inline-block; animation: huepfen 1.4s ease-in-out infinite; }
+.tiere span:nth-child(2) { animation-delay: .15s; } .tiere span:nth-child(3) { animation-delay: .3s; }
+.tiere span:nth-child(4) { animation-delay: .45s; } .tiere span:nth-child(5) { animation-delay: .6s; }
+.stufen { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 14px 0 6px; }
+.stufe { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 104px; padding: 14px 16px; border-radius: 22px;
+  border: 4px solid #fff; color: #fff; font: inherit; font-weight: 900; font-size: 20px; cursor: pointer; box-shadow: var(--gt-shadow-btn); }
+.stufe .e { font-size: 40px; }
+.stufe small { font-size: 13px; font-weight: 700; opacity: .95; }
+.stufe[data-mode="leicht"] { background: linear-gradient(#6fb6ee, #3b8fd8); }
+.stufe[data-mode="mittel"] { background: linear-gradient(#ffb23f, #ff8a1f); }
+.stufe[data-mode="knifflig"] { background: linear-gradient(#ff8787, #e03131); }
+.pokal { font-size: 72px; animation: pulsieren 1.2s ease-in-out infinite; }
+.rekord { font-size: 20px; font-weight: 900; color: var(--wand); }
+.lob { font-size: 32px; color: var(--wand); margin: 4px 0; }
+.lob-sterne { font-size: 38px; }
+.konfetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 85; }
+.konfetti span { position: absolute; top: -3rem; animation: fallen linear forwards; }
+
+@keyframes fallen { to { transform: translateY(110vh) rotate(540deg); } }
+@keyframes huepfen { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes pulsieren { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes funkeln { 0%, 100% { transform: scale(.9) rotate(-8deg); } 50% { transform: scale(1.1) rotate(8deg); } }
+@keyframes wackeln { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1.2px); } 75% { transform: translateX(1.2px); } }
+@media (prefers-reduced-motion: reduce) { .tiere span, .pokal, .stern, .ziel, .konfetti span { animation: none; } }
+</style>
+</head>
+<body>
+<div class="gt-stage" id="szene">
+  <div id="aufgabe" hidden></div>
+  <div id="brett" hidden></div>
+</div>
+
+<div class="gt-hud" id="hud" hidden>
+  <span class="gt-pill level" id="level"></span>
+  <span class="gt-pill sterne" id="sterne"></span>
+</div>
+<div id="kreuz" hidden>
+  <button type="button" class="gt-ctl" data-dir="N" aria-label="hoch">▲</button>
+  <button type="button" class="gt-ctl" data-dir="W" aria-label="links">◀</button>
+  <button type="button" class="gt-ctl" data-dir="E" aria-label="rechts">▶</button>
+  <button type="button" class="gt-ctl" data-dir="S" aria-label="runter">▼</button>
+</div>
+
+<section class="gt-screen" data-screen="menu">
+  <div class="gt-card">
+    <div class="tiere" aria-hidden="true"><span>🐭</span><span>🐰</span><span>🐶</span><span>🐝</span><span>🐧</span></div>
+    <h1>Labyrinth-Abenteuer</h1>
+    <p>Hilf den Tieren durch <b>5 Labyrinthe</b>! Sammle unterwegs die ⭐ Sterne ein.</p>
+    <div class="stufen" id="stufen"></div>
+    <p class="gt-small">💻 Pfeiltasten · 📱 Figur mit dem Finger ziehen oder Pfeile antippen</p>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="level" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" id="lobTiere" aria-hidden="true"></div>
+    <h2 class="lob" id="lob"></h2>
+    <div class="lob-sterne sterne" id="lobSterne"></div>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="weiter">Weiter ➜</button></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="fertig" hidden>
+  <div class="gt-card">
+    <div class="pokal" aria-hidden="true">🏆</div>
+    <h1>Geschafft! Alle 5 Labyrinthe!</h1>
+    <p id="ergebnis"></p>
+    <p class="gt-small" id="zeit"></p>
+    <p class="rekord" id="rekord" hidden>🎖️ Neuer Rekord!</p>
+    <div class="gt-row">
+      <button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button>
+      <button type="button" class="gt-btn gt-alt" data-action="stufe">Andere Stufe</button>
+    </div>
+    <div class="gt-row">
+      <a class="gt-btn gt-alt" href="../../#/highscores" target="_top">🏅 Bestenliste</a>
+      <a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>

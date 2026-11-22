@@ -1,5 +1,5 @@
 // =====================================================================
-// Rohr-Flitzer: Labyrinth aus Abflussrohren
+// Rohr-Flitzer: Labyrinth aus Abflussrohren (unverändert aus der früheren React-Fassung, ohne TypeScript)
 //   Raster aus Zellen (Rohr-Knoten). Zwischen zwei Nachbarzellen gibt es
 //   entweder kein Rohr, ein offenes Rohr oder ein verstopftes Rohr.
 //   Start: Klo oben im Dachgeschoss, Ziel: Ausgang unten in die Kanalisation.
@@ -12,21 +12,12 @@ export const FLOORS = ["🛁 Badezimmer", "🍳 Küche", "🧺 Keller"];
 /** Höchstzahl verstopfter Rohre */
 const MAX_CLOGS = 5;
 
-export type Dir = "up" | "down" | "left" | "right";
-export type Edge = 0 | 1 | 2; // 0 = kein Rohr, 1 = offen, 2 = verstopft
+/* Richtungen: "up" | "down" | "left" | "right"
+   Rohr (Edge): 0 = kein Rohr, 1 = offen, 2 = verstopft
+   Maze: { right[r][c]: Rohr zwischen (r,c) und (r,c+1), down[r][c]: Rohr zwischen (r,c) und (r+1,c)
+           (letzte Zeile = Ausgang), startCol, exitCol, shortest: Länge des kürzesten Wegs (in Zellen) } */
 
-export interface Maze {
-  /** right[r][c]: Rohr zwischen (r,c) und (r,c+1) */
-  right: Edge[][];
-  /** down[r][c]: Rohr zwischen (r,c) und (r+1,c); letzte Zeile = Ausgang */
-  down: Edge[][];
-  startCol: number;
-  exitCol: number;
-  /** Länge des kürzesten Wegs (in Zellen) – nur zur Info / Balancing */
-  shortest: number;
-}
-
-export const DELTA: Record<Dir, [number, number]> = {
+export const DELTA = {
   up: [-1, 0],
   down: [1, 0],
   left: [0, -1],
@@ -34,7 +25,7 @@ export const DELTA: Record<Dir, [number, number]> = {
 };
 
 /** Zustand des Rohrs von Zelle (r,c) in Richtung dir. r === ROWS ist die Kanalisation. */
-export function edgeAt(m: Maze, r: number, c: number, dir: Dir): Edge {
+export function edgeAt(m, r, c, dir) {
   switch (dir) {
     case "right":
       return c < COLS - 1 ? m.right[r][c] : 0;
@@ -47,34 +38,34 @@ export function edgeAt(m: Maze, r: number, c: number, dir: Dir): Edge {
   }
 }
 
-function setEdge(m: Maze, r: number, c: number, dir: Dir, v: Edge) {
+function setEdge(m, r, c, dir, v) {
   if (dir === "right") m.right[r][c] = v;
   else if (dir === "left") m.right[r][c - 1] = v;
   else if (dir === "down") m.down[r][c] = v;
   else m.down[r - 1][c] = v;
 }
 
-export const DIRS: Dir[] = ["up", "down", "left", "right"];
-export const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
+export const DIRS = ["up", "down", "left", "right"];
+export const OPPOSITE = { up: "down", down: "up", left: "right", right: "left" };
 
 /** Alle offenen (nicht verstopften) Richtungen an einer Zelle */
-export const openDirs = (m: Maze, r: number, c: number) => DIRS.filter((d) => edgeAt(m, r, c, d) === 1);
+export const openDirs = (m, r, c) => DIRS.filter((d) => edgeAt(m, r, c, d) === 1);
 
 /** Kürzester Weg vom Klo bis in die Kanalisation (Liste von Zellen) oder null. */
-export function shortestPath(m: Maze): [number, number][] | null {
-  const prev = new Map<number, number>();
-  const key = (r: number, c: number) => r * COLS + c;
+export function shortestPath(m) {
+  const prev = new Map();
+  const key = (r, c) => r * COLS + c;
   const start = key(0, m.startCol);
   prev.set(start, -1);
-  const queue: [number, number][] = [[0, m.startCol]];
+  const queue = [[0, m.startCol]];
   while (queue.length) {
-    const [r, c] = queue.shift()!;
+    const [r, c] = queue.shift();
     if (r === ROWS - 1 && c === m.exitCol) {
-      const path: [number, number][] = [];
+      const path = [];
       let k = key(r, c);
       while (k !== -1) {
         path.unshift([Math.floor(k / COLS), k % COLS]);
-        k = prev.get(k)!;
+        k = prev.get(k);
       }
       return path;
     }
@@ -92,24 +83,24 @@ export function shortestPath(m: Maze): [number, number][] | null {
   return null;
 }
 
-function dirBetween(a: [number, number], b: [number, number]): Dir {
+function dirBetween(a, b) {
   if (b[0] > a[0]) return "down";
   if (b[0] < a[0]) return "up";
   return b[1] > a[1] ? "right" : "left";
 }
 
-function build(rng: () => number): Maze {
-  const right: Edge[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-  const down: Edge[][] = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+function build(rng) {
+  const right = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  const down = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
   const startCol = Math.floor(rng() * COLS);
   const exitCol = Math.floor(rng() * COLS);
-  const m: Maze = { right, down, startCol, exitCol, shortest: 0 };
+  const m = { right, down, startCol, exitCol, shortest: 0 };
 
   // 1) Zufälliges perfektes Labyrinth (Tiefensuche). Seitliche Rohre werden
   //    leicht bevorzugt, damit es ordentlich verwinkelt wird.
-  const weight: Record<Dir, number> = { down: 2, left: 3, right: 3, up: 1.2 };
+  const weight = { down: 2, left: 3, right: 3, up: 1.2 };
   const seen = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
-  const stack: [number, number][] = [[0, startCol]];
+  const stack = [[0, startCol]];
   seen[0][startCol] = true;
   while (stack.length) {
     const [r, c] = stack[stack.length - 1];
@@ -153,8 +144,8 @@ function build(rng: () => number): Maze {
   //    wenn danach noch ein Weg existiert. So muss man Umwege suchen.
   let clogs = 0;
   for (let tries = 0; tries < 400 && clogs < MAX_CLOGS; tries++) {
-    const path = shortestPath(m)!;
-    let r: number, c: number, d: Dir;
+    const path = shortestPath(m);
+    let r, c, d;
     if (rng() < 0.75 && path.length > 3) {
       const i = 1 + Math.floor(rng() * (path.length - 2));
       d = dirBetween(path[i], path[i + 1] ?? path[i]);
@@ -173,7 +164,7 @@ function build(rng: () => number): Maze {
     else setEdge(m, r, c, d, 1);
   }
 
-  m.shortest = shortestPath(m)!.length;
+  m.shortest = shortestPath(m).length;
   return m;
 }
 
@@ -181,12 +172,12 @@ function build(rng: () => number): Maze {
  * Erzeugt ein neues Rohrsystem. Die Weglänge wird so gewählt, dass eine Runde
  * für Kinder etwa 20–30 Sekunden dauert.
  */
-export function generateMaze(rng: () => number = Math.random): Maze {
-  let best: Maze | null = null;
+export function generateMaze(rng = Math.random) {
+  let best = null;
   for (let i = 0; i < 80; i++) {
     const m = build(rng);
     if (m.shortest >= 24 && m.shortest <= 32) return m;
     if (!best || Math.abs(m.shortest - 28) < Math.abs(best.shortest - 28)) best = m;
   }
-  return best!;
+  return best;
 }

@@ -2,10 +2,13 @@
    Das Spiel bietet einen Zugang window.ELISABETH (stations, goTo(index)).
    Geprüft wird: Fragen sind vollständig, alle Stationen der Reihe nach (mit einer falschen Antwort),
    Gewinn-Bildschirm mit Fehlversuchen und Zeit, Ergebnis wird gespeichert, Link zurück zur Übersicht,
-   Bestenliste, Handy-Ansicht. */
+   Bestenliste, Handy-Ansicht.
+   Nach jeder Station schließt das Spiel das Fenster erst nach 2,6 s; die Test-Uhr (page.clock) springt
+   über diese Wartezeit, statt sie abzuwarten (20 Stationen × 2 Größen = 1:44 min gespart). */
 export default async function (t) {
   for (const [size, options] of [['computer', t.DESK], ['handy', t.PHONE]]) {
     const page = await t.newPage(options);
+    await page.clock.install();
     await page.goto(t.url, { waitUntil: 'load' });
     const game = await t.frame(page);
     await game.waitForFunction(() => window.ELISABETH && ELISABETH.stations.length > 0);
@@ -36,6 +39,7 @@ export default async function (t) {
         await buttons[steps[k]].click();
         if (k < steps.length - 1) await game.click('#next-btn');
       }
+      await page.clock.fastForward(2600);
       await game.waitForFunction(() => document.getElementById('quiz-modal').style.display === 'none', null, { timeout: 6000 });
     }
 

@@ -11,6 +11,9 @@ import gamesJson from "./games.json";
  *   key          Kennung, nur a-z 0-9 - _ (wie in den Tabellen games, game_groups, game_scores)
  *   type         "react" → src/games/<key>/index.tsx · "html" → public/games/<key>/index.html (im iframe)
  *   title, description (1 Satz), age (z. B. "3. Klasse"), emoji (Tabs/Admin), color (Hintergrund)
+ *   zielgruppe   "kinder" (Lernspiele, Kinder) oder "erwachsene" (Spaßspiele) – eigener Bereich in der Übersicht
+ *   orientation  "landscape" | "portrait" | "any" – beste Ausrichtung; sonst zeigt das Spiel „Bitte Gerät drehen“
+ *   status       "live" · "beta" (Abzeichen in der Übersicht) · "entwurf" (nur für Admins sichtbar)
  *   highscore    HighscoreConfig oder null (= Spiel ohne Highscores, in games: 'none')
  *   saveKey      optional, nur HTML-Spiele: localStorage-Schlüssel des Spielstands. Die App lädt ihn
  *                pro Spieler aus Supabase (Tabelle game_states), das Spiel meldet Änderungen mit GameTest.saveState.
@@ -36,12 +39,24 @@ export interface HighscoreConfig {
   serverScored?: boolean;
 }
 
+export type Zielgruppe = "kinder" | "erwachsene";
+export type Orientation = "landscape" | "portrait" | "any";
+export type GameStatus = "live" | "beta" | "entwurf";
+
+export const ZIELGRUPPEN: { id: Zielgruppe; label: string }[] = [
+  { id: "kinder", label: "🧒 Kinder · Lernen" },
+  { id: "erwachsene", label: "🎉 Erwachsene · Spaß" },
+];
+
 export interface GameEntry {
   key: string;
   type: "react" | "html";
   title: string;
   description: string;
   age: string;
+  zielgruppe: Zielgruppe;
+  orientation: Orientation;
+  status: GameStatus;
   emoji: string;
   color: string;
   highscore: HighscoreConfig | null;
@@ -81,6 +96,7 @@ export function useAllowedGames(): { games: GameInfo[] | null; error: string | n
       setGames(GAMES);
       return;
     }
+    const visible = (g: GameInfo) => g.status !== "entwurf"; // Entwürfe sehen nur Admins
     let active = true;
     (async () => {
       const { data: mine, error: e1 } = await supabase
@@ -94,7 +110,7 @@ export function useAllowedGames(): { games: GameInfo[] | null; error: string | n
         if (e2) throw e2;
         keys = new Set((gg ?? []).map((r) => r.game_key as string));
       }
-      if (active) setGames(GAMES.filter((g) => keys.has(g.key)));
+      if (active) setGames(GAMES.filter((g) => keys.has(g.key) && visible(g)));
     })().catch((e) => active && setError((e as Error).message));
     return () => { active = false; };
   }, [profile]);

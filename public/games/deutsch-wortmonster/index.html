@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <script src="../shared/zoom-schutz.js"></script>
 <script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
 <title>Die Wortmonster</title>
 <style>
 /* Die Wortmonster – Deutsch, 3. Klasse: Übung für den Sprachkundetest.
@@ -12,16 +13,19 @@
    Inhalte stammen von vier Arbeitsblättern (Artikel, Verben, Adjektive, Sprachkundetest) und weiteren Wörtern. */
 :root{--ink:#22204a;--accent:#ff6f3c;--ok:#2fa84f;--bad:#e2504a;--paper:#fffdf7;--line:#e4dcf5;--n:#4a90e2;--v:#ff8a1f;--a:#b05bd6}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%}
-body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+html,body{margin:0;height:100%}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;height:var(--gt-vh,100dvh);
   background:radial-gradient(circle,rgba(255,255,255,.35) 3px,transparent 3.5px) 0 0/34px 34px,linear-gradient(160deg,#7bd8c9,#a8c8ff 50%,#f7c6e8)}
-.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 4px}
+.bar{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:calc(var(--gt-top) + 54px);
+  padding:var(--gt-top) calc(var(--gt-bar-space) + 4px) 4px 12px}
 .pill{background:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;font-size:16px;color:inherit;
   text-decoration:none;box-shadow:0 3px 10px rgba(40,30,90,.22);display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:42px;white-space:nowrap}
 .bar .pill{min-width:0}
 #progress{overflow:hidden;text-overflow:ellipsis}
 @media (max-width:420px){.bar{gap:6px;padding-left:8px;padding-right:8px}.bar .pill{padding:8px 10px;font-size:15px}}
-main{flex:1;display:flex;flex-direction:column;padding:6px 12px calc(16px + env(safe-area-inset-bottom))}
+main{flex:1;min-height:0;display:flex;flex-direction:column;padding:calc(var(--gt-top) + 54px) 12px calc(16px + env(safe-area-inset-bottom));
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+body.im-spiel main{padding-top:6px}   /* im Spiel hält die Kopfzeile oben den Platz für die Leiste des Kits frei */
 .card{margin:auto;background:var(--paper);border-radius:24px;padding:20px;width:100%;box-shadow:0 8px 26px rgba(40,30,90,.25);border:3px solid #fff}
 h1{margin:2px 0 6px;font-size:clamp(30px,6vw,44px);text-align:center;letter-spacing:.5px}
 h1 span{display:inline-block}
@@ -63,7 +67,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
 .areas{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .area{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 10px 12px;font:inherit;color:inherit;background:#fff;
   border:4px solid var(--line);border-radius:20px;cursor:pointer;text-align:center;transition:transform .15s}
-.area:hover{transform:translateY(-3px)}
+@media (hover:hover) and (pointer:fine){.area:hover{transform:translateY(-3px)}}
 .area .pic{width:110px;height:110px;display:flex;align-items:flex-end;justify-content:center}
 .area .pic .one{width:104px}
 .area .pic .one{display:block}.area .pic .three{display:flex;align-items:flex-end;gap:2px}.area .pic .three>span{display:block;width:44px}
@@ -118,7 +122,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
 #opts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
 .co{min-width:72px;min-height:54px;padding:8px 18px;font:inherit;font-size:21px;font-weight:700;color:var(--ink);background:#fff;
   border:3px solid #cfc6ee;border-radius:14px;cursor:pointer;box-shadow:0 3px 0 #cfc6ee;touch-action:manipulation}
-.co:hover{border-color:var(--accent)}
+@media (hover:hover) and (pointer:fine){.co:hover{border-color:var(--accent)}}
 .co.wrong{background:#ffe1dc;border-color:var(--bad);box-shadow:none;animation:shake2 .4s;cursor:default;opacity:.7}
 .co.used{visibility:hidden}
 @keyframes shake2{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
@@ -137,7 +141,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
 .seg .eye{font-size:24px;margin-right:2px;vertical-align:middle}
 .sl{display:inline-block;vertical-align:middle;font:inherit;font-weight:700;font-size:clamp(20px,4.6vw,26px);color:#173d1c;background:transparent;border:0;border-radius:8px;min-width:.8em;padding:4px 1px;
   cursor:pointer;touch-action:manipulation;line-height:1.3}
-.sl:hover{background:rgba(255,255,255,.5)}
+@media (hover:hover) and (pointer:fine){.sl:hover{background:rgba(255,255,255,.5)}}
 .sl.miss{background:#ffb4aa;animation:shake2 .4s}
 .sl.hint{background:#fff3a6;animation:glow 1s infinite}
 .seg.cutoff{margin-left:16px}
@@ -225,9 +229,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
 </head>
 <body>
 <div class="bar" id="bar" hidden>
-  <a class="pill" href="../../#/" target="_top">🏠 Alle Spiele</a>
   <span class="pill" id="progress"></span>
-  <button class="pill" id="mute" type="button" aria-label="Ton an oder aus">🔊</button>
 </div>
 <main>
   <section class="card start" id="start">
@@ -798,6 +800,23 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   /* ================= Spielzustand ================= */
   var $ = function (id) { return document.getElementById(id); };
   var state = { screen: 'start', area: null, list: [], i: 0, step: 0, err: 0, first: 0, streak: 0, results: [], fed: { n: 0, v: 0, a: 0 }, mute: false, busy: false };
+
+  /* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und „Alle Spiele“,
+     Pause-Fenster, automatische Pause im Hintergrund. Ton an/aus ist die gemeinsame Einstellung aller Spiele. */
+  var kit = null, angehalten = false, pausiertSeit = 0;
+  import('../shared/kit/kit.js').then(function (m) {
+    kit = m.startKit({
+      key: 'deutsch-wortmonster', orientation: 'any',
+      pause: function () { angehalten = true; pausiertSeit = Date.now(); },
+      resume: function () {
+        angehalten = false;
+        if (state.screen === 'game' && state.start) state.start += Date.now() - pausiertSeit;   /* Pause zählt nicht zur Zeit */
+        if (typeof SN !== 'undefined' && SN && SN.run && !SN.raf) SN.raf = requestAnimationFrame(loopSnack);
+      },
+      sound: { setMuted: setMute }
+    });
+    kit.setState(state.screen === 'game' || state.screen === 'snack' ? 'play' : state.screen === 'win' ? 'end' : 'menu');
+  }).catch(function () {});
   var store = { best: {}, test: 0, snack: 0, mute: false };
   function load() { try { var d = JSON.parse(localStorage.getItem(SAVE) || '{}'); store.best = d.best || {}; store.test = d.test || 0; store.snack = d.snack || 0; store.mute = !!d.mute; } catch (e) {} state.mute = store.mute; }
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(store)); } catch (e) {} }
@@ -806,8 +825,10 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
     state.screen = screen;
     ['start', 'game', 'win', 'snack'].forEach(function (id) { $(id).hidden = id !== screen; });
     $('bar').hidden = screen !== 'game' && screen !== 'snack';
+    document.body.classList.toggle('im-spiel', screen === 'game' || screen === 'snack');
     if (screen !== 'snack') stopSnack();
-    window.scrollTo(0, 0);
+    document.querySelector('main').scrollTop = 0;
+    if (kit) kit.setState(screen === 'game' || screen === 'snack' ? 'play' : screen === 'win' ? 'end' : 'menu');
   }
   function starsHtml(n) { var s = ''; for (var i = 0; i < 3; i++) s += i < n ? '⭐' : '<span class="off">⭐</span>'; return s; }
   function renderStart() {
@@ -817,8 +838,9 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
     updateMute();
     show('start');
   }
-  function updateMute() { $('mute').textContent = state.mute ? '🔇' : '🔊'; $('muteStart').textContent = state.mute ? '🔇 Ton aus' : '🔊 Ton an'; }
-  function toggleMute() { state.mute = store.mute = !state.mute; save(); updateMute(); }
+  function updateMute() { $('muteStart').textContent = state.mute ? '🔇 Ton aus' : '🔊 Ton an'; }
+  function setMute(m) { state.mute = store.mute = m; save(); updateMute(); }
+  function toggleMute() { if (kit) kit.sound.toggle(); else setMute(!state.mute); }
 
   function startArea(area) {
     [].forEach.call(document.querySelectorAll('.confetti'), function (c) { c.remove(); });
@@ -1270,6 +1292,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   }
   function loopSnack(ts) {
     if (!SN || !SN.run) return;
+    if (angehalten) { SN.raf = 0; SN.last = 0; return; }    /* Pause (Kit): nichts zeichnen */
     if (document.hidden) { SN.last = 0; SN.raf = requestAnimationFrame(loopSnack); return; }
     var dt = SN.last ? Math.min(0.05, (ts - SN.last) / 1000) : 0; SN.last = ts;
     var box = $('sbox'), W = box.clientWidth, H = box.clientHeight, ctx = $('scv').getContext('2d');
@@ -1346,7 +1369,6 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   $('againBtn').addEventListener('click', function () { startArea(state.area); });
   $('menuBtn').addEventListener('click', renderStart);
   $('rewardBtn').addEventListener('click', startSnack);
-  $('mute').addEventListener('click', toggleMute);
   $('muteStart').addEventListener('click', toggleMute);
   document.addEventListener('keydown', function (e) {
     if (state.screen !== 'game' || e.ctrlKey || e.metaKey || e.altKey) return;

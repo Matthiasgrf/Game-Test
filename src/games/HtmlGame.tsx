@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import type { GameInfo } from "./catalog";
-import { parseScore, saveScore } from "./scores";
+import { loadMyScores, parseScore, saveScore } from "./scores";
 import { loadState, parseState, saveState, type GameState } from "./states";
 
 // Zeigt ein eigenständiges HTML-Spiel (public/games/<key>/index.html) bildschirmfüllend.
 // Das Spiel meldet sein Ergebnis über public/games/shared/game-test.js per postMessage;
 // hier wird es geprüft und für den eingeloggten Spieler gespeichert.
 // Den Weg zurück zur Übersicht bietet das Spiel selbst (Link mit target="_top").
+// Fragt das Spiel seine eigenen Ergebnisse ab (GameTest.getScores / kit/storage.js), antwortet die App
+// mit den Ergebnissen des eingeloggten Spielers.
 //
 // Spielstand (nur Spiele mit saveKey in games.json): Vor dem Start wird der Stand des
 // Spielers aus game_states geladen und unter saveKey in localStorage geschrieben – das
@@ -91,6 +93,16 @@ export default function HtmlGame({ game }: { game: GameInfo }) {
       const data = e.data as Record<string, unknown> | null;
       if (!data || data.source !== "game-test") return;
 
+      if (data.type === "getScores") {
+        const reply = (scores: unknown[]) => frame.current?.contentWindow?.postMessage(
+          { source: "game-test-app", type: "scores", id: data.id, scores }, window.location.origin);
+        if (!userId || !game.highscore) { reply([]); return; }
+        loadMyScores(game.key, userId)
+          .then((rows) => reply(rows.map((r) => ({ points: r.points, maxPoints: r.max_points, seconds: r.seconds, variant: r.variant }))))
+          .catch(() => reply([]));
+        return;
+      }
+
       if (data.type === "state") {
         if (!game.saveKey || !sync.current) return;
         const state = parseState(data.data);
@@ -110,7 +122,7 @@ export default function HtmlGame({ game }: { game: GameInfo }) {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [game, flush]);
+  }, [game, flush, userId]);
 
   useEffect(() => {
     if (!toast || toast.text.endsWith("…")) return;

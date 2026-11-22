@@ -24,7 +24,7 @@ Browser (React, GitHub Pages)
 | Admin-API | `supabase/functions/admin-users/index.ts` | Claude via Supabase-MCP `deploy_edge_function` |
 | Spiele, Werkzeuge, Tests | `src/games/games.json`, `public/games/`, `tools/`, `CLAUDE.md` | `node tools/neues-spiel.js`, `npm test` |
 | Frontend | `src/` | Claude schreibt Code, commit + push nach GitHub |
-| Deployment | `.github/workflows/deploy.yml` | GitHub Actions → GitHub Pages |
+| Checks und Deployment | `.github/workflows/pruefen.yml`, `pruefen-voll.yml` | GitHub Actions → GitHub Pages (Test-Strategie: `docs/GAME_STANDARD.md`) |
 
 ### Warum Username → Pseudo-E-Mail?
 Supabase Auth kennt nur E-Mail/Telefon. Die App wandelt `spieler1` intern in
@@ -85,7 +85,7 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 
 | Spiel | Art | Gruppe | Beschreibung |
 |---|---|---|---|
-| Labyrinth-Abenteuer | React, `src/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
+| Labyrinth-Abenteuer | HTML, `public/games/labyrinth/` | Kindergarten | `public/games/labyrinth/readme.md` |
 | Elisabeth von Thüringen | HTML, `public/games/elisabeth/` | Klasse-3c | `public/games/elisabeth/readme.md` |
 | Flug über Europa | HTML, `public/games/europaflug/` | Klasse-3c | `public/games/europaflug/readme.md` |
 | Getreide-Abenteuer | HTML, `public/games/sachunterricht-getreide/` | Klasse-3c | `public/games/sachunterricht-getreide/readme.md` |
@@ -95,14 +95,16 @@ lesen diese Datei. Jedes Spiel hat einen Ordner `public/games/<key>/` mit `readm
 | Bauer Franz und die Getreideernte | HTML, `public/games/sachunterricht-getreideernte/` | Klasse-3c | `public/games/sachunterricht-getreideernte/readme.md` |
 | Die Formen-Werkstatt | HTML, `public/games/mathe-formen/` | Klasse-3c | `public/games/mathe-formen/readme.md` |
 | Die Wortmonster | HTML, `public/games/deutsch-wortmonster/` | Klasse-3c | `public/games/deutsch-wortmonster/readme.md` |
+| Rohr-Flitzer | HTML, `public/games/rohr-flitzer/` | Fisser-Flitzer | `public/games/rohr-flitzer/readme.md` |
+| Ski-Flitzer | HTML, `public/games/ski-flitzer/` | Fisser-Flitzer | `public/games/ski-flitzer/readme.md` |
+| Liftschlange | HTML, `public/games/liftschlange/` | Freigabe im Admin (ab 18) | `public/games/liftschlange/readme.md` |
 
-Es gibt zwei Arten von Spielen:
-
-- **React-Spiel** (`"type": "react"`): `src/games/<key>/index.tsx` mit `export default`. Die App lädt es
-  automatisch als Route `#/spiele/<key>`, erst wenn es geöffnet wird.
-- **HTML-Spiel** (`"type": "html"`): eine eigenständige Datei `public/games/<key>/index.html`, ohne Build.
-  `src/games/HtmlGame.tsx` zeigt sie bildschirmfüllend in einem iframe. Der Link „🏠 Alle Spiele“
-  zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
+Alle Spiele sind **HTML-Spiele** (`"type": "html"`): `public/games/<key>/index.html` mit `game.js`, ohne Build,
+gebaut mit dem gemeinsamen Kit (`public/games/shared/kit/`, Regeln in `docs/GAME_STANDARD.md`).
+`src/games/HtmlGame.tsx` zeigt sie bildschirmfüllend in einem iframe. Der Link „🏠 Alle Spiele“
+zeigt auf `../../#/` mit `target="_top"` und führt so zurück zur Übersicht.
+React-Spiele (`"type": "react"`, `src/games/<key>/index.tsx`, die App lädt sie als Route `#/spiele/<key>`)
+gibt es nur noch für Spiele, deren Spiellogik in der Datenbank läuft (`"serverScored"`) – derzeit keins.
 
 ### Highscores (für alle Spiele)
 Alle Spiele speichern in **eine** Tabelle, `game_scores`
@@ -123,9 +125,8 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
 - In `src/games/games.json` beschreibt `highscore: { better, pointsLabel, pointsIcon?, showTime?, variants?, rule }`
   die Anzeige. `highscore: null` heißt: kein Highscore, das Spiel erscheint dann nicht unter **Highscores**.
   `tools/check.js` prüft, dass games.json und die Tabelle `games` (Migrationen) zusammenpassen.
-- Speichern aus React: `saveScore(key, { points, maxPoints?, seconds?, variant? })` (`src/games/scores.ts`).
-- Speichern aus HTML-Spielen: `public/games/shared/game-test.js` einbinden und am Ende
-  `GameTest.reportScore({ points, maxPoints?, seconds?, variant? })` aufrufen. Das Spiel schickt das
+- Speichern aus HTML-Spielen: am Ende `kit.storage.saveScore({ points, maxPoints?, seconds?, variant? })`
+  (ältere Spiele rufen direkt `GameTest.reportScore(...)` aus `public/games/shared/game-test.js` auf). Das Spiel schickt das
   Ergebnis per `postMessage` an die App. Die App nimmt nur Nachrichten aus dem eigenen iframe
   an, prüft die Werte und speichert sie für den eingeloggten Spieler.
 - Die alten Tabellen `scores` / `labyrinth_scores` (und ihre Views) werden nicht mehr benutzt.
@@ -137,7 +138,7 @@ Alle Spiele speichern in **eine** Tabelle, `game_scores`
 node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c
 ```
 
-Das legt aus `tools/vorlage/` ein lauffähiges Quiz an (HTML, mit `--react` als React-Spiel),
+Das legt aus `tools/vorlage/` ein lauffähiges Quiz an (HTML-Spiel mit dem Kit),
 dazu readme.md, den Eintrag in games.json, die Migration für die Tabelle `games` und einen
 Durchspiel-Test. `--ohne-highscore` legt ein Spiel ohne Bestenliste an. Die vollständige
 Checkliste und die Regeln für Spiele stehen in **`CLAUDE.md`**.
@@ -147,9 +148,15 @@ Checkliste und die Regeln für Spiele stehen in **`CLAUDE.md`**.
 | Befehl | Zweck |
 |---|---|
 | `npm run check` | Regeln ohne Browser: games.json, Dateien, Vorschaubilder, Links, fremde Server, Highscore ↔ Datenbank |
-| `npm run smoke` | Übersicht, Highscores und jedes Spiel im Browser öffnen (Computer + Handy), Screenshots in `test-ergebnisse/` |
+| `npm run smoke` | Übersicht, Highscores und jedes Spiel im Browser öffnen (Computer, Tablet, Handy hoch und quer), Screenshots in `test-ergebnisse/` |
 | `npm run spieltest` | Spiele mit Test in `tools/spieltests/` automatisch durchspielen, inkl. gespeichertem Ergebnis |
-| `npm test` | alles zusammen, wie der Workflow **„Spiele prüfen“** bei jedem Push |
+| `npm run test:schnell` | wie die schnellen Checks des Workflows **„Spiele prüfen“**: nur, was sich geändert hat |
+| `npm run leistung` | Leistungsbericht je Spiel |
+| `npm test` | alles zusammen |
+
+Auf GitHub laufen bei jedem Push die schnellen Checks (unter 2 Minuten) und nur die geänderten Spiele werden
+durchgespielt; nach dem Merge auf `main` wird veröffentlicht und der ausführliche Test läuft (auch nachts und per
+Hand). Details und Laufzeiten: `docs/GAME_STANDARD.md`.
 
 Die Browser-Tests bauen die App mit Test-Zugangsdaten und stellen Supabase im Browser nach
 (`tools/lib.js`, `mockSupabase`). Sie brauchen weder Passwort noch Datenbank und speichern nichts.

@@ -1,35 +1,45 @@
 #!/usr/bin/env node
-/* Legt ein neues Spiel an – alles, was ein Spiel in Game-Test braucht, aus tools/vorlage/:
-     HTML-Spiel:   public/games/<key>/index.html          (Standard)
-     React-Spiel:  src/games/<key>/index.tsx               (--react)
-     immer:        public/games/<key>/readme.md
-                   tools/spieltests/<key>.js               Durchspiel-Test, passt zur Vorlage
-                   Eintrag in src/games/games.json
-                   supabase/migrations/<zeit>_spiel_<key>.sql   Zeile in der Tabelle games (+ Freigabe)
+/* Legt ein neues Spiel an – alles, was ein Spiel in Game-Test braucht, aus tools/vorlage/ (Standard:
+   docs/GAME_STANDARD.md). Die Vorlage ist ein lauffähiges Mini-Spiel mit dem Kit (Leiste, Pause, Ton,
+   Vollbild, Drehen-Hinweis, Speicher), das alle Regeln schon erfüllt:
+     public/games/<key>/index.html   Gerüst: Szene, Anzeigen, Fenster für Start, Frage, Ende
+     public/games/<key>/game.js      Spiellogik (ES-Modul)
+     public/games/<key>/readme.md
+     tools/spieltests/<key>.js       Durchspiel-Test, passt zur Vorlage
+     Eintrag in src/games/games.json
+     supabase/migrations/<zeit>_spiel_<key>.sql   Zeile in der Tabelle games (+ Freigabe)
    Vorhandene Dateien (z. B. ein hochgeladenes Spiel als index.html) werden nicht überschrieben.
+   Bilder und Töne kommen nach public/games/<key>/assets/ (WebP/JPEG, MP3).
 
    Aufruf:  node tools/neues-spiel.js <key> "<Titel>" [Optionen]
-     --react               React-Spiel statt HTML-Spiel
-     --ohne-highscore      Spiel ohne Bestenliste (highscore: null, in der Datenbank 'none')
-     --alter "<text>"      z. B. "3. Klasse" (Standard) oder "ab 5 Jahren"
-     --gruppe "<Name>"     Spiel für diese Gruppe freigeben, z. B. "Klasse-3c" (mehrfach möglich)
-     --emoji "<emoji>"     Emoji für Tabs und Admin (Standard 🎲)
-     --kategorie "<Name>"  Kategorie in der Übersicht, z. B. "Mathe" (muss in der Tabelle categories stehen)
+     --zielgruppe kinder|erwachsene   Bereich in der Übersicht (Standard: kinder)
+     --ausrichtung beide|quer|hoch    beste Ausrichtung (Standard: beide); sonst „Bitte Gerät drehen“
+     --status live|beta|entwurf       Standard: beta (mit Abzeichen); entwurf = nur Admins sehen es
+     --ohne-highscore                 Spiel ohne Bestenliste (highscore: null, in der Datenbank 'none')
+     --alter "<text>"                 z. B. "3. Klasse" (Standard) oder "ab 5 Jahren"
+     --gruppe "<Name>"                Spiel für diese Gruppe freigeben, z. B. "Klasse-3c" (mehrfach möglich)
+     --emoji "<emoji>"                Emoji für Tabs und Admin (Standard 🎲)
+     --kategorie "<Name>"             Kategorie in der Übersicht, z. B. "Mathe" (muss in der Tabelle categories stehen)
 
-   Beispiel: node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c */
+   Beispiel: node tools/neues-spiel.js einmaleins "Einmaleins-Rakete" --gruppe Klasse-3c --kategorie Mathe
+   Vorher das Briefing ausfüllen: docs/GAME_BRIEF.md */
 import fs from 'node:fs';
 import path from 'node:path';
-import { GAMES_JSON, MIGRATIONS, PUBLIC_GAMES, ROOT, SRC_GAMES, dbModes, loadGames } from './lib.js';
+import { GAMES_JSON, MIGRATIONS, PUBLIC_GAMES, ROOT, dbModes, loadGames } from './lib.js';
 
 const args = process.argv.slice(2);
 const key = args.shift();
 const title = args.shift();
-let react = false, highscore = true, age = '3. Klasse', emoji = '🎲';
+let highscore = true, age = '3. Klasse', emoji = '🎲', zielgruppe = 'kinder', ausrichtung = 'beide', status = 'beta';
 const groups = [];
 let category = null;
+const AUSRICHTUNG = { beide: 'any', quer: 'landscape', hoch: 'portrait' };
 while (args.length) {
   const a = args.shift();
-  if (a === '--react') react = true;
+  if (a === '--react') { console.log('✗ Neue Spiele sind HTML-Spiele mit dem Kit (docs/GAME_STANDARD.md) – --react gibt es nicht mehr.'); process.exit(1); }
+  else if (a === '--zielgruppe') zielgruppe = args.shift();
+  else if (a === '--ausrichtung') ausrichtung = args.shift();
+  else if (a === '--status') status = args.shift();
   else if (a === '--ohne-highscore') highscore = false;
   else if (a === '--alter') age = args.shift();
   else if (a === '--gruppe') groups.push(args.shift());
@@ -38,9 +48,13 @@ while (args.length) {
   else { console.log(`✗ Unbekannte Option: ${a}`); process.exit(1); }
 }
 if (!key || !title || title.startsWith('--')) {
-  console.log('Aufruf: node tools/neues-spiel.js <key> "<Titel>" [--react] [--ohne-highscore] [--alter "<text>"] [--gruppe "<Name>"] [--emoji "<emoji>"] [--kategorie "<Name>"]');
+  console.log('Aufruf: node tools/neues-spiel.js <key> "<Titel>" [--zielgruppe kinder|erwachsene] [--ausrichtung beide|quer|hoch] [--status live|beta|entwurf] [--ohne-highscore] [--alter "<text>"] [--gruppe "<Name>"] [--emoji "<emoji>"] [--kategorie "<Name>"]');
   process.exit(1);
 }
+if (!['kinder', 'erwachsene'].includes(zielgruppe)) { console.log('✗ --zielgruppe kinder oder erwachsene'); process.exit(1); }
+if (!AUSRICHTUNG[ausrichtung]) { console.log('✗ --ausrichtung beide, quer oder hoch'); process.exit(1); }
+if (!['live', 'beta', 'entwurf'].includes(status)) { console.log('✗ --status live, beta oder entwurf'); process.exit(1); }
+const orientation = AUSRICHTUNG[ausrichtung];
 if (!/^[a-z0-9_-]{1,40}$/.test(key)) {
   console.log('✗ Der key darf nur Kleinbuchstaben (ohne Umlaute), Ziffern, - und _ enthalten (max. 40 Zeichen).');
   process.exit(1);
@@ -54,6 +68,7 @@ const fill = (text) => {
     .split('SPIEL_KEY').join(key)
     .split('SPIEL_TITEL').join(title)
     .split('SPIEL_ALTER').join(age)
+    .split('SPIEL_AUSRICHTUNG').join(orientation)
     .split('SPIEL_HIGHSCORE').join(highscore
       ? 'Punkte = Fehlversuche (weniger ist besser), bei Gleichstand die kürzere Zeit.'
       : 'keiner (Spiel ohne Bestenliste).');
@@ -70,10 +85,10 @@ function create(target, template) {
 }
 
 /* Dateien des Spiels */
-if (react) create(path.join(SRC_GAMES, key, 'index.tsx'), 'react/index.tsx');
-else create(path.join(PUBLIC_GAMES, key, 'index.html'), 'html/index.html');
+create(path.join(PUBLIC_GAMES, key, 'index.html'), 'html/index.html');
+create(path.join(PUBLIC_GAMES, key, 'game.js'), 'html/game.js');
 create(path.join(PUBLIC_GAMES, key, 'readme.md'), 'readme.md');
-create(path.join(ROOT, 'tools/spieltests', `${key}.js`), react ? 'spieltest-react.js' : 'spieltest-html.js');
+create(path.join(ROOT, 'tools/spieltests', `${key}.js`), 'spieltest-html.js');
 
 /* Eintrag in games.json */
 const games = loadGames();
@@ -83,10 +98,13 @@ else {
   const hash = [...key].reduce((h, c) => h + c.charCodeAt(0), 0);
   games.push({
     key,
-    type: react ? 'react' : 'html',
+    type: 'html',
     title,
     description: 'TODO: ein Satz, worum es im Spiel geht.',
     age,
+    zielgruppe,
+    orientation,
+    status,
     emoji,
     color: `linear-gradient(135deg, ${colors[hash % colors.length]})`,
     highscore: highscore
@@ -118,9 +136,10 @@ else {
 }
 
 console.log(`
-Nächste Schritte (Checkliste in CLAUDE.md):
-  1. Spiel, readme.md und Beschreibung in games.json fertig machen (alle „TODO“ ersetzen)
+Nächste Schritte (Checkliste und Definition of Done: docs/GAME_STANDARD.md):
+  1. Spiel (game.js, index.html), readme.md und Beschreibung in games.json fertig machen (alle „TODO“ ersetzen)
      ${highscore ? 'Highscore: Fehlversuche (weniger ist besser) – sonst games.json und Migration anpassen' : 'ohne Highscore'}
-  2. Vorschaubild:   node tools/thumbnail.js ${key}
-  3. Prüfen:         npm run check  ·  node tools/smoke.js ${key}  ·  node tools/spieltest.js ${key}
-  4. Migration in Supabase einspielen (Supabase-MCP apply_migration)`);
+  2. Vorschaubild:   node tools/thumbnail.js ${key} --klick "[data-action=start]" --verstecken ".gt-hud, .gt-bar, .gt-controls"
+  3. Prüfen:         npm run test:schnell  (vor dem Pull Request: npm test)
+  4. Migration in Supabase einspielen (Supabase-MCP apply_migration)
+  5. Wenn fertig: "status": "live" in games.json`);
