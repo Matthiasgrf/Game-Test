@@ -55,6 +55,18 @@ export default async function (t) {
     t.check(`${size}: „🏠 Alle Spiele“ führt zur Übersicht`, !(await page.$('iframe')));
   }
 
+  // Laufende Szene auf Handy hoch und quer und auf dem Tablet: Elisabeth läuft zwischen den Stationen
+  for (const [size, options] of [['handy', t.PHONE], ['handy-quer', t.PHONE_QUER], ['tablet', t.TABLET]]) {
+    const p = await t.newPage(options);
+    await p.goto(t.url, { waitUntil: 'load' });
+    const g = await t.frame(p);
+    await g.waitForFunction(() => window.ELISABETH);
+    await g.click('#start-modal .action-btn');
+    await g.evaluate(() => { const a = ELISABETH.stations[1], b = ELISABETH.stations[2]; ELISABETH.goTo(1); ELISABETH.player.x = (a.x + b.x) / 2; ELISABETH.player.z = a.z + 1.5; });
+    await g.waitForTimeout(400);
+    await t.shot(p, `spiel-${size}`);
+  }
+
   const page = await t.newPage(t.PHONE, {
     highscores: [{ id: 1, game_key: 'elisabeth', variant: '', group_id: 1, rank: 1, username: 'testkind', points: 1, max_points: null, seconds: 300, created_at: '2026-11-21T08:00:00Z' }],
   });
