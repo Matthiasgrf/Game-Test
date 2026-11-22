@@ -274,5 +274,24 @@
       "pointsIcon": "⭐",
       "rule": "Bestes Ergebnis je Spieler: meiste Punkte, bei Gleichstand die kürzere Zeit."
     }
+  },
+  {
+    "key": "schmetterling",
+    "type": "html",
+    "title": "Flatter, der Schmetterling",
+    "description": "Flieg als Schmetterling über die 3D-Blumenwiese, sammle Münzen und Herzen, schnapp Quallen und löse Tier-Memorys und Labyrinthe.",
+    "age": "5–7 Jahre",
+    "zielgruppe": "kinder",
+    "orientation": "any",
+    "status": "live",
+    "emoji": "🦋🦊",
+    "color": "linear-gradient(135deg, #fcc2d7, #b197fc)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "⭐",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte (Münzen, Herzen, Quallen, Einhörner, Memory und Labyrinth), bei Gleichstand die schnellste Zeit."
+    }
   }
 ]
