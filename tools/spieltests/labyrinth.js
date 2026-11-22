@@ -101,7 +101,8 @@ export default async function (t) {
     }
     await page.clock.runFor(500);
     t.check(`${size}: Zwischen-Bildschirm nach Labyrinth 1`, await game.locator('[data-screen="level"]').isVisible());
-    t.check(`${size}: Lob und Sterne`, /\S/.test(await game.textContent('#lob')) && (await game.locator('#lobSterne span').count()) === 3);
+    st = await state();
+    t.check(`${size}: Lob und Sterne`, /\S/.test(await game.textContent('#lob')) && (await game.locator('#lobSterne span').count()) === st.stars && (await game.locator('#lobSterne span.an').count()) === st.stars, `${st.stars} Sterne`);
     if (size === 'computer') await page.keyboard.press('Enter'); else await game.click('[data-action="weiter"]');
 
     for (let level = 1; level < 5; level++) {

@@ -480,6 +480,7 @@ window.SPIEL = {
     size: play ? play.maze.w : 0,
     pos: play ? { ...play.pos } : null,
     got: play ? play.got.filter(Boolean).length : 0,
+    stars: play ? play.maze.stars.length : 0,
     seconds: Math.round(elapsed()),
   }),
   /* Weg (N/E/S/W) über alle noch liegenden Sterne (der nächste zuerst) zum Ziel */
