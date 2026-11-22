@@ -6,6 +6,7 @@
     <script src="../shared/zoom-schutz.js"></script>
     <script src="../shared/game-test.js"></script>
     <link rel="stylesheet" href="../shared/kit/theme.css">
+    <script src="../shared/vendor/three-r128.min.js"></script>
     <title>Elisabeth von Thüringen - 3D Religions-Abenteuer (3. Klasse)</title>
     <style>
         * {
@@ -76,22 +77,25 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             z-index: 5;
             max-width: 90%;
+            transition: opacity .6s;
         }
+        /* sobald Elisabeth zum ersten Mal läuft, wird der Hinweis nicht mehr gebraucht */
+        #controls-hint.weg { opacity: 0; }
         /* Mobile Steuerkreuz (D-Pad Pfeiltasten) */
         #mobile-dpad {
             display: none;
             position: absolute;
             bottom: 22px;
             left: 22px;
-            width: 168px;
-            height: 168px;
+            width: 192px;
+            height: 192px;
             z-index: 6;
             pointer-events: auto;
         }
         .dpad-grid {
             display: grid;
-            grid-template-columns: repeat(3, 52px);
-            grid-template-rows: repeat(3, 52px);
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
             gap: 6px;
             width: 100%;
             height: 100%;
@@ -728,23 +732,19 @@
         // Zugang für den Durchspiel-Test (tools/spieltests/elisabeth.js)
         window.ELISABETH = {
             stations: stationsData,
-            goTo: idx => { player.x = stationsData[idx].x; player.z = stationsData[idx].z; }
+            goTo: idx => { player.x = stationsData[idx].x; player.z = stationsData[idx].z; },
+            player: null
         };
 
-        // --- EIGENSTÄNDIGE 3D-ENGINE (OHNE EXTERNE DATEIEN) ---
+        // --- 3D-SZENE: scene.js (Three.js aus shared/vendor) – Wiese, Wartburg, Stationen, Elisabeth ---
         const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height;
+        let width = window.innerWidth, height = window.innerHeight;
+        let scene3d = null, quality = null;
 
         function resizeCanvas() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);   /* scharf auf iPad/iPhone */
             width = window.innerWidth;
             height = window.innerHeight;
-            canvas.width = Math.round(width * dpr);
-            canvas.height = Math.round(height * dpr);
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            if (scene3d) scene3d.resize(width, height);
             applyDeviceControls();
         }
         window.addEventListener('resize', resizeCanvas);
@@ -752,6 +752,7 @@
 
         // Spielzustand
         let player = { x: -16, z: 15, targetX: null, targetZ: null, walkAnim: 0 };
+        window.ELISABETH.player = player;
         let cam = { x: -16, z: 15 };
         let completedStations = new Set();
         let score = 0;
@@ -759,59 +760,22 @@
         let startedAt = 0;
         let isGameActive = false;
         let isModalOpen = false;
+        let hintGone = false;
         const keys = {};
 
-        // 3D-Projektion (Perspektive)
-        function project3D(wx, wy, wz) {
-            const dx = wx - cam.x;
-            const dz = wz - cam.z;
-
-            // Kamera-Neigung (38 Grad)
-            const cosA = 0.78;
-            const sinA = 0.62;
-
-            const ry = wy * cosA - dz * sinA;
-            const rz = wy * sinA + dz * cosA + 22;
-
-            if (rz <= 1) return null;
-
-            const fov = Math.min(width, height) * 0.85;
-            const scale = fov / rz;
-
-            return {
-                x: width / 2 + dx * scale,
-                y: height / 2 - ry * scale,
-                scale: scale,
-                depth: rz
-            };
-        }
-
-        // Bäume & Deko generieren
+        // Bäume auf der Wiese (dazu kommt in scene.js der Wald rundherum)
         const trees = [
             [-18, 16], [-19, 3], [-18, -11], [-10, -14], [12, -13],
             [18, -8], [18, 2], [17, 14], [3.5, 10], [-10.5, 4], [10.5, -2], [-3.5, -8.5]
         ];
 
-        // Maus- & Touch-Steuerung auf Wiese (Inverse Projektion)
+        // Maus & Touch: Punkt auf der Wiese unter dem Finger (Strahl der 3D-Kamera)
         function screenToWorld(sx, sy) {
-            const fov = Math.min(width, height) * 0.85;
-            const cosA = 0.78;
-            const sinA = 0.62;
-
-            const normY = (height / 2 - sy) / fov;
-            const denom = sinA + normY * cosA;
-            if (Math.abs(denom) < 0.05) return null;
-
-            const dz = (22 * normY) / denom;
-            const rz = dz * cosA + 22;
-            if (rz <= 2) return null;
-
-            const scale = fov / rz;
-            const dx = (sx - width / 2) / scale;
-
+            const p = scene3d && scene3d.groundAt(sx, sy);
+            if (!p) return null;
             return {
-                x: Math.max(-19, Math.min(19, cam.x + dx)),
-                z: Math.max(-13, Math.min(17, cam.z + dz))
+                x: Math.max(-19, Math.min(19, p.x)),
+                z: Math.max(-13, Math.min(17, p.z))
             };
         }
 
@@ -864,225 +828,6 @@
         bindDpadButton('btn-down', 'ArrowDown');
         bindDpadButton('btn-left', 'ArrowLeft');
         bindDpadButton('btn-right', 'ArrowRight');
-
-        // --- ZEICHENFUNKTIONEN ---
-        function drawGround() {
-            // Himmel
-            const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.5);
-            skyGrad.addColorStop(0, '#38bdf8');
-            skyGrad.addColorStop(1, '#bae6fd');
-            ctx.fillStyle = skyGrad;
-            ctx.fillRect(0, 0, width, height);
-
-            // Große grüne Wiese
-            // Hinteren Rand begrenzen, damit er nicht hinter der Kamera liegt
-            const farZ = Math.max(-24, cam.z - 25);
-            const corners = [
-                project3D(-60, 0, farZ),
-                project3D(60, 0, farZ),
-            ];
-            if (corners.every(c => c !== null)) {
-                // Vorne bis zum unteren Bildschirmrand auffüllen
-                corners.push({ x: width + 10, y: height + 10 }, { x: -10, y: height + 10 });
-                ctx.beginPath();
-                ctx.moveTo(corners[0].x, corners[0].y);
-                corners.forEach(c => ctx.lineTo(c.x, c.y));
-                ctx.closePath();
-                ctx.fillStyle = '#4ade80';
-                ctx.fill();
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = '#16a34a';
-                ctx.stroke();
-            }
-
-            // Sandweg entlang der Stationen
-            ctx.beginPath();
-            stationsData.forEach((st, idx) => {
-                const p = project3D(st.x, 0.02, st.z);
-                if (p) {
-                    if (idx === 0) ctx.moveTo(p.x, p.y);
-                    else ctx.lineTo(p.x, p.y);
-                }
-            });
-            ctx.strokeStyle = '#fde68a';
-            ctx.lineWidth = 22;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.stroke();
-        }
-
-        function drawCastle() {
-            const base = project3D(0, 0, -19);
-            if (!base) return;
-            const s = base.scale;
-
-            // Hauptbau der Wartburg
-            ctx.fillStyle = '#e7e5e4';
-            ctx.fillRect(base.x - 6.5 * s, base.y - 4.5 * s, 13 * s, 4.5 * s);
-            ctx.strokeStyle = '#78716c';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(base.x - 6.5 * s, base.y - 4.5 * s, 13 * s, 4.5 * s);
-
-            // Fachwerk-Balken
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(base.x - 6.5 * s, base.y - 2.4 * s, 13 * s, 0.35 * s);
-
-            // Rotes Dach
-            ctx.beginPath();
-            ctx.moveTo(base.x - 7.2 * s, base.y - 4.5 * s);
-            ctx.lineTo(base.x, base.y - 7.5 * s);
-            ctx.lineTo(base.x + 7.2 * s, base.y - 4.5 * s);
-            ctx.closePath();
-            ctx.fillStyle = '#dc2626';
-            ctx.fill();
-
-            // Bergfried (Turm links)
-            ctx.fillStyle = '#d6d3d1';
-            ctx.fillRect(base.x - 9.2 * s, base.y - 7.5 * s, 2.6 * s, 7.5 * s);
-            ctx.strokeRect(base.x - 9.2 * s, base.y - 7.5 * s, 2.6 * s, 7.5 * s);
-
-            // Turmdach
-            ctx.beginPath();
-            ctx.moveTo(base.x - 9.6 * s, base.y - 7.5 * s);
-            ctx.lineTo(base.x - 7.9 * s, base.y - 10.2 * s);
-            ctx.lineTo(base.x - 6.2 * s, base.y - 7.5 * s);
-            ctx.closePath();
-            ctx.fillStyle = '#b91c1c';
-            ctx.fill();
-
-            // Schild "WARTBURG"
-            ctx.fillStyle = '#451a03';
-            ctx.font = `bold ${Math.max(10, 0.75 * s)}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.fillText('WARTBURG', base.x, base.y - 3 * s);
-        }
-
-        function drawTree(wx, wz) {
-            const p = project3D(wx, 0, wz);
-            if (!p) return;
-            const s = p.scale;
-
-            // Schatten
-            ctx.beginPath();
-            ctx.ellipse(p.x, p.y, 1.1 * s, 0.5 * s, 0, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.18)';
-            ctx.fill();
-
-            // Stamm
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(p.x - 0.25 * s, p.y - 1.5 * s, 0.5 * s, 1.5 * s);
-
-            // Krone
-            ctx.beginPath();
-            ctx.moveTo(p.x - 1.4 * s, p.y - 1.3 * s);
-            ctx.lineTo(p.x, p.y - 4.2 * s);
-            ctx.lineTo(p.x + 1.4 * s, p.y - 1.3 * s);
-            ctx.closePath();
-            ctx.fillStyle = '#15803d';
-            ctx.fill();
-        }
-
-        function drawStation(st, idx, time) {
-            const p = project3D(st.x, 0, st.z);
-            if (!p) return;
-            const s = p.scale;
-            const isDone = completedStations.has(idx);
-
-            // Leuchtender Bodenring
-            ctx.beginPath();
-            ctx.ellipse(p.x, p.y, 1.15 * s, 0.65 * s, 0, 0, Math.PI * 2);
-            ctx.fillStyle = isDone ? 'rgba(34, 197, 94, 0.35)' : 'rgba(250, 204, 21, 0.45)';
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = isDone ? '#16a34a' : '#f59e0b';
-            ctx.stroke();
-
-            // Schwebende Rose / Kristall
-            const bob = Math.sin(time * 4 + idx) * 0.22;
-            const gemY = p.y - (1.4 + bob) * s;
-
-            ctx.beginPath();
-            ctx.arc(p.x, gemY, 0.45 * s, 0, Math.PI * 2);
-            ctx.fillStyle = isDone ? '#22c55e' : '#e11d48';
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-
-            // Stationsnummer
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `bold ${Math.max(11, 0.55 * s)}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(isDone ? '✓' : (idx + 1), p.x, gemY);
-        }
-
-        function drawPlayer(time) {
-            const p = project3D(player.x, 0, player.z);
-            if (!p) return;
-            const s = p.scale;
-            const bounce = Math.abs(Math.sin(player.walkAnim)) * 0.18 * s;
-
-            // Schatten
-            ctx.beginPath();
-            ctx.ellipse(p.x, p.y, 0.75 * s, 0.38 * s, 0, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.fill();
-
-            // Blaues Kleid
-            ctx.beginPath();
-            ctx.moveTo(p.x - 0.65 * s, p.y - bounce);
-            ctx.lineTo(p.x, p.y - 1.85 * s - bounce);
-            ctx.lineTo(p.x + 0.65 * s, p.y - bounce);
-            ctx.closePath();
-            ctx.fillStyle = '#2563eb';
-            ctx.fill();
-            ctx.strokeStyle = '#1e3a8a';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Roter Mantel-Umhang
-            ctx.beginPath();
-            ctx.moveTo(p.x - 0.5 * s, p.y - 0.3 * s - bounce);
-            ctx.lineTo(p.x, p.y - 1.75 * s - bounce);
-            ctx.lineTo(p.x + 0.5 * s, p.y - 0.3 * s - bounce);
-            ctx.closePath();
-            ctx.fillStyle = '#dc2626';
-            ctx.fill();
-
-            // Kopf
-            ctx.beginPath();
-            ctx.arc(p.x, p.y - 2.1 * s - bounce, 0.42 * s, 0, Math.PI * 2);
-            ctx.fillStyle = '#fde68a';
-            ctx.fill();
-            ctx.strokeStyle = '#b45309';
-            ctx.stroke();
-
-            // Goldene Krone
-            ctx.fillStyle = '#facc15';
-            ctx.beginPath();
-            ctx.moveTo(p.x - 0.28 * s, p.y - 2.45 * s - bounce);
-            ctx.lineTo(p.x - 0.28 * s, p.y - 2.75 * s - bounce);
-            ctx.lineTo(p.x - 0.1 * s, p.y - 2.58 * s - bounce);
-            ctx.lineTo(p.x, p.y - 2.8 * s - bounce);
-            ctx.lineTo(p.x + 0.1 * s, p.y - 2.58 * s - bounce);
-            ctx.lineTo(p.x + 0.28 * s, p.y - 2.75 * s - bounce);
-            ctx.lineTo(p.x + 0.28 * s, p.y - 2.45 * s - bounce);
-            ctx.closePath();
-            ctx.fill();
-
-            // Zielpunkt-Markierung bei Touch/Klick
-            if (player.targetX !== null && player.targetZ !== null) {
-                const tp = project3D(player.targetX, 0, player.targetZ);
-                if (tp) {
-                    ctx.beginPath();
-                    ctx.arc(tp.x, tp.y, 0.35 * tp.scale, 0, Math.PI * 2);
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                }
-            }
-        }
 
         // --- SPIELLOGIK ---
         function startGame() {
@@ -1240,6 +985,7 @@
             }
 
             if (isMoving) {
+                if (!hintGone) { hintGone = true; document.getElementById('controls-hint').classList.add('weg'); }
                 player.walkAnim += 0.22 * k;
             } else {
                 player.walkAnim = 0;
@@ -1275,26 +1021,13 @@
             lastDraw = now;
             const k = Math.min(0.05, Math.max(0, (now - last) / 1000)) * 60;
             last = now;
-            const time = Date.now() * 0.001;
-            ctx.clearRect(0, 0, width, height);
-
-            drawGround();
-            drawCastle();
-
-            // Alle 3D-Objekte nach Tiefe sortieren (Maler-Algorithmus)
-            const renderList = [];
-            trees.forEach(([tx, tz]) => {
-                renderList.push({ z: tz, draw: () => drawTree(tx, tz) });
-            });
-            stationsData.forEach((st, idx) => {
-                renderList.push({ z: st.z, draw: () => drawStation(st, idx, time) });
-            });
-            renderList.push({ z: player.z, draw: () => drawPlayer(time) });
-
-            renderList.sort((a, b) => a.z - b.z);
-            renderList.forEach(item => item.draw());
-
+            const time = now * 0.001;
             update(k);
+            if (quality && isGameActive && !isModalOpen) quality.frame(k / 60);
+            if (scene3d) scene3d.draw({
+                player, cam, done: completedStations, time, moving: player.walkAnim !== 0,
+                target: player.targetX !== null ? { x: player.targetX, z: player.targetZ } : null
+            });
         }
 
         /* ---------- Game-Test-Kit (public/games/shared/kit/): Leiste mit Pause, Ton, Vollbild und
@@ -1310,7 +1043,24 @@
                 },
             });
             kit.setState(isGameActive ? 'play' : 'menu');
+            kitModule = m;
+            setupQuality();
         }).catch(() => {});
+
+        /* Detailstufe: auf schwachen Geräten erst ohne Schatten, dann ohne Blumen und Wolken */
+        let kitModule = null;
+        function setupQuality() {
+            if (kitModule && scene3d && !quality) {
+                quality = kitModule.createQuality({ renderer: scene3d.renderer, onChange: (stufe) => scene3d.setDetail(stufe) });
+            }
+        }
+
+        /* 3D-Szene laden (ES-Modul) */
+        import('./scene.js').then((m) => {
+            scene3d = m.createScene(canvas, { stations: stationsData, trees });
+            resizeCanvas();
+            setupQuality();
+        });
 
         render();
     </script>

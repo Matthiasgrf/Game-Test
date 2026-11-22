@@ -16,6 +16,14 @@ Manche Stationen haben mehrere Fragen nacheinander („Frage 2 / 6“, Knopf „
 
 Steuerung: Pfeiltasten / WASD, Klick bzw. Tippen auf die Wiese oder Steuerkreuz auf dem Handy.
 
+Grafik (`scene.js`, Three.js aus `../shared/vendor/`): Wiese mit Sandweg, sanfte Hügel und Wald rundherum, die
+Wartburg auf ihrem Berg im Hintergrund, Himmel mit ziehenden Wolken, Blumen. Jede Station hat einen Steinsockel
+mit goldenem Ring, eine Lichtsäule, eine schwebende Rose und ihre Nummer (erledigt: grüner Ring und ✓).
+Elisabeth trägt ein blaues Kleid, einen roten Mantel, eine Krone und einen Korb mit Brot und Rosen. Die Kamera
+folgt ihr schräg von hinten; hochkant steht sie weiter weg und zeigt mehr Wiese vor Elisabeth. Auf schwachen
+Geräten schaltet die Detailstufe des Kits erst die Schatten, dann Blumen und Wolken ab.
+Bis November 2026 zeichnete das Spiel mit einer eigenen 2D-Projektion (flache Formen, ohne Himmel).
+
 
 ## In Game-Test
 
