@@ -1,18 +1,30 @@
 # Elisabeth von Thüringen
 
 3D-Religions-Abenteuer für die 3. Klasse: Elisabeth läuft über eine Wiese zu 20 Stationen
-und beantwortet dort Quizfragen zu ihrem Leben – in der Reihenfolge ihres Lebens:
+und löst dort Aufgaben zu ihrem Leben – in der Reihenfolge ihres Lebens:
 
-- Von Ungarn auf die Wartburg: Eltern Andreas und Gertrud, Ritter des Landgrafen, Heirat verbindet
-  die Länder, Reise mit Ritter Walter und Brautschatz, Landgräfin Sophie
-- Ohne Eltern verreisen: Was denkt und fühlt die 4-jährige Elisabeth?
-- Elisabeth heiratet Ludwig: Herrmann stirbt, Hochzeitsfest, die Armen nicht vergessen
-- Krone, Hilfe für die Armen, Rosenwunder, Hospital
-- Die Werke der Barmherzigkeit: sechs Satzanfänge mit dem passenden Satzende verbinden,
-  dazu gute Werke im Alltag (trösten, aufhelfen, nicht auslachen, teilen)
-- Abschied von der Wartburg, Marburg, Heilige, Elisabeth-Tag (19. November)
+- Herkunft (Ungarn, König Andreas, Mutter Gertrud), Besuch der Ritter, warum die Heirat die Länder verbindet
+- Ohne Eltern in ein fremdes Land: was fremd ist, welches Gefühl Elisabeth hat
+- Reise mit Ritter Walter und Brautschatz, Kindheit auf der Wartburg bei Eisenach, Landgräfin Sophie
+- Herrmann stirbt, Ludwig heiratet Elisabeth, Hochzeitsfest, Ludwig erlaubt ihr zu helfen
+- Krone in der Kirche, Hilfe für die Armen (Hungersnot), Rosenwunder, der Kranke im Bett, Hospital
+- Die Werke der Barmherzigkeit (Paare verbinden) und gute Werke heute
+- Ludwigs Tod, Abschied von der Wartburg, Marburg, Heilige, Elisabeth-Tag (19. November)
 
-Manche Stationen haben mehrere Fragen nacheinander („Frage 2 / 6“, Knopf „Weiter“).
+Aufgabenarten (seit November 2026, damit Auswendiglernen nicht mehr hilft und die Kinder genau lesen):
+
+| Art | so |
+|---|---|
+| eine Antwort | Antworten werden bei jedem Spiel gemischt |
+| Stimmt / stimmt nicht | je Aufgabe gibt es einen wahren und einen falschen Satz, das Spiel zeigt zufällig einen |
+| Fehler finden | falsches Wort im Text antippen, dann das richtige auswählen |
+| Reihenfolge | Sätze einer Geschichte der Reihe nach antippen |
+| mehrere Antworten | alle richtigen antippen, dann „Prüfen“ |
+| Paare | Satzanfang links mit dem Satzende rechts verbinden |
+
+Manche „Fehler finden“-Aufgaben haben zwei Varianten, das Spiel wählt zufällig. Jede Station hat eine oder mehrere
+Aufgaben („Aufgabe 2 / 3“, Knopf „Weiter“). Jeder falsche Tipp (bei „mehrere Antworten“: jedes falsche Prüfen) ist
+ein Fehlversuch. Die Aufgaben stehen in `index.html` (`stationsData`), die Art steht im Kommentar darüber.
 
 Steuerung: Pfeiltasten / WASD, Klick bzw. Tippen auf die Wiese oder Steuerkreuz auf dem Handy.
 
