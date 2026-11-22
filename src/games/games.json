@@ -65,6 +65,7 @@
       "better": "low",
       "pointsLabel": "Sekunden",
       "pointsIcon": "⏱",
+      "pointsDecimals": 2,
       "rule": "Bestes Ergebnis je Spieler: schnellste Zeit bis in die Kanalisation."
     }
   },

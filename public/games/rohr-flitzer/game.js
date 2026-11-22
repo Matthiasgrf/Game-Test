@@ -154,10 +154,11 @@ function win() {
   phase = 'won';
   const secs = sim.time;
   showTime(secs);
-  const whole = Math.max(1, Math.round(secs));
-  kit.storage.saveScore({ points: whole, seconds: whole });
+  // Punkte in Hundertstelsekunden (games.json: pointsDecimals 2), seconds ganzzahlig für die Plausibilitätsprüfung
+  const hundredths = Math.max(1, Math.round(secs * 100));
+  kit.storage.saveScore({ points: hundredths, seconds: Math.max(1, Math.ceil(hundredths / 100)) });
   kit.setState('end');
-  $('ergebnis').textContent = `⏱ ${fmt(secs)} Sekunden`;
+  $('ergebnis').textContent = `⏱ ${secs.toFixed(2).replace('.', ',')} Sekunden`;
   // „Platsch!“ über der Kanalisation, bis das Gewinn-Fenster kommt
   if (view) {
     platsch.style.left = `${view.ox + (W * view.k) / 2}px`;

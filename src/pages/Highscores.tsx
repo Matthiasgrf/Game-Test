@@ -22,6 +22,10 @@ interface Row {
 }
 
 const date = (s: string) => new Date(s).toLocaleDateString("de-DE");
+/** Punkte mit Nachkommastellen: gespeichert als ganze Zahl × 10^decimals (games.json pointsDecimals). */
+const showPoints = (p: number, decimals = 0) =>
+  decimals > 0 ? (p / 10 ** decimals).toLocaleString("de-DE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : p;
+
 const time = (s: number | null) =>
   s === null ? "–" : s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min` : `${s} s`;
 const medal = (rank: number) => (rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : rank);
@@ -154,7 +158,7 @@ export default function Highscores() {
                     <td>{r.username}</td>
                     <td>
                       {config.pointsIcon && `${config.pointsIcon} `}
-                      {r.points}{r.max_points !== null && ` / ${r.max_points}`}
+                      {showPoints(r.points, config.pointsDecimals)}{r.max_points !== null && ` / ${r.max_points}`}
                     </td>
                     {config.showTime && <td>{time(r.seconds)}</td>}
                     <td>{date(r.created_at)}</td>

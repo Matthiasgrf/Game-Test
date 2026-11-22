@@ -156,12 +156,13 @@ export default async function (t) {
     t.check(`${size}: Rohrsystem hat Verstopfungen`, first && first.clogs > 0, `${first?.clogs} Verstopfungen, ${steps} Schritte`);
 
     await game.waitForSelector('[data-screen="win"]', { state: 'visible', timeout: 10000 });
-    t.check(`${size}: Gewinn-Bildschirm mit Zeit`, /\d+,\d Sekunden/.test(await game.textContent('#ergebnis')), await game.textContent('#ergebnis'));
+    t.check(`${size}: Gewinn-Bildschirm mit Zeit`, /\d+,\d\d Sekunden/.test(await game.textContent('#ergebnis')), await game.textContent('#ergebnis'));
     t.check(`${size}: Gewinn-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('[data-screen="win"] a[href="../../#/"]').isVisible());
     await page.waitForSelector('.html-game-toast');
     const sc = page.scores[0];
-    t.check(`${size}: Ergebnis gespeichert (${sc?.points} s)`,
-      page.scores.length === 1 && sc.game_key === 'rohr-flitzer' && sc.points >= 1 && sc.points < 60 && sc.seconds === sc.points,
+    t.check(`${size}: Ergebnis gespeichert (${sc?.points} Hundertstel)`,
+      page.scores.length === 1 && sc.game_key === 'rohr-flitzer' && sc.points >= 1 && sc.points < 6000
+        && sc.seconds === Math.max(1, Math.ceil(sc.points / 100)),
       JSON.stringify(page.scores));
     await t.shot(page, `gewonnen-${size}`);
 
