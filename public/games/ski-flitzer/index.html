@@ -165,10 +165,18 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   /* Zufall mit Startwert, damit jede Runde neu, aber in sich stimmig ist */
   var seed = 1;
   function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
-  function pickItem() {
-    var sum = ITEMS.reduce(function (s, it) { return s + it.w; }, 0), r = rnd() * sum;
-    for (var i = 0; i < ITEMS.length; i++) { r -= ITEMS[i].w; if (r <= 0) return ITEMS[i]; }
-    return ITEMS[0];
+  /* Punkte-Ausgleich: Jede Strecke bietet ungefähr TARGET_POINTS Punkte, gleichmäßig verteilt.
+     Liegen bis zu einer Stelle weniger Punkte als geplant, werden wertvolle Dinge wahrscheinlicher –
+     liegen mehr, eher Klopapier & Co. So ist jede Runde fair, auch wenn man nur einen Teil der Strecke schafft. */
+  var TARGET_POINTS = 2500, PLAN_FROM = 32, PLAN_TO = COURSE - 30, planned = 0;
+  function goalAt(z) { return TARGET_POINTS * Math.min(1, Math.max(0, (z - PLAN_FROM) / (PLAN_TO - PLAN_FROM))); }
+  function pickItem(n, zEnd) {                                  // n gleiche Dinge, das letzte liegt bei zEnd
+    var want = (goalAt(zEnd) - planned) / n;
+    var ws = ITEMS.map(function (it) { var d = (it.pts - want) / 8; return it.w * Math.exp(-d * d); });
+    var sum = ws.reduce(function (s, w) { return s + w; }, 0), r = rnd() * sum, pick = ITEMS[0];
+    for (var i = 0; i < ITEMS.length; i++) { r -= ws[i]; if (r <= 0) { pick = ITEMS[i]; break; } }
+    planned += pick.pts * n;
+    return pick;
   }
 
   /* ------------------------------------------------------------------ Three.js Grundgerüst */
@@ -670,19 +678,20 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
   var spawnList = [], spawnIndex = 0, live = [];
   function planCourse() {
     spawnList = [];
-    var z = 32;
-    while (z < COURSE - 30) {
+    planned = 0;
+    var z = PLAN_FROM;
+    while (z < PLAN_TO) {
       var r = rnd();
       if (z > 70 && r < 0.27) {                                                     // Hindernis
         var off = (rnd() * 2 - 1) * (PW - 2.5);
         spawnList.push({ kind: 'obstacle', type: rnd() < 0.6 ? 'schneemann' : 'stroh', z: z, x: cx(z) + off, r: 1.25 });
         if (rnd() < 0.5) {                                                           // Belohnung daneben
           var o2 = off > 0 ? off - 4.5 : off + 4.5;
-          spawnList.push({ kind: 'item', item: pickItem(), z: z, x: cx(z) + o2 });
+          spawnList.push({ kind: 'item', item: pickItem(1, z), z: z, x: cx(z) + o2 });
         }
         z += 9 + rnd() * 6;
       } else if (r < 0.62) {                                                        // Reihe vom selben Ding
-        var it = pickItem(), n = 3 + Math.floor(rnd() * 3), start = (rnd() * 2 - 1) * (PW - 2), drift = (rnd() * 2 - 1) * 1.2;
+        var n = 3 + Math.floor(rnd() * 3), it = pickItem(n, z + (n - 1) * 4.2), start = (rnd() * 2 - 1) * (PW - 2), drift = (rnd() * 2 - 1) * 1.2;
         for (var k = 0; k < n; k++) {
           var zz = z + k * 4.2, o = Math.max(-(PW - 1.2), Math.min(PW - 1.2, start + drift * k));
           spawnList.push({ kind: 'item', item: it, z: zz, x: cx(zz) + o });
@@ -690,8 +699,8 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
         z += n * 4.2 + 6 + rnd() * 6;
       } else {                                                                      // einzelne Dinge links und rechts
         var a = (rnd() * 2 - 1) * (PW - 1.5);
-        spawnList.push({ kind: 'item', item: pickItem(), z: z, x: cx(z) + a });
-        if (rnd() < 0.5) spawnList.push({ kind: 'item', item: pickItem(), z: z + 5, x: cx(z + 5) - a * 0.8 });
+        spawnList.push({ kind: 'item', item: pickItem(1, z), z: z, x: cx(z) + a });
+        if (rnd() < 0.5) spawnList.push({ kind: 'item', item: pickItem(1, z + 5), z: z + 5, x: cx(z + 5) - a * 0.8 });
         z += 10 + rnd() * 6;
       }
     }
@@ -1060,6 +1069,9 @@ button.hud-box{cursor:pointer;font:inherit;font-weight:bold}
       var z = player.position.z + (ahead || 7);
       spawnList.splice(spawnIndex, 0, { kind: 'item', item: ITEM_BY_ID[id], z: z, x: cx(z) + lat });
     },
+    /* Punkte, die auf der ganzen Strecke liegen (Ziel: ungefähr TARGET_POINTS) */
+    coursePoints: function () { return spawnList.reduce(function (s, o) { return s + (o.kind === 'item' ? o.item.pts : 0); }, 0); },
+    targetPoints: TARGET_POINTS,
     timeScale: 1,
     autopilot: false,
     /* Bildgröße und Position der Wurst auf dem Bildschirm (-1 … 1 = sichtbar) */
