@@ -107,6 +107,27 @@ export default async function (t) {
     s = await st();
     t.check(`${size}: ${touch ? 'Knopf ▶' : 'Pfeiltaste →'} lenkt nach rechts`, s.head.x === h0.x + 1 && s.head.y === h0.y - 1, JSON.stringify(s.head));
 
+    /* Steuerrad: Daumen auflegen und gleiten – die Richtung folgt dem Finger, ohne neu zu tippen */
+    if (touch) {
+      await platz(3);
+      const r = await game.locator('#pad').boundingBox();
+      const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+      s = await st();
+      const hoch = await frei(s.head.x, s.head.y - 1, s.body);
+      const quer = s.dir.x || 1;
+      await page.mouse.move(cx, cy + (hoch ? -1 : 1) * r.height * 0.35);
+      await page.mouse.down();
+      await steps(1);
+      s = await st();
+      t.check(`${size}: Steuerrad ${hoch ? 'oben' : 'unten'} angetippt → ${hoch ? 'hoch' : 'runter'}`, s.dir.y === (hoch ? -1 : 1), JSON.stringify(s.dir));
+      t.check(`${size}: Steuerrad zeigt die Richtung an`, await game.waitForSelector(hoch ? '#padUp.on' : '#padDown.on', { timeout: 2000 }).then(() => true, () => false));
+      await page.mouse.move(cx + quer * r.width * 0.35, cy, { steps: 6 });
+      await steps(1);
+      s = await st();
+      t.check(`${size}: auf dem Steuerrad zur Seite gleiten → ${quer > 0 ? 'rechts' : 'links'}`, s.dir.x === quer && s.dir.y === 0, JSON.stringify(s.dir));
+      await page.mouse.up();
+    }
+
     /* Einsammeln */
     await platz(3);
     await game.evaluate(() => SPIEL.place('person'));
