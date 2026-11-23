@@ -53,24 +53,29 @@ button{font:inherit;color:inherit}
 #stage{position:fixed;inset:0;overflow:hidden;touch-action:none}
 #wobble{position:absolute;inset:0;line-height:0;will-change:transform}
 #cv{display:block;width:100%;height:100%;touch-action:none}
-#banner{position:absolute;left:50%;top:var(--bannerTop,40%);transform:translate(-50%,-50%);pointer-events:none;
+#banner{position:absolute;left:var(--bannerLeft,50%);top:var(--bannerTop,40%);transform:translate(-50%,-50%);pointer-events:none;
   background:rgba(19,36,58,.9);color:#fff;font-weight:800;font-size:clamp(16px,4.6vmin,28px);line-height:1.25;text-align:center;
-  padding:10px 18px;border-radius:16px;width:max-content;max-width:min(86vw,520px);opacity:0;transition:opacity .25s;
+  padding:10px 18px;border-radius:16px;width:max-content;max-width:min(var(--bannerMax,86vw),520px);opacity:0;transition:opacity .25s;
   box-shadow:0 6px 20px rgba(0,0,0,.3)}
 #banner.show{opacity:1}
 
-/* Steuerkreuz für Touch */
-#pad{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,58px);gap:6px;
-  justify-content:center;padding:6px 8px calc(8px + env(safe-area-inset-bottom));pointer-events:none}
-#pad button{border:0;border-radius:18px;background:rgba(255,255,255,.82);color:#13243a;font-size:26px;font-weight:800;
-  box-shadow:0 3px 10px rgba(19,36,58,.3);touch-action:none;cursor:pointer;pointer-events:auto;
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-#pad button:active{background:#ffd43b}
-#padUp{grid-column:2;grid-row:1}#padLeft{grid-column:1;grid-row:2}#padDown{grid-column:2;grid-row:2}#padRight{grid-column:3;grid-row:2}
-body.landscape #pad{left:auto;top:0;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);align-content:center;
-  padding:8px calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) 4px}
-body.landscape #padUp{grid-column:2;grid-row:1}body.landscape #padLeft{grid-column:1;grid-row:2}
-body.landscape #padRight{grid-column:3;grid-row:2}body.landscape #padDown{grid-column:2;grid-row:3}
+/* Steuerrad für Touch: große dunkle Scheibe mit vier Feldern. Antippen oder mit dem Daumen über die Scheibe
+   gleiten – die Richtung ergibt sich aus der Lage des Fingers zur Mitte, man muss keinen Knopf genau treffen.
+   Hochformat: unten in der Mitte unter dem Feld, Querformat: rechts neben dem Feld. */
+#pad{position:fixed;z-index:5;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  width:var(--padD,180px);height:var(--padD,180px);border-radius:50%;touch-action:none;cursor:pointer;
+  background:radial-gradient(circle at 50% 40%,rgba(36,62,96,.88),rgba(13,27,46,.92));
+  border:4px solid rgba(255,255,255,.95);box-shadow:0 8px 22px rgba(13,27,46,.45),inset 0 2px 8px rgba(255,255,255,.18)}
+#pad::before{content:"";position:absolute;left:50%;top:50%;width:30%;height:30%;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#fff,#ced4da);box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none;
+  transition:transform .08s}
+#pad.held::before{transform:translate(calc(-50% + var(--kx,0px)),calc(-50% + var(--ky,0px)))}
+#pad button{position:absolute;width:36%;height:36%;min-width:56px;min-height:56px;border:0;border-radius:50%;padding:0;
+  background:rgba(255,255,255,.14);color:#fff;font-size:calc(var(--padD,180px) * .16);font-weight:900;line-height:1;
+  touch-action:none;cursor:pointer;transition:background .08s,color .08s,transform .08s;text-shadow:0 2px 3px rgba(0,0,0,.4)}
+#pad button.on{background:#ffd43b;color:#13243a;text-shadow:none;transform:scale(1.06)}
+#padUp{left:32%;top:2%}#padDown{left:32%;bottom:2%}#padLeft{left:2%;top:32%}#padRight{right:2%;top:32%}
+body.landscape #pad{left:auto;bottom:auto;top:50%;right:calc(12px + env(safe-area-inset-right));transform:translateY(-50%)}
 
 /* Overlays */
 .overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
@@ -123,10 +128,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 </div>
 <div id="effects"></div>
 <div id="pad" hidden>
-  <button id="padUp" aria-label="hoch">▲</button>
-  <button id="padLeft" aria-label="links">◀</button>
-  <button id="padDown" aria-label="runter">▼</button>
-  <button id="padRight" aria-label="rechts">▶</button>
+  <button id="padUp" data-dir="up" aria-label="hoch">▲</button>
+  <button id="padLeft" data-dir="left" aria-label="links">◀</button>
+  <button id="padDown" data-dir="down" aria-label="runter">▼</button>
+  <button id="padRight" data-dir="right" aria-label="rechts">▶</button>
 </div>
 
 <!-- Startbildschirm -->
@@ -156,7 +161,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   <div class="card">
     <div class="big">🚡</div>
     <h2>Kurz zuhören, Drängler!</h2>
-    <p>Lenk dich mit Pfeiltasten, WASD oder Wischen durch die Schlange und sammel jeden ein, der nicht bei drei auf der Piste ist.</p>
+    <p><span id="tutSteuer">Lenk dich mit Pfeiltasten oder WASD</span> durch die Schlange und sammel jeden ein, der nicht bei drei auf der Piste ist.</p>
     <p>Lass dich bloß nicht im roten Blick vom Liftwart erwischen – und knutsch keine Absperrgitter.</p>
     <p>Jagertee gibt doppelte Punkte, macht aber auch doppelt dumm.</p>
     <p class="small">🍺 doppelte Punkte · 🥃 Turbo · 🥞 Kaiserschmarrn = Bonus · 💨 Gondel-Furz betäubt den Liftwart · 🏂 Snowboard-Kids klauen dir 3 Leute</p>
@@ -239,8 +244,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 
   /* Items und Power-ups (Sekunden) */
   var JAGERTEE_DAUER = 8;        // doppelte Punkte + besoffene Steuerung
-  var BESOFFEN_VERZOEGERUNG = 230; // ms Eingabeverzögerung …
-  var BESOFFEN_CHANCE = 0.4;       // … bei diesem Anteil der Eingaben
+  var BESOFFEN_VERZOEGERUNG = 140; // ms Eingabeverzögerung …
+  var BESOFFEN_CHANCE = 0.3;       // … bei diesem Anteil der Eingaben
   var WILLIAMS_DAUER = 3;        // Speed-Boost
   var WILLIAMS_TEMPO = 0.6;      // Schrittzeit × diesen Faktor
   var FURZ_DAUER = 4;            // Liftwart betäubt
@@ -457,7 +462,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     }
     return {
       phase: 'ready', snake: snake, prev: snake.map(copy), colors: colors, pendingColors: [],
-      dir: { x: 1, y: 0 }, queue: [], grow: 0, acc: 0,
+      dir: { x: 1, y: 0 }, queue: [], grow: 0, acc: 0, steps: 0, headOff: { x: 0, y: 0 },
       points: 0, people: 0, level: 1, time: 0, susp: 0, cause: null,
       food: null, power: null, powerTimer: rand(POWERUP_PAUSE[0], POWERUP_PAUSE[1]),
       kid: null, kidTimer: rand(6, 10),
@@ -582,20 +587,63 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       if (S.phase === 'play') kit.pause(); else kit.resume();
     }
   });
-  /* Wischen auf dem Spielfeld */
+  /* Wischen auf dem Spielfeld (überall, auch neben dem Zaun) */
   var swipe = null;
   $('stage').addEventListener('pointerdown', function (e) { swipe = { x: e.clientX, y: e.clientY }; });
   $('stage').addEventListener('pointermove', function (e) {
     if (!swipe) return;
     var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) return;
     lenke(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
     swipe = { x: e.clientX, y: e.clientY };
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { $('stage').addEventListener(t, function () { swipe = null; }); });
-  [['padUp', 'up'], ['padDown', 'down'], ['padLeft', 'left'], ['padRight', 'right']].forEach(function (p) {
-    $(p[0]).addEventListener('pointerdown', function (e) { e.preventDefault(); lenke(p[1]); });
+
+  /* Steuerrad: Antippen eines Felds lenkt sofort; Daumen liegen lassen und über die Scheibe gleiten lenkt weiter.
+     Die Richtung ergibt sich aus der Lage des Fingers zur Mitte (mit kleiner Totzone und Vorrang der klaren Achse). */
+  var pad = $('pad'), padDir = null, padId = null;
+  function padRichtung(e) {
+    var r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    var R = r.width / 2, d = Math.hypot(dx, dy);
+    pad.style.setProperty('--kx', Math.round(dx / Math.max(d, 1) * Math.min(d, R * 0.32)) + 'px');
+    pad.style.setProperty('--ky', Math.round(dy / Math.max(d, 1) * Math.min(d, R * 0.32)) + 'px');
+    if (d < R * 0.14) return null;
+    var ax = Math.abs(dx), ay = Math.abs(dy);
+    /* Beim Gleiten nur wechseln, wenn die neue Achse klar überwiegt – sonst flackert es auf der Diagonale */
+    if (padDir && ax < ay * 1.25 && ay < ax * 1.25) return padDir;
+    return ax > ay ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  }
+  function padLenke(name) {
+    if (!name || name === padDir) return;
+    padDir = name;
+    lenke(name);
+    if (navigator.vibrate) try { navigator.vibrate(8); } catch (err) { /* egal */ }
+  }
+  pad.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    padId = e.pointerId; padDir = null;
+    try { pad.setPointerCapture(e.pointerId); } catch (err) { /* ältere Browser */ }
+    pad.classList.add('held');
+    var btn = e.target.closest && e.target.closest('[data-dir]');
+    padLenke(btn && !(e.clientX || e.clientY) ? btn.getAttribute('data-dir') : padRichtung(e) || (btn && btn.getAttribute('data-dir')));
   });
+  pad.addEventListener('pointermove', function (e) { if (padId === e.pointerId) padLenke(padRichtung(e)); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) {
+    pad.addEventListener(t, function (e) { if (padId === e.pointerId) { padId = null; padDir = null; pad.classList.remove('held'); } });
+  });
+  pad.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  /* Leuchtendes Feld = Richtung, in die die Schlange gerade läuft (bzw. gleich abbiegt) */
+  var padAn = '';
+  function zeigePadRichtung() {
+    if (pad.hidden || !S) return;
+    var d = S.queue.length ? S.queue[S.queue.length - 1] : S.dir;
+    var n = d.x > 0 ? 'padRight' : d.x < 0 ? 'padLeft' : d.y < 0 ? 'padUp' : 'padDown';
+    if (S.phase !== 'play') n = '';
+    if (n === padAn) return;
+    if (padAn) $(padAn).classList.remove('on');
+    if (n) $(n).classList.add('on');
+    padAn = n;
+  }
 
   /* =====================================================================
      SPIELABLAUF
@@ -607,6 +655,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 
   function starte() {
     audio();
+    if (touch) $('tutSteuer').textContent = 'Lenk dich mit dem Steuerrad (Daumen draufhalten und in die Richtung gleiten) oder durch Wischen auf dem Feld';
     S = neuerZustand();
     neuesEssen();
     updateHud();
@@ -636,7 +685,17 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     }
   }
 
+  /* Richtung des nächsten Schritts: erste gültige Eingabe in der Warteschlange, sonst die aktuelle */
+  function fuehrung() {
+    for (var i = 0; i < S.queue.length; i++) {
+      var d = S.queue[i];
+      if (!(d.x === -S.dir.x && d.y === -S.dir.y) && !(d.x === S.dir.x && d.y === S.dir.y)) return d;
+    }
+    return S.dir;
+  }
+
   function step() {
+    S.steps++;
     while (S.queue.length) {
       var d = S.queue.shift();
       if (!(d.x === -S.dir.x && d.y === -S.dir.y) && !(d.x === S.dir.x && d.y === S.dir.y)) { S.dir = d; break; }
@@ -1001,10 +1060,13 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var W = window.innerWidth, H = window.innerHeight, landscape = W > H * 1.15;
     document.body.classList.toggle('landscape', touch && landscape);
     $('pad').hidden = !touch;
+    /* Steuerrad so groß wie möglich, ohne dem Feld zu viel Platz zu nehmen */
+    var D = Math.round(landscape ? Math.min(200, H * 0.56, W * 0.26) : Math.min(196, W * 0.5, H * 0.24));
+    document.body.style.setProperty('--padD', Math.max(150, D) + 'px');
     var left = 4, right = W - 4, top = $('hud').getBoundingClientRect().bottom + 2, bottom = H - 4;
     if (touch) {
       var pad = $('pad').getBoundingClientRect();
-      if (landscape) right = Math.min(right, pad.left); else bottom = Math.min(bottom, pad.top);
+      if (landscape) right = Math.min(right, pad.left - 8); else bottom = Math.min(bottom, pad.top - 6);
     }
     return { x: left, y: top, w: Math.max(100, right - left), h: Math.max(100, bottom - top), W: W, H: H };
   }
@@ -1034,6 +1096,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     cv.height = Math.round(r.H * DPR);
     $('effects').style.top = Math.round(OY + CELL * 2.1) + 'px';
     document.body.style.setProperty('--bannerTop', Math.round(OY + CELL * ROWS * 0.42) + 'px');
+    document.body.style.setProperty('--bannerLeft', Math.round(OX + CELL * COLS / 2) + 'px');
+    document.body.style.setProperty('--bannerMax', Math.round(CELL * COLS * 0.92) + 'px');
+    $('effects').style.left = OX + 'px'; $('effects').style.width = CELL * COLS + 'px'; $('effects').style.right = 'auto';
     malHintergrund();
   }
   window.addEventListener('resize', resize);
@@ -1307,18 +1372,37 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       ctx.fillText(p.emoji, p.x * C + C / 2, p.y * C + C / 2 + C * 0.05 + Math.sin(t * 4) * C * 0.06);
     }
 
-    /* Schlange (weich zwischen den Feldern bewegt) */
-    var k = S.phase === 'play' ? Math.min(1, S.acc / tickMs()) : 1;
+    /* Schlange: weich zwischen den Feldern bewegt, und zwar VORAUS zum nächsten Feld (nicht hinterher) –
+       so zeigt das Bild sofort, wohin die Schlange läuft. Eine neue Richtung (Taste, Steuerrad) dreht den Kopf
+       im selben Bild dorthin; den kleinen Sprung dabei gleicht headOff in wenigen Bildern aus. */
+    var k = S.phase === 'play' ? Math.min(1, S.acc / tickMs()) : 0;
+    var ld = S.phase === 'play' ? fuehrung() : S.dir;
     var pos = S.snake.map(function (s, j) {
-      var pv = S.prev[j] || s;
-      return { x: (pv.x + (s.x - pv.x) * k) * C + C / 2, y: (pv.y + (s.y - pv.y) * k) * C + C / 2 };
+      var to = j === 0 ? { x: s.x + ld.x, y: s.y + ld.y } : S.snake[j - 1];
+      return { x: (s.x + (to.x - s.x) * k) * C + C / 2, y: (s.y + (to.y - s.y) * k) * C + C / 2 };
     });
+    var dtd = Math.min(0.1, Math.max(0, (now - (S.lastDraw || now)) / 1000)); S.lastDraw = now;
+    if (S.lastHead && S.lastSteps === S.steps && S.lastLd && (S.lastLd.x !== ld.x || S.lastLd.y !== ld.y)) {
+      S.headOff.x += S.lastHead.x - pos[0].x; S.headOff.y += S.lastHead.y - pos[0].y;
+    }
+    S.lastHead = { x: pos[0].x, y: pos[0].y }; S.lastSteps = S.steps; S.lastLd = ld;
+    var fade = Math.exp(-dtd * 28);
+    S.headOff.x *= fade; S.headOff.y *= fade;
+    pos[0] = { x: pos[0].x + S.headOff.x, y: pos[0].y + S.headOff.y };
     ctx.strokeStyle = 'rgba(19,36,58,.25)'; ctx.lineWidth = C * 0.18; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath(); pos.forEach(function (p, j) { if (j) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.stroke();
+    /* Richtungspfeil vor dem Kopf – auf dem Handy sieht man so sofort, wohin es geht */
+    if (S.phase === 'play') {
+      var ax = pos[0].x + ld.x * C * 0.95, ay = pos[0].y + ld.y * C * 0.95, pa = Math.atan2(ld.y, ld.x);
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(pa);
+      ctx.fillStyle = 'rgba(232,89,12,' + (0.55 + 0.25 * Math.sin(t * 10)) + ')';
+      ctx.beginPath(); ctx.moveTo(C * 0.28, 0); ctx.lineTo(-C * 0.12, -C * 0.24); ctx.lineTo(-C * 0.12, C * 0.24); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
     for (var j = pos.length - 1; j >= 0; j--) {
-      var nb = j === 0 ? { x: pos[0].x + S.dir.x, y: pos[0].y + S.dir.y } : pos[j - 1];
+      var nb = j === 0 ? { x: pos[0].x + ld.x, y: pos[0].y + ld.y } : pos[j - 1];
       var ang = Math.atan2(nb.y - pos[j].y, nb.x - pos[j].x);
-      if (j === 0) ang = Math.atan2(S.dir.y, S.dir.x);
+      if (j === 0) ang = Math.atan2(ld.y, ld.x);
       skifahrer(ctx, pos[j].x, pos[j].y, ang, C * (j === 0 ? 0.52 : 0.42), S.colors[j] || S.colors[S.colors.length - 1], j === 0 ? fotoImg : null);
     }
     if (S.phase === 'ready' || S.phase === 'play') {
@@ -1361,6 +1445,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       var tt = now / 1000;
       wob.style.transform = 'scale(1.06) rotate(' + (Math.sin(tt * 2.1) * 1.6).toFixed(2) + 'deg) translate(' + (Math.sin(tt * 3.3) * 4).toFixed(1) + 'px,' + (Math.cos(tt * 2.6) * 3).toFixed(1) + 'px)';
     } else if (wob.style.transform) wob.style.transform = '';
+    zeigePadRichtung();
     draw(now);
   }
 

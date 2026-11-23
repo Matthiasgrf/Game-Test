@@ -17,12 +17,17 @@ Items: 🍺 Jagertee (8 s doppelte Punkte, Bild wackelt, manche Eingaben kommen 
 ab Level 2 (fährt quer durch einen Gang, Berührung kostet 3 Glieder). Kumpels (einer der anderen drei,
 mit Namen) bringen 25 statt 10 Punkte.
 
-Steuerung: Pfeiltasten oder WASD, P/Leertaste/Esc = Pause, M = Ton · Tablet/Handy: Steuerkreuz oder Wischen.
+Steuerung: Pfeiltasten oder WASD, P/Leertaste/Esc = Pause, M = Ton · Tablet/Handy: großes Steuerrad (dunkle Scheibe,
+hoch unten in der Mitte, quer rechts) oder Wischen auf dem Feld. Am Steuerrad muss man keinen Knopf genau treffen: die
+Richtung ergibt sich aus der Lage des Fingers zur Mitte, Daumen draufhalten und gleiten lenkt weiter. Das gelbe Feld
+zeigt die aktuelle Richtung, ein oranger Pfeil vor dem Kopf ebenso. Die Schlange wird zum nächsten Feld hin gezeichnet
+(nicht hinterher), deshalb dreht sich der Kopf im selben Bild, in dem die Taste gedrückt wird. Jagertee verzögert nur
+noch 30 % der Eingaben um 0,14 s.
 
 Bildschirm: Die Schneelandschaft füllt den ganzen Bildschirm, hoch und quer. Das umzäunte Feld (Raster und
 Anzahl der Gänge) wird zu Beginn jeder Runde an den Bildschirm angepasst – ein Feld ist etwa 28–46 px groß
-(`FELD_PX_MIN`, `FELD_PX_MAX`, `GANG_HOEHE`). Kopfzeile und Steuerkreuz liegen über der Landschaft, nicht über
-dem Feld (hoch: Steuerkreuz unten, quer: rechts).
+(`FELD_PX_MIN`, `FELD_PX_MAX`, `GANG_HOEHE`). Kopfzeile und Steuerrad liegen über der Landschaft, nicht über
+dem Feld (hoch: Steuerrad unten, quer: rechts).
 
 Highscore: Punkte (mehr ist besser, bei Gleichstand die kürzere Zeit). Jedes Ergebnis geht per
 `GameTest.reportScore` auf die gemeinsame Seite „Highscores“ der App – das Spiel hat keine eigene Bestenliste.
