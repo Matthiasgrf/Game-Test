@@ -170,5 +170,14 @@ export default async function (t) {
     await game.click('[data-action="nochmal"]');
     const again = await state();
     t.check(`${size}: „Nochmal spielen“ startet eine neue Runde`, again.phase === 'playing' && again.time < 1 && await game.evaluate(() => JSON.stringify(SPIEL.maze())) !== plan, JSON.stringify(again));
+    if (size === 'computer') {
+      // Jeder Rohrplan ist perfekt gespielt etwa gleich schnell (Ziel 5,2 s ± 0,1 s)
+      const times = await game.evaluate(async () => {
+        const { generateMaze } = await import('./maze.js');
+        return Array.from({ length: 60 }, () => generateMaze().best);
+      });
+      const lo = Math.min(...times), hi = Math.max(...times);
+      t.check('Bestzeit gleichmäßig: 60 Rohrpläne zwischen 5,1 und 5,3 s', lo >= 5.1 && hi <= 5.3, `${lo.toFixed(2)}–${hi.toFixed(2)} s`);
+    }
   }
 }

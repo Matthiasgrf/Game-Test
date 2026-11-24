@@ -168,16 +168,48 @@ function build(rng) {
   return m;
 }
 
+/** Tempo der Wurst in Zellen pro Sekunde (bergab schneller, bergauf langsamer) */
+export const SPEED = { down: 5.5, up: 3.5, left: 4.2, right: 4.2 };
+
+/** Bestzeit in Sekunden bei perfektem Spiel: schnellster Weg vom Klo bis in die Kanalisation (Dijkstra). */
+export function bestTime(m) {
+  const key = (r, c) => r * COLS + c;
+  const done = new Set();
+  const open = [[1 / SPEED.down, 0, m.startCol]]; // Spülung: aus dem Klo ins erste Rohr
+  while (open.length) {
+    let i = 0;
+    for (let j = 1; j < open.length; j++) if (open[j][0] < open[i][0]) i = j;
+    const [t, r, c] = open.splice(i, 1)[0];
+    if (done.has(key(r, c))) continue;
+    done.add(key(r, c));
+    if (r === ROWS - 1 && c === m.exitCol) return t + 1 / SPEED.down;
+    for (const d of DIRS) {
+      if (edgeAt(m, r, c, d) !== 1) continue;
+      const nr = r + DELTA[d][0];
+      const nc = c + DELTA[d][1];
+      if (nr < 0 || nr >= ROWS || done.has(key(nr, nc))) continue;
+      open.push([t + 1 / SPEED[d], nr, nc]);
+    }
+  }
+  return Infinity;
+}
+
+/** Ziel-Bestzeit: jedes Rohrsystem ist perfekt gespielt etwa gleich schnell (etwa 5,15 s),
+ *  sehr gute Spieler schaffen damit etwa 5,5 s, gute etwa 6 s. */
+export const TARGET_TIME = 5.2;
+export const TIME_TOLERANCE = 0.1;
+
 /**
- * Erzeugt ein neues Rohrsystem. Die Weglänge wird so gewählt, dass eine Runde
- * für Kinder etwa 20–30 Sekunden dauert.
+ * Erzeugt ein neues Rohrsystem, dessen Bestzeit nahe TARGET_TIME liegt –
+ * so hängt die Zeit für die Bestenliste kaum vom Zufall ab.
  */
 export function generateMaze(rng = Math.random) {
   let best = null;
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 400; i++) {
     const m = build(rng);
-    if (m.shortest >= 24 && m.shortest <= 32) return m;
-    if (!best || Math.abs(m.shortest - 28) < Math.abs(best.shortest - 28)) best = m;
+    m.best = bestTime(m);
+    if (Math.abs(m.best - TARGET_TIME) <= TIME_TOLERANCE) return m;
+    if (!best || Math.abs(m.best - TARGET_TIME) < Math.abs(best.best - TARGET_TIME)) best = m;
   }
   return best;
 }

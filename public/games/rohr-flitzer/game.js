@@ -8,10 +8,9 @@
    hochkant mit Zeit oben und Knöpfen unten, quer mit ◀ ▶ links und ▲ ▼ rechts.
    Für Tests: window.SPIEL (maze(), sim(), state(), view(), loop). */
 import { startKit, createLoop, fitCanvas } from '../shared/kit/kit.js';
-import { DELTA, OPPOSITE, ROWS, edgeAt, generateMaze } from './maze.js';
+import { DELTA, OPPOSITE, ROWS, SPEED, edgeAt, generateMaze } from './maze.js';
 import { H, SEWER, W, drawFrame, edgeMid, freshSim, renderStatic, splash, stepParticles, wurstPos } from './draw.js';
 
-const SPEED = { down: 5.5, up: 3.5, left: 4.2, right: 4.2 }; // Zellen pro Sekunde
 const KEYS = {
   ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
   KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right',
@@ -178,7 +177,14 @@ function update(dt) {
     sim.time += dt;
     if (sim.moving) {
       sim.t += SPEED[sim.moving] * dt;
-      if (sim.t >= 1) arrive(sim);
+      if (sim.t >= 1) {
+        // Die Zeit über das Feld hinaus geht nicht verloren: gleiche Zeit bei 30, 60 und 120 Bildern pro Sekunde
+        const rest = (sim.t - 1) / SPEED[sim.moving];
+        sim.time -= rest; // Ankunft genau auf dem Feld (zählt fürs Ziel)
+        arrive(sim);
+        if (phase === 'playing') sim.time += rest;
+        if (sim.moving) sim.t = Math.min(0.99, rest * SPEED[sim.moving]);
+      }
     }
     if (phase === 'playing' && now - lastUi > 100) {
       lastUi = now;

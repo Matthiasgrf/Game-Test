@@ -17,7 +17,12 @@ dann heißt es: Umweg suchen!
   Hochkant liegen die Pfeil-Knöpfe in einer Reihe unten, quer ◀ ▶ links und ▲ ▼ rechts.
 - Grafik (`draw.js`): Haus mit Ziegeldach, Zimmer mit Einrichtung, Metallrohre, Wolken, Rauch,
   Kanalisation mit Wasser und Ratte, Spritzer beim Platsch.
-- Eine Runde dauert für Kinder etwa 20–30 Sekunden (perfekt gespielt etwa 8 Sekunden).
+- Gleich schwer für alle: Jedes Rohrsystem wird so gewählt, dass der schnellste Weg perfekt gespielt
+  etwa 5,15 Sekunden dauert (`bestTime` / `TARGET_TIME` in `maze.js`, erlaubt 5,1–5,3 s). Sehr gute Spieler
+  schaffen damit etwa 5,5 s, gute etwa 6 s; Kinder brauchen etwa 15–25 Sekunden. Vorher schwankte die Bestzeit
+  je nach Rohrplan zwischen etwa 5,5 und 7,6 Sekunden.
+- Die Zeit hängt nicht von der Bildrate ab: Was in einem Bild über ein Feld hinaus gelaufen wird, zählt fürs
+  nächste Feld (gleich schnell bei 60 und 120 Hz).
 
 Steuerung: Computer: Pfeiltasten oder WASD gedrückt halten, Leertaste startet · Tablet/Handy: Pfeil-Knöpfe
 gedrückt halten, auf der Szene wischen und den Finger liegen lassen, oder in die gewünschte Richtung tippen
