@@ -12,6 +12,9 @@ den Bildschirm tippen. **🔄 Neustart** oben in der Anzeige (oder Taste R, oder
 links oder rechts (so wie man es auf dem Bildschirm sieht).
 
 Highscore: Punkte (mehr ist besser). Jedes Ding hat einen eigenen Wert (Klopapier 5 bis Sachertorte 30).
+Jede Runde werden Dinge und Hindernisse neu verteilt, die Piste selbst bleibt gleich. Damit die Bestenliste fair ist,
+bietet jede Strecke ungefähr gleich viele Punkte (Ziel 2500, `TARGET_POINTS`), gleichmäßig über die Strecke verteilt:
+Liegen bis zu einer Stelle zu wenige Punkte, kommen wertvollere Dinge, sonst eher Klopapier & Co.
 Schneemänner und Strohballen bringen die Wurst zu Fall und kosten Zeit, im Tiefschnee neben der Piste wird
 sie langsamer. Die Spielzeit ist immer 40 Sekunden.
 
@@ -22,6 +25,6 @@ Hinweise:
 - Persönlicher Rekord und Ton an/aus im `localStorage` (`ski-flitzer_rekord_v1`, `ski-flitzer_ton_v1`).
 - Handy hochkant: Kamera etwas höher, die Wurst fährt im unteren Drittel, oben sieht man die Strecke.
 - Für Tests: `window.SPIEL` mit `timeScale` (Zeitraffer), `autopilot`, `state()`, `view()` (Bildgröße,
-  Position der Wurst auf dem Bildschirm), `restart()` und `place(id)` (Ding direkt vor die Wurst legen). Der Test prüft Computer, iPad (quer) und iPhone mit hoher Pixeldichte.
+  Position der Wurst auf dem Bildschirm), `restart()`, `coursePoints()` (Punkte auf der ganzen Strecke) und `place(id)` (Ding direkt vor die Wurst legen). Der Test prüft Computer, iPad (quer) und iPhone mit hoher Pixeldichte.
 
 Durchspiel-Test: `node tools/spieltest.js ski-flitzer`

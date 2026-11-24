@@ -58,6 +58,13 @@ export default async function (t) {
       st0 = await game.evaluate(() => SPIEL.state());
       t.check('„Neu starten“ im Pause-Fenster startet neu', st0.phase === 'countdown' && st0.z === 0 && await game.locator('[data-gt="pause"]').isHidden(), JSON.stringify(st0));
     }
+    if (size === 'computer') {
+      // Punkte-Ausgleich: jede neu gemischte Strecke bietet ungefähr gleich viele Punkte (Ziel 2500)
+      const sums = [];
+      for (let i = 0; i < 6; i++) { await game.evaluate(() => SPIEL.restart()); sums.push(await game.evaluate(() => SPIEL.coursePoints())); }
+      const target = await game.evaluate(() => SPIEL.targetPoints);
+      t.check('jede Strecke bietet ungefähr gleich viele Punkte', sums.every((p) => Math.abs(p - target) <= 250) && new Set(sums).size > 1, sums.join(', '));
+    }
     t.check(`${size}: nach dem Neustart kein Ergebnis gespeichert`, page.scores.length === 0, JSON.stringify(page.scores));
     await game.waitForFunction(() => SPIEL.state().phase === 'play', null, { timeout: 60000 });
 
