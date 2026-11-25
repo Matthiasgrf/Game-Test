@@ -5,7 +5,7 @@
    Das Raster passt sich dem Bildschirm an (hoch/quer), deshalb lenkt der Test relativ zur Lage des Kopfes.
    Geprüft auf Computer, Tablet (iPad quer) und Handy (iPhone, hoch und quer): Startbildschirm (Countdown, Spielerauswahl,
    Foto), Tutorial beim ersten Start, Steuerung (Pfeiltasten bzw. Steuerkreuz), Einsammeln, alle Power-ups,
-   Snowboard-Kid, Liftwart-Sichtkegel → „ERWISCHT“, Game-Over-Bildschirm, gespeichertes Ergebnis (Highscores der App,
+   Snowboard-Kid, Lift-Einstieg (Punkte, Ausstieg unten, Tor schließt, neues Level öffnet), Liftwart-Sichtkegel → „ERWISCHT“, Game-Over-Bildschirm, gespeichertes Ergebnis (Highscores der App,
    keine eigene Bestenliste), Score teilen, „Nochmal spielen“ und ein echter Lauf gegen das Gitter. */
 import zlib from 'node:zlib';
 
@@ -63,6 +63,7 @@ export default async function (t) {
     /* Startbildschirm */
     const startText = await game.textContent('#start');
     t.check(`${size}: Start mit „Wer drängelt?“ und allen vier Freunden`, ['Wer drängelt?', 'Matze', 'Dani', 'Alex', 'Gabor'].every((w) => startText.includes(w)));
+    t.check(`${size}: Start zeigt, wie es Punkte gibt (auch für den Lift)`, ['So gibt’s Punkte', 'Skifahrer', 'Kumpel', 'Kaiserschmarrn', 'Lift-Tor'].every((w) => startText.includes(w)), startText);
     t.check(`${size}: Countdown zum Skiurlaub`, /Skiurlaub/.test(await game.textContent('#countdown')));
     t.check(`${size}: Start-Bildschirm mit „🏠 Alle Spiele“`, await game.locator('#start a[href="../../#/"]').isVisible());
     t.check(`${size}: kein Highscores-Link im Spiel`, (await game.locator('a[href*="highscores"]').count()) === 0);
@@ -191,6 +192,33 @@ export default async function (t) {
     await game.evaluate(() => { const st = SPIEL.state(); SPIEL.kid(st.head.x - st.dir.x, st.head.y - st.dir.y, -st.dir.x || 1); SPIEL.advance(0.04, true); });
     s = await st();
     t.check(`${size}: Snowboard-Kid kostet 3 Glieder`, s.length === len - 3 && s.kid === null && s.phase === 'play', `${len} → ${s.length}`);
+
+    /* Lift-Einstieg: Tor offen, Kopf fährt hinein → Punkte, unten auf der anderen Seite wieder raus */
+    await game.evaluate(() => SPIEL.vorLift());
+    s = await st();
+    t.check(`${size}: Lift-Tor offen, Anzeige im HUD`, s.lift.open && (await game.textContent('#effects')).includes('🚡'), JSON.stringify(s.lift));
+    const vorLift = s;
+    await steps(1);
+    s = await st();
+    const liftPunkte = (30 + 5 * vorLift.length) * (vorLift.effects.jager > 0 ? 2 : 1);
+    t.check(`${size}: Lift-Einstieg gibt ${liftPunkte} Punkte`, s.phase === 'play' && s.lift.rides === 1 && s.points === vorLift.points + liftPunkte, `${vorLift.points} → ${s.points}`);
+    t.check(`${size}: nach dem Lift unten auf der anderen Seite`, s.head.y > s.rows / 2 && s.head.x > s.cols / 2 && s.dir.x === -1 && !s.lift.open && s.portal, JSON.stringify([s.head, s.dir]));
+    await steps(2);
+    await t.shot(page, `lift-${size}`);
+    await steps(vorLift.length);
+    s = await st();
+    t.check(`${size}: ganze Truppe ist durchs Tor`, !s.portal && s.length === vorLift.length && s.phase === 'play', JSON.stringify(s.body));
+    /* Tor bleibt nur kurz offen */
+    await game.evaluate(() => {
+      const st = SPIEL.state();
+      SPIEL.holdWarden(0, { x: st.head.x < st.cols / 2 ? st.cols - 2 : 1, y: 2, fx: 0, fy: -1 });   // weit weg, schaut auf den Lift
+      SPIEL.liftAuf();
+      SPIEL.advance(12.5, true);
+    });
+    s = await st();
+    t.check(`${size}: Lift-Tor schließt nach 12 s`, s.phase === 'play' && !s.lift.open && s.lift.rides === 1, JSON.stringify(s));
+    await game.evaluate(() => SPIEL.level(2));
+    t.check(`${size}: neues Level öffnet das Lift-Tor`, (await st()).lift.open);
 
     /* Liftwart: Kopf im Sichtkegel → Verdacht → ERWISCHT */
     await platz(3);

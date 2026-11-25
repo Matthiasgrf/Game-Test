@@ -17,6 +17,16 @@ Items: 🍺 Jagertee (8 s doppelte Punkte, Bild wackelt, manche Eingaben kommen 
 ab Level 2 (fährt quer durch einen Gang, Berührung kostet 3 Glieder). Kumpels (einer der anderen drei,
 mit Namen) bringen 25 statt 10 Punkte.
 
+**Lift-Einstieg** 🚡: Oben in der Lift-Station geht ab und zu (erstes Mal nach 12–20 s, danach alle 18–32 s) und
+bei jedem neuen Level ein Drehkreuz auf – grün leuchtend mit Pfeil und Restzeit-Schild, dazu 🚡-Anzeige im HUD.
+Es bleibt 12 s offen (`LIFT_OFFEN`). Wer von unten hineinfährt, bekommt 30 Punkte + 5 je Skifahrer in der Schlange
+(×2 mit Jagertee), der Verdacht wird gelöscht, und die Schlange kommt im untersten Gang auf der anderen Seite
+wieder heraus (freie Bahn, kein Liftwart direkt daneben). Die Glieder folgen nach und nach durch das Tor.
+Einstellungen: `LIFT_OFFEN`, `LIFT_PAUSE`, `LIFT_ERSTES`, `LIFT_PUNKTE`, `LIFT_PRO_MITFAHRER`.
+
+Startbildschirm: Kasten „So gibt’s Punkte“ mit allen Punktequellen (aus den Einstellungen erzeugt) und
+den Game-Over-Gefahren.
+
 Steuerung: Pfeiltasten oder WASD, P/Leertaste/Esc = Pause, M = Ton · Tablet/Handy: großes Steuerrad (dunkle Scheibe,
 hoch unten in der Mitte, quer rechts) oder Wischen auf dem Feld. Am Steuerrad muss man keinen Knopf genau treffen: die
 Richtung ergibt sich aus der Lage des Fingers zur Mitte, Daumen draufhalten und gleiten lenkt weiter. Das gelbe Feld
@@ -44,6 +54,6 @@ Hinweise:
 - `localStorage`: `liftschlange_spieler_v1`, `liftschlange_ton_v1`,
   `liftschlange_tutorial_v1`, `liftschlange_foto_v1_<Name>`.
 - Töne synthetisch per Web Audio API (Plopp, Rülpser, Trillerpfeife, Furz …), keine Dateien.
-- Für Tests: `window.SPIEL` (`timeScale`, `state()`, `step()`, `advance()`, `place()`, `kid()`, `holdWarden()`).
+- Für Tests: `window.SPIEL` (`timeScale`, `state()`, `step()`, `advance()`, `place()`, `kid()`, `holdWarden()`, `liftAuf()`, `vorLift()`).
 
 Durchspiel-Test: `node tools/spieltest.js liftschlange`
