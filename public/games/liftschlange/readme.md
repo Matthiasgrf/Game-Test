@@ -33,6 +33,9 @@ Richtung ergibt sich aus der Lage des Fingers zur Mitte, Daumen draufhalten und 
 zeigt die aktuelle Richtung, ein oranger Pfeil vor dem Kopf ebenso. Die Schlange wird zum nächsten Feld hin gezeichnet
 (nicht hinterher), deshalb dreht sich der Kopf im selben Bild, in dem die Taste gedrückt wird. Jagertee verzögert nur
 noch 30 % der Eingaben um 0,14 s.
+Damit kleine Fingerbewegungen nicht gleich abbiegen: Wischen erst ab 30 px (`WISCHEN_PX`), Steuerrad mit großer
+Mitte ohne Wirkung (`RAD_TOTZONE`) und beim Gleiten nur ein klarer Wechsel der Achse (`RAD_VORRANG`), höchstens
+2 Abbiegungen im Voraus (`EINGABEN_VORAUS`).
 
 Bildschirm: Die Schneelandschaft füllt den ganzen Bildschirm, hoch und quer. Das umzäunte Feld (Raster und
 Anzahl der Gänge) wird zu Beginn jeder Runde an den Bildschirm angepasst – ein Feld ist etwa 28–46 px groß

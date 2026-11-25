@@ -244,9 +244,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   ];
 
   /* Spieltempo: Millisekunden pro Schritt der Schlange (kleiner = schneller). */
-  var TEMPO_START = 165;          // Level 1
-  var TEMPO_PRO_LEVEL = 11;       // so viel schneller pro Level
-  var TEMPO_MIN = 75;             // schneller wird es nie
+  var TEMPO_START = 185;          // Level 1
+  var TEMPO_PRO_LEVEL = 9;        // so viel schneller pro Level
+  var TEMPO_MIN = 85;             // schneller wird es nie
   var LEUTE_PRO_LEVEL = 5;        // eingesammelte Leute bis zum nächsten Level
   var START_LAENGE = 3;
 
@@ -256,10 +256,16 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   var LIFTWART_TEMPO_MAX = 4.2;
   var LIFTWART_SICHTWEITE = 5;         // Felder
   var LIFTWART_SICHTWINKEL = 40;       // Grad nach links und rechts (Kegel ist doppelt so breit)
-  var VERDACHT_SEKUNDEN = 1.3;         // so lange im Blick, bis der Balken voll ist (Level 1, mittlerer Abstand)
+  var VERDACHT_SEKUNDEN = 1.7;         // so lange im Blick, bis der Balken voll ist (Level 1, mittlerer Abstand)
   var VERDACHT_ABBAU = 0.35;           // pro Sekunde außerhalb des Blicks
   var UMDREHEN_AB_LEVEL = 3;           // ab hier dreht er sich zufällig um
   var ZWEITER_LIFTWART_AB_LEVEL = 4;   // ab hier patrouilliert ein zweiter
+
+  /* Steuerung: wie leicht eine Eingabe als Richtungswechsel zählt (größer = gelassener) */
+  var WISCHEN_PX = 30;           // so weit muss der Finger auf dem Feld wischen
+  var RAD_TOTZONE = 0.3;         // Steuerrad: Mitte ohne Wirkung (Anteil vom Radius)
+  var RAD_VORRANG = 1.7;         // Steuerrad beim Gleiten: neue Achse muss so viel stärker sein
+  var EINGABEN_VORAUS = 2;       // so viele Abbiegungen merkt sich die Schlange im Voraus
 
   /* Items und Power-ups (Sekunden) */
   var JAGERTEE_DAUER = 8;        // doppelte Punkte + besoffene Steuerung
@@ -607,7 +613,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       if (!S || S.phase !== 'play') return;
       var last = S.queue.length ? S.queue[S.queue.length - 1] : S.dir;
       if ((d.x === last.x && d.y === last.y) || (d.x === -last.x && d.y === -last.y)) return;
-      if (S.queue.length < 3) S.queue.push(d);
+      if (S.queue.length < EINGABEN_VORAUS) S.queue.push(d);
     };
     /* Besoffen: manche Eingaben kommen verspätet an */
     if (S.effects.jager > 0 && Math.random() < BESOFFEN_CHANCE) setTimeout(apply, BESOFFEN_VERZOEGERUNG);
@@ -628,7 +634,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   $('stage').addEventListener('pointermove', function (e) {
     if (!swipe) return;
     var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) return;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < WISCHEN_PX) return;
     lenke(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
     swipe = { x: e.clientX, y: e.clientY };
   });
@@ -642,10 +648,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var R = r.width / 2, d = Math.hypot(dx, dy);
     pad.style.setProperty('--kx', Math.round(dx / Math.max(d, 1) * Math.min(d, R * 0.32)) + 'px');
     pad.style.setProperty('--ky', Math.round(dy / Math.max(d, 1) * Math.min(d, R * 0.32)) + 'px');
-    if (d < R * 0.14) return null;
+    if (d < R * RAD_TOTZONE) return null;
     var ax = Math.abs(dx), ay = Math.abs(dy);
     /* Beim Gleiten nur wechseln, wenn die neue Achse klar überwiegt – sonst flackert es auf der Diagonale */
-    if (padDir && ax < ay * 1.25 && ay < ax * 1.25) return padDir;
+    if (padDir && ax < ay * RAD_VORRANG && ay < ax * RAD_VORRANG) return padDir;
     return ax > ay ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   }
   function padLenke(name) {
