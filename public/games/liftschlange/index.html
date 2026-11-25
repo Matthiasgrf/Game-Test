@@ -39,6 +39,7 @@ button{font:inherit;color:inherit}
 .kitbar{display:flex;gap:6px;align-items:center;margin-left:4px}
 #hud .gt-icon{width:42px;height:42px;font-size:19px;border-width:2px}
 #effects .pill{padding:4px 9px;min-height:30px;font-size:14px;background:#fff3bf}
+#effects .pill.lift{background:#b2f2bb}
 @media (max-width:640px){
   #hud{gap:4px;padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) 4px calc(4px + env(safe-area-inset-left))}
   #hud .txt{display:none}
@@ -111,6 +112,17 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
 #overStats b{display:block;font-size:24px}
 #overRank{font-size:20px;font-weight:800;color:#e8590c}
 #shareText{font-size:14px;background:#f1f3f5;border-radius:10px;padding:8px;margin:8px 0 0}
+/* Punkte-Übersicht auf dem Startbildschirm */
+#punkte{margin:10px 0 4px;padding:10px;border-radius:16px;background:#fff9db;border:2px solid #ffe066;text-align:left}
+#punkte h3{margin:0 0 6px;font-size:18px;text-align:center}
+#punkteListe{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+#punkteListe li{display:flex;align-items:center;gap:6px;font-size:15px;line-height:1.2;min-height:32px}
+#punkteListe .ic{font-size:20px;flex:none;width:26px;text-align:center}
+#punkteListe .txt{flex:1}
+#punkteListe b{flex:none;color:#2b8a3e;white-space:nowrap}
+#punkteListe li.lift{grid-column:1/-1;background:#d3f9d8;border-radius:10px;padding:4px 6px}
+#punkteGefahr{margin:6px 0 0;font-size:13px;color:#862e2e;text-align:center}
+@media (max-width:420px){#punkteListe{grid-template-columns:1fr}}
 #shareInfo{min-height:20px;font-weight:700;color:#2b8a3e;font-size:15px}
 </style>
 </head>
@@ -148,6 +160,11 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       <button class="fileBtn" id="fotoWeg" hidden>🗑 Foto weg</button>
     </div>
     <p class="small">Das Foto bleibt nur hier im Browser und wird nirgendwo hochgeladen.</p>
+    <div id="punkte">
+      <h3>⭐ So gibt’s Punkte</h3>
+      <ul id="punkteListe"></ul>
+      <p id="punkteGefahr">Game Over: 👮 roter Blick vom Liftwart · 🚧 Absperrgitter · 🐍 eigene Schlange</p>
+    </div>
     <button class="btn main" id="startBtn">🎿 Los, vordrängeln!</button>
     <div class="row">
       <button class="btn" id="startMuteBtn">🔊 Ton an</button>
@@ -164,6 +181,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     <p><span id="tutSteuer">Lenk dich mit Pfeiltasten oder WASD</span> durch die Schlange und sammel jeden ein, der nicht bei drei auf der Piste ist.</p>
     <p>Lass dich bloß nicht im roten Blick vom Liftwart erwischen – und knutsch keine Absperrgitter.</p>
     <p>Jagertee gibt doppelte Punkte, macht aber auch doppelt dumm.</p>
+    <p>🚡 Ab und zu – und bei jedem neuen Level – geht oben ein Lift-Tor auf. Rein da! Das gibt dicke Punkte, und
+      die ganze Truppe kommt unten auf der anderen Seite wieder raus. Aber nur, solange das Tor offen ist.</p>
     <p class="small">🍺 doppelte Punkte · 🥃 Turbo · 🥞 Kaiserschmarrn = Bonus · 💨 Gondel-Furz betäubt den Liftwart · 🏂 Snowboard-Kids klauen dir 3 Leute</p>
     <button class="btn main" id="tutorialOk">Verstanden, Chef! 🍻</button>
   </div>
@@ -265,6 +284,14 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     { type: 'furz', emoji: '💨', weight: 9 }
   ];
 
+  /* Lift-Einstieg: oben geht ab und zu ein Drehkreuz auf. Wer reinfährt, bekommt Punkte und kommt unten
+     auf der anderen Seite des Felds wieder raus (die ganze Schlange fährt mit). */
+  var LIFT_OFFEN = 12;           // Sekunden, die das Tor offen bleibt
+  var LIFT_PAUSE = [18, 32];     // Sekunden bis zum nächsten Öffnen (von–bis); bei jedem neuen Level sofort
+  var LIFT_ERSTES = [12, 20];    // erstes Öffnen nach so vielen Sekunden
+  var LIFT_PUNKTE = 30;          // Grundbonus …
+  var LIFT_PRO_MITFAHRER = 5;    // … plus so viel je Skifahrer in der Schlange (×2 mit Jagertee)
+
   /* Rang-Titel nach Punkten */
   var RAENGE = [
     { ab: 0, titel: 'Pistenpraktikant' },
@@ -301,6 +328,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     level: ['Der Liftwart hat Kaffee getrunken.', 'Die Schlange wird nervöser.', 'Der Liftwart hat jetzt Verstärkung angefordert.',
       'Jetzt wird’s ernst – die Hütte schließt bald.', 'Die Wartenden spitzen schon die Skistöcke.', 'Profi-Drängler-Modus!'],
     zweiterLiftwart: 'Verstärkung! Ein zweiter Liftwart ist da.',
+    liftAuf: ['Lift-Tor offen! Schnell rein!', 'Drehkreuz klemmt offen – jetzt oder nie!', 'Ein Sessel ist frei! Ab nach oben!'],
+    liftRein: ['Alle Mann in den Sessel!', 'Sitzt! Bügel zu, Augen auf.', 'Ganz vorne eingestiegen – Respekt!',
+      'Der Liftwart schaut blöd hinterher.'],
+    liftZu: 'Tor wieder zu. Nächstes Mal schneller!',
     ende: {
       liftwart: { icon: '🚨', titel: 'ERWISCHT! Ab ans Ende der Schlange!', texte: [
         'Der Liftwart hat dich gesehen. Er hat auch gesehen, was du gestern auf der Hütte gemacht hast.',
@@ -437,7 +468,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     kid: function () { noise(0.25, 0.3, 2500); osc('square', 500, 200, 0.3, 0.12, { delay: 0.1 }); },
     level: function () { [523, 659, 784, 1046].forEach(function (f, i) { osc('triangle', f, f, 0.14, 0.25, { delay: i * 0.09 }); }); },
     bumm: function () { osc('sine', 140, 40, 0.5, 0.6); noise(0.3, 0.3, 800); },
-    warnung: function () { osc('square', 880, 880, 0.06, 0.06); }
+    warnung: function () { osc('square', 880, 880, 0.06, 0.06); },
+    liftAuf: function () { osc('sine', 660, 660, 0.12, 0.25); osc('sine', 990, 990, 0.2, 0.25, { delay: 0.14 }); },
+    lift: function () { osc('triangle', 300, 1200, 0.5, 0.25); [784, 988, 1175].forEach(function (f, i) { osc('sine', f, f, 0.12, 0.22, { delay: 0.35 + i * 0.1 }); }); }
   };
   function setMuted(m) {
     muted = m;
@@ -468,7 +501,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       kid: null, kidTimer: rand(6, 10),
       wardens: [neuerLiftwart(0, 1)],
       effects: { jager: 0, williams: 0, furz: 0 },
-      bubbles: [], bubbleTimer: rand(3, 6), wardenTalk: 0, chairs: 0, alarmBeep: 0
+      bubbles: [], bubbleTimer: rand(3, 6), wardenTalk: 0, chairs: 0, alarmBeep: 0,
+      lift: { open: false, x: 0, timer: 0, next: rand(LIFT_ERSTES[0], LIFT_ERSTES[1]), rides: 0 },
+      portal: null   // Drehkreuz, durch das die Schlange gerade fährt (bis das letzte Glied durch ist)
     };
   }
   function copy(p) { return { x: p.x, y: p.y }; }
@@ -702,6 +737,12 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     }
     var h = S.snake[0], nx = h.x + S.dir.x, ny = h.y + S.dir.y;
     var old = S.snake.map(copy);
+    /* Lift-Tor offen und der Kopf fährt hinein: unten auf der anderen Seite wieder raus */
+    var rein = S.lift.open && nx === S.lift.x && ny === 1;
+    if (rein) {
+      var aus = liftAusgang();
+      nx = aus.x; ny = aus.y; S.dir = aus.dir; S.queue = [];
+    }
     if (isWall(nx, ny)) return ende('wand');
     var tailMoves = S.grow === 0;
     for (var i = 0; i < S.snake.length - (tailMoves ? 1 : 0); i++) {
@@ -714,6 +755,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     S.snake.unshift({ x: nx, y: ny });
     if (S.grow > 0) { S.grow--; S.colors.push(S.pendingColors.shift() || zufallsFarben()); } else S.snake.pop();
     S.prev = S.snake.map(function (_, j) { return copy(old[Math.min(j, old.length - 1)]); });
+    if (rein) einsteigen(h);
+    else if (S.portal && !getrennt()) S.portal = null;   // letztes Glied ist durch
 
     /* Einsammeln */
     var mult = S.effects.jager > 0 ? 2 : 1;
@@ -759,7 +802,72 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       S.wardens.push(w2);
       text = 'LEVEL ' + lvl + ' – ' + SPRUECHE.zweiterLiftwart;
     }
-    banner(text);
+    liftAuf(true);
+    banner(text + ' · 🚡 Lift-Tor offen!');
+  }
+
+  /* =====================================================================
+     LIFT-EINSTIEG: Ein Drehkreuz in Zeile 1 geht für LIFT_OFFEN Sekunden auf (zufällig und bei jedem neuen
+     Level). Fährt der Kopf von unten hinein, gibt es Punkte und die Schlange kommt im untersten Gang auf der
+     anderen Seite wieder heraus. Die Glieder folgen nach und nach durch das Tor.
+     ===================================================================== */
+  function liftAuf(level) {
+    if (S.lift.open) { S.lift.timer = Math.max(S.lift.timer, LIFT_OFFEN); return; }
+    var h = S.snake[0], plaetze = [];
+    for (var x = 1; x <= COLS - 3; x += 2) if (!isWall(x, 2)) plaetze.push(x);
+    /* nicht direkt über dem Kopf, damit man nicht aus Versehen hineinfährt */
+    var weg = plaetze.filter(function (x) { return h.y > 3 || Math.abs(x - h.x) > 2; });
+    S.lift.x = pick(weg.length ? weg : plaetze);
+    S.lift.open = true;
+    S.lift.timer = LIFT_OFFEN;
+    SOUND.liftAuf();
+    if (!level) banner('🚡 ' + pick(SPRUECHE.liftAuf) + ' (' + LIFT_OFFEN + ' s)');
+  }
+  function liftZu(benutzt) {
+    S.lift.open = false;
+    S.lift.next = rand(LIFT_PAUSE[0], LIFT_PAUSE[1]);
+    if (!benutzt) banner('🚡 ' + SPRUECHE.liftZu);
+  }
+  /* Ausstieg: unterster Gang, auf der Seite gegenüber dem Tor, mit freier Bahn und ohne Liftwart in der Nähe */
+  function liftAusgang() {
+    var links = S.lift.x < COLS / 2, kand = [];
+    for (var li = LANES.length - 1; li >= 0; li--) {
+      var l = LANES[li], m = Math.round((l[0] + l[1]) / 2), reihen = [m];
+      for (var y = l[0]; y <= l[1]; y++) if (y !== m) reihen.push(y);
+      [links, !links].forEach(function (rechtsRaus) {
+        reihen.forEach(function (y) {
+          kand.push(rechtsRaus ? { x: COLS - 3, y: y, dir: { x: -1, y: 0 } } : { x: 2, y: y, dir: { x: 1, y: 0 } });
+        });
+      });
+    }
+    var frei = function (k) {
+      for (var i = 0; i < 4; i++) {
+        var x = k.x + k.dir.x * i, y = k.y;
+        if (isWall(x, y)) return false;
+        for (var j = 0; j < S.snake.length; j++) if (S.snake[j].x === x && S.snake[j].y === y) return false;
+      }
+      return S.wardens.every(function (w) { return Math.abs(w.x - k.x) + Math.abs(w.y - k.y) > 3; });
+    };
+    for (var i = 0; i < kand.length; i++) if (frei(kand[i])) return kand[i];
+    return kand[0];
+  }
+  /* Liegen zwei Glieder nicht nebeneinander, fährt die Schlange gerade durch das Tor */
+  function getrennt() {
+    for (var i = 1; i < S.snake.length; i++) {
+      if (Math.abs(S.snake[i].x - S.snake[i - 1].x) + Math.abs(S.snake[i].y - S.snake[i - 1].y) > 1) return true;
+    }
+    return false;
+  }
+  function einsteigen(vorher) {
+    var mult = S.effects.jager > 0 ? 2 : 1, pts = (LIFT_PUNKTE + LIFT_PRO_MITFAHRER * S.snake.length) * mult;
+    S.points += pts;
+    S.lift.rides++;
+    S.portal = { x: S.lift.x, y: 1, von: copy(vorher) };
+    S.susp = 0;   // im Sessel sieht dich keiner
+    liftZu(true);
+    SOUND.lift();
+    banner('🚡 +' + pts + ' · ' + pick(SPRUECHE.liftRein));
+    S.headOff = { x: 0, y: 0 }; S.lastHead = null;
   }
 
   /* Was der Liftwart sieht: Felder im Kegel mit freier Sicht (Gitter verdecken) */
@@ -828,6 +936,10 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       }
     } else S.susp = Math.max(0, S.susp - dt * VERDACHT_ABBAU);
     if (S.susp >= 1) { S.susp = 1; return ende('liftwart'); }
+
+    /* Lift-Tor */
+    if (S.lift.open) { S.lift.timer -= dt; if (S.lift.timer <= 0) liftZu(false); }
+    else { S.lift.next -= dt; if (S.lift.next <= 0) liftAuf(false); }
 
     /* Power-ups */
     if (S.power) { S.power.life -= dt; if (S.power.life <= 0) { S.power = null; S.powerTimer = rand(POWERUP_PAUSE[0], POWERUP_PAUSE[1]); } }
@@ -1011,6 +1123,24 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   });
   $('fotoWeg').addEventListener('click', function () { store.del(KEY_FOTO + spieler.name); ladeFoto(); });
 
+  /* Punkte-Übersicht auf dem Startbildschirm – aus den EINSTELLUNGEN, damit sie immer stimmt */
+  function zeigePunkte() {
+    var liste = [
+      ['🎿', 'Skifahrer einsammeln', '+' + PUNKTE_SKIFAHRER],
+      ['👯', 'Kumpel mit Namen', '+' + PUNKTE_KUMPEL],
+      ['🥞', 'Kaiserschmarrn', '+' + SCHMARRN_PUNKTE],
+      ['🍺', 'Jagertee: ' + JAGERTEE_DAUER + ' s lang', 'alles ×2'],
+      ['📶', 'Pro Level je Skifahrer', '+2 mehr'],
+      ['🥃', 'Williams = Turbo, 💨 Furz = Liftwart k. o.', ''],
+      ['🚡', 'Lift-Tor oben offen? Rein da! (nur ' + LIFT_OFFEN + ' s)', '+' + LIFT_PUNKTE + ' und +' + LIFT_PRO_MITFAHRER + ' je 🐍', 'lift']
+    ];
+    $('punkteListe').innerHTML = liste.map(function (p) {
+      return '<li' + (p[3] ? ' class="' + p[3] + '"' : '') + '><span class="ic">' + p[0] + '</span><span class="txt">' + p[1] + '</span>' + (p[2] ? '<b>' + p[2] + '</b>' : '') + '</li>';
+    }).join('');
+    $('punkteGefahr').textContent = 'Game Over: 👮 roter Blick vom Liftwart · 🚧 Absperrgitter · 🐍 eigene Schlange · 🏂 Snowboard-Kid klaut ' + KID_KOSTET + ' Leute';
+  }
+  zeigePunkte();
+
   var gespeichert = store.get(KEY_SPIELER);
   FREUNDE.forEach(function (f) { if (f.name === gespeichert) spieler = f; });
   zeigeSpieler();
@@ -1031,7 +1161,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
   var hudCache = '';
   function updateHud() {
     var e = S.effects;
-    var key = [S.points, S.snake.length, S.level, Math.round(S.susp * 50), Math.ceil(e.jager), Math.ceil(e.williams), Math.ceil(e.furz), S.phase].join('|');
+    var lt = S.lift.open ? Math.ceil(S.lift.timer) : 0;
+    var key = [S.points, S.snake.length, S.level, Math.round(S.susp * 50), Math.ceil(e.jager), Math.ceil(e.williams), Math.ceil(e.furz), lt, S.phase].join('|');
     if (key === hudCache) return;
     hudCache = key;
     $('hudPoints').textContent = S.points;
@@ -1040,6 +1171,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     $('suspFill').style.width = Math.round(S.susp * 100) + '%';
     $('suspWrap').classList.toggle('alarm', S.susp > 0.65);
     var fx = '';
+    if (lt) fx += '<span class="pill lift" title="Lift-Tor offen">🚡 rein! ' + lt + 's</span>';
     if (e.jager > 0) fx += '<span class="pill" title="Jagertee: doppelte Punkte">🍺 ×2 ' + Math.ceil(e.jager) + 's</span>';
     if (e.williams > 0) fx += '<span class="pill" title="Williams: Turbo">🥃 ' + Math.ceil(e.williams) + 's</span>';
     if (e.furz > 0) fx += '<span class="pill" title="Liftwart betäubt">💨 ' + Math.ceil(e.furz) + 's</span>';
@@ -1283,6 +1415,43 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     c.restore();
   }
 
+  /* Lift-Tor: grün leuchtendes Drehkreuz mit Pfeil nach oben, Ring = verbleibende Zeit */
+  function liftTorZeichnen(c, gx, t) {
+    var C = CELL, x = gx * C + C / 2, y = C * 1.55, offen = S.lift.open;
+    var rest = offen ? Math.max(0, S.lift.timer / LIFT_OFFEN) : 0, blink = offen && S.lift.timer < 3 ? Math.sin(t * 16) > 0 : true;
+    c.save();
+    /* Schein auf dem Gang davor */
+    var g = c.createRadialGradient(x, C * 2.2, C * 0.2, x, C * 2.2, C * 2.2);
+    g.addColorStop(0, 'rgba(64,192,87,' + (0.45 + 0.15 * Math.sin(t * 6)) + ')'); g.addColorStop(1, 'rgba(64,192,87,0)');
+    c.fillStyle = g; c.fillRect(x - C * 2.4, C * 1.1, C * 4.8, C * 3.2);
+    /* Tor */
+    c.fillStyle = blink ? '#2b8a3e' : '#69db7c';
+    rr(c, gx * C + C * 0.04, C * 1.12, C * 0.92, C * 0.86, C * 0.18); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = Math.max(2, C * 0.08); c.stroke();
+    /* aufgeklappter Bügel */
+    c.strokeStyle = '#ffd43b'; c.lineWidth = Math.max(2, C * 0.09);
+    c.beginPath(); c.moveTo(gx * C + C * 0.08, C * 1.2); c.lineTo(gx * C + C * 0.08, C * 1.92); c.stroke();
+    /* Pfeil nach oben, hüpft */
+    var hop = Math.sin(t * 8) * C * 0.07;
+    c.fillStyle = '#fff';
+    c.beginPath(); c.moveTo(x, C * 1.22 + hop); c.lineTo(x + C * 0.3, C * 1.6 + hop); c.lineTo(x + C * 0.12, C * 1.6 + hop);
+    c.lineTo(x + C * 0.12, C * 1.88 + hop); c.lineTo(x - C * 0.12, C * 1.88 + hop); c.lineTo(x - C * 0.12, C * 1.6 + hop);
+    c.lineTo(x - C * 0.3, C * 1.6 + hop); c.closePath(); c.fill();
+    /* Schild über dem Tor mit Restzeit */
+    if (offen) {
+      var txt = '🚡 ' + Math.ceil(S.lift.timer) + ' s', fs = Math.max(11, Math.round(C * 0.46));
+      c.font = '800 ' + fs + 'px "Trebuchet MS",sans-serif';
+      var w = c.measureText(txt).width + fs * 0.9, bx = Math.max(2, Math.min(COLS * C - w - 2, x - w / 2));
+      c.fillStyle = '#2b8a3e'; rr(c, bx, C * 0.08, w, C * 0.9, C * 0.3); c.fill();
+      c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke();
+      /* Zeitbalken unten im Schild */
+      c.fillStyle = '#b2f2bb'; c.fillRect(bx + 4, C * 0.82, (w - 8) * rest, C * 0.1);
+      c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(txt, bx + w / 2, C * 0.47);
+    }
+    c.restore();
+  }
+
   function blaseZeichnen(c, b) {
     var C = CELL, fs = Math.max(11, Math.round(C * 0.5));
     c.font = '700 ' + fs + 'px "Trebuchet MS",sans-serif';
@@ -1335,6 +1504,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     }
     ctx.restore();
 
+    /* Offenes Lift-Tor (bzw. Tor, durch das die Schlange gerade fährt) */
+    if (S.lift.open || S.portal) liftTorZeichnen(ctx, S.lift.open ? S.lift.x : S.portal.x, t);
+
     /* Sichtkegel (halbtransparent rot) */
     S.wardens.forEach(function (w) {
       w.cone.forEach(function (cell) {
@@ -1379,7 +1551,9 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     var ld = S.phase === 'play' ? fuehrung() : S.dir;
     var pos = S.snake.map(function (s, j) {
       var to = j === 0 ? { x: s.x + ld.x, y: s.y + ld.y } : S.snake[j - 1];
-      return { x: (s.x + (to.x - s.x) * k) * C + C / 2, y: (s.y + (to.y - s.y) * k) * C + C / 2 };
+      var weit = Math.abs(to.x - s.x) + Math.abs(to.y - s.y) > 1;   // Vorgänger ist schon durchs Lift-Tor
+      if (weit) to = S.portal ? { x: S.portal.x, y: S.portal.y } : s;
+      return { x: (s.x + (to.x - s.x) * k) * C + C / 2, y: (s.y + (to.y - s.y) * k) * C + C / 2, weit: weit, to: to, s: s };
     });
     var dtd = Math.min(0.1, Math.max(0, (now - (S.lastDraw || now)) / 1000)); S.lastDraw = now;
     if (S.lastHead && S.lastSteps === S.steps && S.lastLd && (S.lastLd.x !== ld.x || S.lastLd.y !== ld.y)) {
@@ -1390,7 +1564,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     S.headOff.x *= fade; S.headOff.y *= fade;
     pos[0] = { x: pos[0].x + S.headOff.x, y: pos[0].y + S.headOff.y };
     ctx.strokeStyle = 'rgba(19,36,58,.25)'; ctx.lineWidth = C * 0.18; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); pos.forEach(function (p, j) { if (j) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.stroke();
+    ctx.beginPath(); pos.forEach(function (p, j) { if (j && !p.weit) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); }); ctx.stroke();
     /* Richtungspfeil vor dem Kopf – auf dem Handy sieht man so sofort, wohin es geht */
     if (S.phase === 'play') {
       var ax = pos[0].x + ld.x * C * 0.95, ay = pos[0].y + ld.y * C * 0.95, pa = Math.atan2(ld.y, ld.x);
@@ -1403,6 +1577,7 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       var nb = j === 0 ? { x: pos[0].x + ld.x, y: pos[0].y + ld.y } : pos[j - 1];
       var ang = Math.atan2(nb.y - pos[j].y, nb.x - pos[j].x);
       if (j === 0) ang = Math.atan2(ld.y, ld.x);
+      else if (pos[j].weit) ang = Math.atan2(pos[j].to.y - pos[j].s.y, pos[j].to.x - pos[j].s.x) || -Math.PI / 2;
       skifahrer(ctx, pos[j].x, pos[j].y, ang, C * (j === 0 ? 0.52 : 0.42), S.colors[j] || S.colors[S.colors.length - 1], j === 0 ? fotoImg : null);
     }
     if (S.phase === 'ready' || S.phase === 'play') {
@@ -1474,7 +1649,8 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
         wardens: S.wardens.map(function (w) { return { x: w.x, y: w.y, stun: w.stun, cone: w.cone.length }; }),
         kid: S.kid ? { x: S.kid.x, y: S.kid.y } : null, player: spieler.name, foto: !!fotoImg, tickMs: tickMs(),
         food: S.food ? { x: S.food.x, y: S.food.y } : null, bubbles: S.bubbles.length,
-        body: S.snake.map(copy), cols: COLS, rows: ROWS
+        body: S.snake.map(copy), cols: COLS, rows: ROWS,
+        lift: { open: S.lift.open, x: S.lift.x, timer: S.lift.timer, rides: S.lift.rides }, portal: !!S.portal
       };
     },
     /* Ein Schritt der Schlange (plus die Zeit dafür) – für Tests mit timeScale 0 */
@@ -1494,6 +1670,17 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
     /* Liftwart festhalten: Feld und Blickrichtung (null = wieder patrouillieren) */
     holdWarden: function (i, hold) { S.wardens[i].hold = hold; S.wardens[i].stun = 0; },
     level: function (n) { S.people = (n - 1) * LEUTE_PRO_LEVEL; levelUp(n); },
+    /* Lift-Tor öffnen (x optional) */
+    liftAuf: function (x) { liftAuf(false); if (x) S.lift.x = x; },
+    /* Schlange in den obersten Gang legen, Kopf direkt unter dem offenen Tor, Blick nach oben */
+    vorLift: function () {
+      if (!S.lift.open) liftAuf(false);
+      S.lift.x = 1;
+      var n = S.snake.length;
+      S.snake = []; for (var i = 0; i < n; i++) { var r = Math.floor(i / (COLS - 2)), c = i % (COLS - 2); S.snake.push({ x: r % 2 ? COLS - 2 - c : 1 + c, y: 2 + r }); }
+      S.dir = { x: 0, y: -1 }; S.queue = []; S.headOff = { x: 0, y: 0 }; S.lastHead = null;
+      if (S.food && S.food.y === 2) neuesEssen();
+    },
     isWall: isWall,
     /* Lage des umzäunten Spielfelds (field) und Anteil des Bildschirms, den die Spielszene bedeckt (cover) */
     view: function () {
