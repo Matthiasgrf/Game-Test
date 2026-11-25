@@ -1685,7 +1685,11 @@ p{font-size:17px;line-height:1.4;margin:8px 0}
       var n = S.snake.length;
       S.snake = []; for (var i = 0; i < n; i++) { var r = Math.floor(i / (COLS - 2)), c = i % (COLS - 2); S.snake.push({ x: r % 2 ? COLS - 2 - c : 1 + c, y: 2 + r }); }
       S.dir = { x: 0, y: -1 }; S.queue = []; S.headOff = { x: 0, y: 0 }; S.lastHead = null;
-      if (S.food && S.food.y === 2) neuesEssen();
+      /* Ausstiegsgang frei halten, damit der Test gleich bleibt (kein Essen, kein Power-up unterwegs) */
+      var unten = LANES[LANES.length - 1], imWeg = function (p) { return p && (p.y === 2 || (p.y >= unten[0] && p.y <= unten[1])); };
+      for (var k = 0; k < 50 && imWeg(S.food); k++) neuesEssen();
+      if (imWeg(S.food)) S.food = null;
+      S.power = null;
     },
     isWall: isWall,
     /* Lage des umzäunten Spielfelds (field) und Anteil des Bildschirms, den die Spielszene bedeckt (cover) */
