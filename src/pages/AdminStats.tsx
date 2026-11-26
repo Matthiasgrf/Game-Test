@@ -37,6 +37,13 @@ interface Stats {
   groups: GroupStat[];
   user_list: UserStat[];
 }
+// Detail-Auswertung (Migration 20261126120000_statistik_details.sql)
+interface PairStat {
+  username: string; game_key: string; plays: number; play_seconds: number; short_plays: number; scores: number;
+  active_days: number; first_played: string; last_played: string;
+}
+interface Session { username: string; game_key: string; started_at: string; secs: number }
+interface Detail { generated_at: string; period_days: number; pairs: PairStat[]; sessions: Session[] }
 
 const PERIODS = [
   { days: 7, label: "7 Tage" },
@@ -195,6 +202,8 @@ export default function AdminStats() {
   const [days, setDays] = useState(30);
   const [withAdmins, setWithAdmins] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [metric, setMetric] = useState<DailyMetric>("users");
@@ -202,9 +211,15 @@ export default function AdminStats() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase.rpc("admin_stats", { p_days: days, p_include_admins: withAdmins });
-    if (error) setError(error.message);
-    else setStats(data as Stats);
+    const args = { p_days: days, p_include_admins: withAdmins };
+    const [main, det] = await Promise.all([
+      supabase.rpc("admin_stats", args),
+      supabase.rpc("admin_stats_detail", args),
+    ]);
+    if (main.error) setError(main.error.message);
+    else setStats(main.data as Stats);
+    if (det.error) { setDetailError(det.error.message); setDetail(null); }
+    else { setDetailError(null); setDetail(det.data as Detail); }
     setLoading(false);
   }, [days, withAdmins]);
 
@@ -242,6 +257,7 @@ export default function AdminStats() {
       {error && <p className="error">{error}</p>}
       {!stats && !error && <p className="muted">Lade…</p>}
       {stats && <Dashboard stats={stats} metric={metric} setMetric={setMetric} />}
+      {stats && <DetailSection detail={detail} error={detailError} days={stats.period_days} />}
     </main>
   );
 }
@@ -487,5 +503,220 @@ function Dashboard({ stats, metric, setMetric }: {
         </table>
       </div>
     </>
+  );
+}
+
+// ---------- Detail: Wer spielt was? ------------------------------------
+type DetailView = "pairs" | "matrix" | "sessions";
+const DETAIL_VIEWS: { key: DetailView; label: string }[] = [
+  { key: "pairs", label: "Spieler × Spiel" },
+  { key: "matrix", label: "Übersicht" },
+  { key: "sessions", label: "Letzte Sitzungen" },
+];
+
+function dateTime(iso: string) {
+  return new Date(iso).toLocaleString("de-DE", {
+    weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function DetailSection({ detail, error, days }: { detail: Detail | null; error: string | null; days: number }) {
+  const [view, setView] = useState<DetailView>("pairs");
+  const [player, setPlayer] = useState("");
+  const [game, setGame] = useState("");
+
+  const pairs = detail?.pairs ?? [];
+  const sessions = detail?.sessions ?? [];
+  const players = useMemo(() => [...new Set(pairs.map((p) => p.username))].sort((a, b) => a.localeCompare(b, "de")), [pairs]);
+  const gameKeys = useMemo(() => {
+    const secs = new Map<string, number>();
+    for (const p of pairs) secs.set(p.game_key, (secs.get(p.game_key) ?? 0) + p.play_seconds + p.plays + p.scores);
+    return [...secs.keys()].sort((a, b) => secs.get(b)! - secs.get(a)! || a.localeCompare(b));
+  }, [pairs]);
+
+  const match = (x: { username: string; game_key: string }) =>
+    (!player || x.username === player) && (!game || x.game_key === game);
+
+  const pairRows = useMemo(() => pairs.filter(match).map((p) => ({
+    ...p,
+    title: gameLabel(p.game_key),
+    avg_seconds: p.plays > 0 ? p.play_seconds / p.plays : null,
+    short_rate: p.plays > 0 ? p.short_plays / p.plays : null,
+  })), [pairs, player, game]);
+  const pairSort = useSort(pairRows, "play_seconds");
+  const maxSecs = Math.max(1, ...pairRows.map((p) => p.play_seconds));
+  const sessionRows = sessions.filter(match);
+
+  const sum = pairRows.reduce((a, p) => ({ plays: a.plays + p.plays, secs: a.secs + p.play_seconds, scores: a.scores + p.scores }),
+    { plays: 0, secs: 0, scores: 0 });
+
+  const pick = (u: string, g: string) => { setPlayer(u); setGame(g); setView("pairs"); };
+
+  return (
+    <section>
+      <h3 className="stats-section">Wer spielt was?</h3>
+      <p className="muted small">
+        Jede Kombination aus Spieler und Spiel in den letzten {days} Tagen. Spielzeit = Zeit, in der das Spiel sichtbar
+        geöffnet war (höchstens 3 h je Start). In der Übersicht auf ein Feld tippen, um die Details zu sehen.
+      </p>
+      {error && <p className="error">Detail-Auswertung nicht verfügbar: {error}</p>}
+      {!detail && !error && <p className="muted">Lade…</p>}
+      {detail && (
+        <>
+          <div className="stats-controls detail-controls">
+            <div className="tabs small" role="group" aria-label="Ansicht">
+              {DETAIL_VIEWS.map((v) => (
+                <button key={v.key} type="button" className={v.key === view ? "" : "secondary"}
+                  aria-pressed={v.key === view} onClick={() => setView(v.key)}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <select aria-label="Spieler" value={player} onChange={(e) => setPlayer(e.target.value)}>
+              <option value="">Alle Spieler</option>
+              {players.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <select aria-label="Spiel" value={game} onChange={(e) => setGame(e.target.value)}>
+              <option value="">Alle Spiele</option>
+              {gameKeys.map((k) => <option key={k} value={k}>{gameLabel(k)}</option>)}
+            </select>
+            {(player || game) && (
+              <button type="button" className="secondary" onClick={() => { setPlayer(""); setGame(""); }}>✕ Filter löschen</button>
+            )}
+          </div>
+
+          {(player || game) && (
+            <div className="kpi-grid">
+              <Kpi label="Starts" value={num(sum.plays)} />
+              <Kpi label="Spielzeit" value={duration(sum.secs)} sub={sum.plays > 0 ? `Ø ${duration(sum.secs / sum.plays)} pro Start` : undefined} />
+              <Kpi label="Ergebnisse" value={num(sum.scores)} />
+              <Kpi label={player ? "Verschiedene Spiele" : "Verschiedene Spieler"}
+                value={num(new Set(pairRows.map((p) => (player ? p.game_key : p.username))).size)} />
+            </div>
+          )}
+
+          {pairs.length === 0 && <p className="muted">Im Zeitraum wurde nicht gespielt.</p>}
+
+          {pairs.length > 0 && view === "pairs" && (
+            <div className="table-scroll">
+              <table className="stats-table">
+                <thead>
+                  <tr>
+                    {pairSort.th("username", "Spieler")}
+                    {pairSort.th("title", "Spiel")}
+                    {pairSort.th("plays", "Starts", true)}
+                    {pairSort.th("play_seconds", "Spielzeit", true)}
+                    {pairSort.th("avg_seconds", "Ø pro Start", true)}
+                    {pairSort.th("active_days", "Tage", true)}
+                    {pairSort.th("scores", "Ergebnisse", true)}
+                    {pairSort.th("short_rate", "Kurzbesuche", true)}
+                    {pairSort.th("first_played", "Zuerst")}
+                    {pairSort.th("last_played", "Zuletzt")}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pairSort.sorted.map((p) => (
+                    <tr key={`${p.username}|${p.game_key}`}>
+                      <td>{p.username}</td>
+                      <td>{p.title}</td>
+                      <td className="num">{num(p.plays)}</td>
+                      <td className="num">
+                        <span className="inline-bar" aria-hidden="true"><span style={{ width: `${(p.play_seconds / maxSecs) * 100}%` }} /></span>
+                        {duration(p.play_seconds)}
+                      </td>
+                      <td className="num">{p.avg_seconds === null ? "–" : duration(p.avg_seconds)}</td>
+                      <td className="num">{p.active_days}</td>
+                      <td className="num">{num(p.scores)}</td>
+                      <td className="num">{pct(p.short_plays, p.plays)}</td>
+                      <td className="muted">{relative(p.first_played)}</td>
+                      <td>{relative(p.last_played)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {pairs.length > 0 && view === "matrix" && (
+            <Matrix pairs={pairs} players={player ? [player] : players} gameKeys={game ? [game] : gameKeys} onPick={pick} />
+          )}
+
+          {pairs.length > 0 && view === "sessions" && (
+            <>
+              <p className="muted small">
+                Die neuesten {num(sessions.length)} Spielstarts im Zeitraum{(player || game) ? `, davon ${num(sessionRows.length)} passend zum Filter` : ""}.
+              </p>
+              <div className="table-scroll">
+                <table className="stats-table">
+                  <thead>
+                    <tr><th>Gestartet</th><th>Spieler</th><th>Spiel</th><th className="num">Dauer</th></tr>
+                  </thead>
+                  <tbody>
+                    {sessionRows.map((x, i) => (
+                      <tr key={`${x.started_at}|${x.username}|${i}`}>
+                        <td>{dateTime(x.started_at)}</td>
+                        <td>{x.username}</td>
+                        <td>{gameLabel(x.game_key)}</td>
+                        <td className="num">{x.secs < 30 ? <span className="muted">{duration(x.secs)}</span> : duration(x.secs)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** Spieler (Zeilen) × Spiele (Spalten), Feld = Spielzeit, je dunkler desto länger. */
+function Matrix({ pairs, players, gameKeys, onPick }: {
+  pairs: PairStat[]; players: string[]; gameKeys: string[]; onPick: (username: string, gameKey: string) => void;
+}) {
+  const cell = new Map(pairs.map((p) => [`${p.username}|${p.game_key}`, p]));
+  const max = Math.max(1, ...pairs.map((p) => p.play_seconds));
+  const rowTotal = (u: string) => pairs.filter((p) => p.username === u).reduce((s, p) => s + p.play_seconds, 0);
+  const rows = [...players].sort((a, b) => rowTotal(b) - rowTotal(a) || a.localeCompare(b, "de"));
+  return (
+    <div className="table-scroll">
+      <table className="stats-table matrix">
+        <thead>
+          <tr>
+            <th>Spieler</th>
+            {gameKeys.map((k) => {
+              const g = GAME_BY_KEY.get(k);
+              return <th key={k} className="matrix-game" title={g?.title ?? k}>{g ? g.emoji : k}</th>;
+            })}
+            <th className="num">Gesamt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((u) => (
+            <tr key={u}>
+              <td>{u}</td>
+              {gameKeys.map((k) => {
+                const p = cell.get(`${u}|${k}`);
+                if (!p) return <td key={k} className="matrix-cell empty" />;
+                const level = Math.max(0.12, Math.sqrt(p.play_seconds / max));
+                const tip = `${u} · ${gameLabel(k)}: ${num(p.plays)} Starts, ${duration(p.play_seconds)}, ${num(p.scores)} Ergebnisse`;
+                return (
+                  <td key={k} className="matrix-cell">
+                    <button type="button" title={tip} aria-label={tip} onClick={() => onPick(u, k)}
+                      style={{ background: `color-mix(in srgb, var(--accent) ${Math.round(level * 100)}%, transparent)` }}
+                      className={level > 0.55 ? "strong" : undefined}>
+                      {p.play_seconds >= 60 ? Math.round(p.play_seconds / 60) : p.plays > 0 ? "<1" : "✓"}
+                    </button>
+                  </td>
+                );
+              })}
+              <td className="num">{duration(rowTotal(u))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted small">Zahl im Feld = Spielminuten (✓ = nur Ergebnis gespeichert). Spiel-Namen beim Zeigen auf das Symbol.</p>
+    </div>
   );
 }
