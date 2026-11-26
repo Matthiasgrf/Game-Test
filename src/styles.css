@@ -204,3 +204,16 @@ th.sortable[aria-sort="ascending"] button, th.sortable[aria-sort="descending"] b
 .inline-bar span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .attention { margin: 12px 0; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-size: 0.9em; }
 .attention p { margin: 4px 0; }
+
+/* Detail-Auswertung „Wer spielt was?“ */
+.detail-controls { margin: 8px 0 12px; }
+.detail-controls select { width: auto; max-width: 100%; }
+.matrix th.matrix-game { text-align: center; font-size: 1.2em; padding-left: 4px; padding-right: 4px; }
+.matrix td.matrix-cell { padding: 2px; text-align: center; }
+.matrix td.matrix-cell button {
+  width: 100%; min-width: 40px; height: 32px; padding: 0 4px; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font: inherit; font-size: 0.85em; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.matrix td.matrix-cell button.strong { color: #fff; }
+.matrix td.matrix-cell.empty { background: transparent; }
+.matrix td:first-child, .matrix th:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; }
