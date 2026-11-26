@@ -92,6 +92,9 @@ export default async function (t) {
     await game.goto(`${game.url().split('?')[0]}?test`, { waitUntil: 'load' });
     await game.waitForFunction(() => window.WORTMONSTER && WORTMONSTER.state() === 'start');
     await game.click('[data-area="test"]');
+    // auf genau dieses Ergebnis warten – der Hinweis „gespeichert“ kann noch von der Nomen-Runde stammen
+    const testSaved = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/game_scores')
+      && (r.request().postData() || '').includes('"test"'), { timeout: 20000 }).catch(() => null);
     for (let i = 0; i < 15; i++) {
       await solve();
       await game.waitForSelector('#nextBtn:not([hidden])');
@@ -100,7 +103,7 @@ export default async function (t) {
     await game.waitForSelector('#win:not([hidden])');
     const testText = await game.textContent('#win');
     t.check('Probetest: 15 von 15 Punkten mit Auswertung je Bereich', testText.includes('15 von 15') && testText.includes('Adjektive'), testText.slice(0, 160));
-    await page.waitForFunction(() => document.querySelectorAll('.html-game-toast').length > 0);
+    await testSaved;
     const ts = page.scores.find((x) => x.variant === 'test');
     t.check('Probetest: Ergebnis gespeichert (Bestenliste „test“)', !!ts && ts.points === 15 && ts.max_points === 15, JSON.stringify(page.scores));
   }
