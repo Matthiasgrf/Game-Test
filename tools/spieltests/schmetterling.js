@@ -71,8 +71,9 @@ export default async function (t) {
     await game.evaluate((q) => SPIEL.teleport(q.x - 1.6, q.z, Math.PI / 2), d.quallen[1]);
     if (touch) await game.locator('#schnapp').dispatchEvent('pointerdown');
     else await page.keyboard.press('Space');
-    await warte('Qualle schnappen', () => SPIEL.state().liste.quallen === 25);
-    t.check(`${size}: Qualle geschnappt → 25 Punkte`, true);
+    // die eben berührte Qualle schwebt oft noch daneben – dann schnappt Flatter beide (2 × 25 Punkte)
+    await warte('Qualle schnappen', () => SPIEL.state().liste.quallen >= 25);
+    t.check(`${size}: Qualle geschnappt → 25 Punkte`, (await st()).liste.quallen % 25 === 0);
 
     /* Einhorn → Fuchs hilft und frisst eine Qualle */
     await game.evaluate((e) => SPIEL.teleport(e.x, e.z), d.einhoerner[0]);
@@ -149,6 +150,7 @@ export default async function (t) {
     await t.shot(page, `ende-${size}`);
 
     await game.click('[data-action="nochmal"]');
-    t.check(`${size}: „Nochmal spielen“ startet neu`, await game.evaluate(() => SPIEL.state().phase === 'play' && SPIEL.state().punkte === 0 && SPIEL.state().geloest === 0));
+    await warte('Nochmal spielen', () => SPIEL.state().phase === 'play');
+    t.check(`${size}: „Nochmal spielen“ startet neu`, await game.evaluate(() => SPIEL.state().phase === 'play' && SPIEL.state().punkte === 0 && SPIEL.state().geloest === 0), JSON.stringify(await st()));
   }
 }
