@@ -16,8 +16,13 @@ Inhalte von vier Arbeitsblättern (wörtlich übernommen) plus weitere Wörter a
   (alle 13 Wörter vom Blatt, z. B. groß – größer – am größten), Vergleiche im Satz, Adjektive antippen.
 - **Monster-Buffet**: Wörterschlange vom Blatt „Wir üben für den Sprachkundetest“ zerschneiden und die
   Wörter verfüttern, Wörter sortieren, Wortgruppen mit sommerlich, kühl, langweilig, blau, hell.
-- **Probetest**: 15 gemischte Aufgaben wie im Test, je ein Versuch, keine Tipps. Danach Punkte und
-  Auswertung pro Bereich mit Knopf „Üben ▶“ für die Bereiche mit Fehlern.
+- **Probetest**: 15 gemischte Aufgaben wie im Test (4 Nomen, 4 Verben, 4 Adjektive, 3 gemischt), je ein
+  Versuch, keine Tipps. Jeder Probetest ist anders: Aufgabenarten, Reihenfolge und Wörter werden jedes Mal neu
+  gezogen (Vorrat `TEST_POOL`, je Bereich eine Kernaufgabe wie Artikel, Personalform oder Siegerpodest plus
+  zufällige weitere). Danach Punkte und Auswertung pro Bereich mit Knopf „Üben ▶“ für die Bereiche mit Fehlern.
+- **Neue Aufgabenarten** (auch in den Übungsrunden): Mehrzahl bilden (das Bild → die Bilder), passendes Fürwort
+  zur Personalform (… hörst → du), Vergleichsstufe erkennen (am längsten → 2. Vergleichsstufe), „Welches Wort
+  passt nicht?“ (drei Wörter einer Wortart, eins von einer anderen). Mehr Wortgruppen und Vergleiche.
 
 **Belohnung „Snack-Regen“**: Nach jeder fertigen Runde (10 Happen oder Probetest) gibt es einmal ein kurzes
 Fang-Spiel. Snacks fallen vom Himmel (1 Punkt), goldene Sterne bringen 5 Punkte, Stinkesocken kosten 3.
@@ -41,7 +46,7 @@ Hinweise:
   im Probetest (`test`), Rekord im Snack-Regen (`snack`), Ton aus (`mute`).
 - Monster, Grafik und Töne entstehen im Code, es werden keine Bilder oder fremden Dateien geladen.
 - Neue Wörter kommen in die Tabellen `NOMEN`, `VERBEN`, `ADJ`, `SAETZE`, `WORTGRUPPEN`, neue Aufgabenarten
-  in `GEN` und in die Runden in `ROUNDS`.
+  in `GEN` und in die Runden in `ROUNDS` bzw. in den Vorrat für den Probetest `TEST_POOL`.
 - Durchspiel-Test: `node tools/spieltest.js deutsch-wortmonster` (Datei `tools/spieltests/deutsch-wortmonster.js`).
   Mit `?test` in der Adresse ist der Spielzustand als `window.WORTMONSTER` erreichbar.
 

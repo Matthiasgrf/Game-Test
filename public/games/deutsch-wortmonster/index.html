@@ -394,13 +394,18 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   var WORTGRUPPEN = [['blau', 'der', 'Himmel'], ['kühl', 'der', 'Winter'], ['langweilig', 'der', 'Unterricht'], ['hell', 'die', 'Sonne'],
     ['sommerlich', 'der', 'Urlaub'], ['kühl', 'das', 'Wasser'], ['blau', 'die', 'Blume'], ['hell', 'das', 'Licht'], ['sommerlich', 'das', 'Kleid'],
     ['langweilig', 'das', 'Buch'], ['kühl', 'der', 'Wind'], ['blau', 'das', 'Meer'], ['hell', 'der', 'Mond'], ['langweilig', 'die', 'Fahrt'],
-    ['sommerlich', 'die', 'Hitze']];
+    ['sommerlich', 'die', 'Hitze'], ['bunt', 'der', 'Drachen'], ['warm', 'die', 'Suppe'], ['rund', 'der', 'Ball'], ['gelb', 'die', 'Banane'],
+    ['laut', 'das', 'Gewitter'], ['süß', 'die', 'Erdbeere'], ['schnell', 'das', 'Auto'], ['nett', 'der', 'Nachbar'], ['klein', 'das', 'Boot'],
+    ['stark', 'der', 'Sturm'], ['fröhlich', 'das', 'Lied'], ['kalt', 'die', 'Nacht']];
 
   /* Vergleiche im Satz: drei Dinge und ein Adjektiv aus ADJ */
   var VERGLEICHE = [['Die Schnecke', 'Der Hase', 'Der Gepard', 'schnell'], ['Der Hund', 'Das Pferd', 'Der Elefant', 'groß'],
     ['Mama', 'Oma', 'Uroma', 'alt'], ['Die Katze', 'Die Maus', 'Die Ameise', 'klein'], ['Der Igel', 'Die Rose', 'Der Kaktus', 'stachelig'],
     ['Das Flüstern', 'Das Reden', 'Das Schreien', 'laut'], ['Der Bleistift', 'Das Lineal', 'Der Besen', 'lang'],
-    ['Der Hase', 'Der Hund', 'Der Bär', 'stark'], ['Das Brett', 'Der Spiegel', 'Das Eis', 'glatt'], ['Der Herbst', 'Der Winter', 'Der Nordpol', 'kalt']];
+    ['Der Hase', 'Der Hund', 'Der Bär', 'stark'], ['Das Brett', 'Der Spiegel', 'Das Eis', 'glatt'], ['Der Herbst', 'Der Winter', 'Der Nordpol', 'kalt'],
+    ['Der Mond', 'Die Lampe', 'Die Sonne', 'hell'], ['Der Bleistift', 'Der Radiergummi', 'Die Büroklammer', 'kurz'],
+    ['Die Oma', 'Die Mama', 'Das Baby', 'jung'], ['Der Baumstamm', 'Der Ast', 'Der Faden', 'dünn'],
+    ['Der Frühling', 'Der Sommer', 'Die Wüste', 'warm']];
 
   /* ================= Hilfen ================= */
   function rnd(n) { return Math.floor(Math.random() * n); }
@@ -473,6 +478,20 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
         exp: 'Mehrzahl: die ' + pl + '. Einzahl: ' + art + ' ' + sg + ' – ' + unb(art) + ' ' + sg + '.' + (same ? ' Bei diesem Nomen ändert sich nur der Artikel.' : '')
       };
     },
+    /* Mehrzahl bilden: Einzahl mit Artikel gegeben */
+    mehrzahl: function () {
+      var n = pick(NOMEN.filter(function (x) { return ['Angst', 'Nebel', 'Himmel', 'Wahrheit', 'Sonne'].indexOf(x[1]) < 0; }));
+      var art = n[0], sg = n[1], pl = n[2], right = 'die ' + pl;
+      var plain = pl.replace(/[äöüÄÖÜ]/g, function (c) { return { 'ä': 'a', 'ö': 'o', 'ü': 'u', 'Ä': 'A', 'Ö': 'O', 'Ü': 'U' }[c]; });
+      var wrongs = [(art === 'die' ? 'der' : art) + ' ' + pl].concat(shuffle(['die ' + plain, 'die ' + sg + 's', 'die ' + sg + (/e$/.test(sg) ? 'n' : 'en')]));
+      return {
+        area: 'nomen', kind: 'mehrzahl', key: 'mehrzahl:' + sg, type: 'gaps', mons: ['n'],
+        prompt: 'Schreibe in der Mehrzahl!',
+        text: '<span class="given">' + art + ' ' + sg + '</span><span class="line"><span class="lbl">Mehrzahl</span> {0}</span>',
+        steps: [{ opts: cards(right, wrongs, 4), ok: [right], tip: 'Tipp: Mehrzahl heißt: viele. Dann heißt der Artikel immer „die“. Achte auf ä, ö, ü!' }],
+        exp: art + ' ' + sg + ' – die ' + pl + '. In der Mehrzahl heißt der Artikel immer „die“.' + (sg === pl ? ' Bei diesem Nomen ändert sich nur der Artikel.' : '')
+      };
+    },
     /* Merksatz vom Arbeitsblatt */
     merksatz: function () {
       return {
@@ -533,6 +552,21 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
       do { p = rnd(6); } while (!v[1][p]);
       return pfTask(v, p, p === 2 ? pick(['er', 'sie', 'es']) : null, false);
     },
+    /* Welches Fürwort passt zur Personalform? */
+    person: function () {
+      var prons = ['ich', 'du', 'er', 'wir', 'ihr'], v, p, form, hits;
+      do {
+        v = pick(VERBEN); p = pick([0, 1, 3, 4]); form = v[1][p];
+        hits = form ? prons.filter(function (o, i) { return v[1][i] === form; }) : [];
+      } while (hits.length !== 1);
+      return {
+        area: 'verben', kind: 'person', key: 'person:' + form, type: 'gaps', mons: ['v'],
+        prompt: 'Welches Fürwort passt?',
+        text: '<span class="line" style="text-align:center">{0} ' + form + '</span>',
+        steps: [{ opts: shuffle(prons), ok: hits, tip: TIP_PF }],
+        exp: PRON[p] + ' ' + form + '. Bei „' + PRON[p] + '“ endet das Verb auf ' + ENDING[p] + '.' + (v[2] && p === 1 ? ' ' + v[2] : '')
+      };
+    },
     /* Grundform finden mit weiteren Verben */
     gform: function () {
       var v = pick(VERBEN), p;
@@ -582,6 +616,17 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
         exp: a[0] + ' – ' + a[1] + ' – ' + a[2] + '.' + (umlaut(a) ? ' Hier kommen Pünktchen dazu: ' + a[0] + ' → ' + a[1] + '.' : ' In der 2. Vergleichsstufe steht immer „am“.')
       };
     },
+    /* Welche Vergleichsstufe ist das? */
+    stufe: function () {
+      var a = pick(ADJ), s = rnd(3);
+      return {
+        area: 'adjektive', kind: 'stufe', key: 'stufe:' + a[s], type: 'gaps', mons: ['a'],
+        prompt: 'Welche Stufe ist das?',
+        text: '<span class="given">' + a[s] + '</span><span class="line"><span class="lbl">Das ist die</span> {0}</span>',
+        steps: [{ opts: STUFE.slice(), ok: [STUFE[s]], tip: TIP_ST }],
+        exp: a[0] + ' – ' + a[1] + ' – ' + a[2] + '. „' + a[s] + '“ ist die ' + STUFE[s] + '.'
+      };
+    },
     /* Vergleich im Satz */
     vergleich: function () {
       var v = pick(VERGLEICHE), a = adj(v[3]), s = 1 + rnd(2);
@@ -621,6 +666,19 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
         exp: 'Nomen: ' + say(words, 'n') + '. Verben: ' + say(words, 'v') + '. Adjektive: ' + say(words, 'a') + '.'
       };
     },
+    /* Ein Wort passt nicht: drei Wörter einer Wortart, eins von einer anderen */
+    falsch: function () {
+      var ms = shuffle(['n', 'v', 'a']), main = ms[0], odd = ms[1];
+      var same = someWords(main, 3), o = someWords(odd, 1)[0];
+      return {
+        area: 'mix', kind: 'falsch', key: 'falsch:' + o.w, type: 'gaps', mons: ['n', 'v', 'a'], eat: odd,
+        prompt: 'Welches Wort passt nicht zu den anderen?',
+        text: '<span class="line" style="text-align:center">Das passt nicht: {0}</span>',
+        steps: [{ opts: shuffle(same.map(function (w) { return w.w; }).concat(o.w)), ok: [o.w],
+          tip: 'Tipp: Drei Wörter haben die gleiche Wortart. Welches Wort ist anders?' }],
+        exp: '„' + o.w + '“ ist ' + { n: 'ein Nomen', v: 'ein Verb', a: 'ein Adjektiv' }[odd] + '. ' + cap(say(same, main)) + ' sind ' + MON[main].art + '.'
+      };
+    },
     /* Wortgruppen bilden: Artikel + Adjektiv + Nomen */
     wortgruppe: function () {
       var w = pick(WORTGRUPPEN), right = w[1] + ' ' + w[0] + 'e ' + w[2];
@@ -635,6 +693,11 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
     }
   };
 
+  function someWords(m, k) {
+    if (m === 'n') return shuffle(NOMEN).slice(0, k).map(wordN);
+    return m === 'v' ? shuffle(VERBEN).slice(0, k).map(wordV) : shuffle(ALL_ADJ).slice(0, k).map(wordA);
+  }
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
   function say(words, m) { return words.filter(function (w) { return w.m === m; }).map(function (w) { return w.say; }).join(', ') || '–'; }
   function umlaut(a) { return /[äöü]/.test(a[1]) && !/[äöü]/.test(a[0]); }
   /* typische Fehler als falsche Karten */
@@ -714,15 +777,30 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
 
   /* Runden zusammenstellen: Liste von Generator-Namen */
   var ROUNDS = {
-    nomen: ['artikel', 'tapN', 'einzahl', 'artikel', 'tapN', 'merksatz', 'einzahl', 'waehleN', 'artikel', 'tapN'],
-    verben: ['vlueck', 'vtab', 'vtab', 'tapV', 'personen', 'vtab', 'pform', 'gform', 'tapV', 'vtab'],
-    adjektive: ['alueck', 'podest', 'podest', 'tapA', 'vergleich', 'podest', 'waehleA', 'podest', 'vergleich', 'tapA'],
-    mix: ['schlange', 'sortieren', 'wortgruppe', 'artikel', 'vtab', 'schlange', 'podest', 'wortgruppe', 'sortieren', 'waehleV'],
-    test: ['artikel', 'einzahl', 'tapN', 'artikel', 'vlueck', 'vtab', 'gform', 'vtab', 'alueck', 'podest', 'vergleich', 'podest', 'schlange', 'sortieren', 'wortgruppe']
+    nomen: ['artikel', 'tapN', 'einzahl', 'mehrzahl', 'tapN', 'merksatz', 'einzahl', 'waehleN', 'artikel', 'tapN'],
+    verben: ['vlueck', 'vtab', 'person', 'tapV', 'personen', 'vtab', 'pform', 'gform', 'tapV', 'vtab'],
+    adjektive: ['alueck', 'podest', 'stufe', 'tapA', 'vergleich', 'podest', 'waehleA', 'podest', 'vergleich', 'tapA'],
+    mix: ['schlange', 'sortieren', 'wortgruppe', 'artikel', 'vtab', 'schlange', 'podest', 'falsch', 'sortieren', 'waehleV']
   };
+  /* Probetest: jedes Mal andere Aufgabenarten in anderer Reihenfolge – je Bereich zufällig aus einem Vorrat
+     (4 Nomen, 4 Verben, 4 Adjektive, 3 gemischt = 15 Aufgaben), die Wörter werden ohnehin neu gezogen. */
+  var TEST_POOL = {
+    nomen: [['artikel', 'einzahl', 'mehrzahl'], 4, ['artikel', 'einzahl', 'mehrzahl', 'tapN', 'waehleN', 'merksatz']],
+    verben: [['vtab', 'pform', 'gform', 'person'], 4, ['vlueck', 'vtab', 'pform', 'gform', 'tapV', 'personen', 'person', 'waehleV']],
+    adjektive: [['podest', 'vergleich', 'stufe'], 4, ['alueck', 'podest', 'vergleich', 'tapA', 'waehleA', 'stufe']],
+    mix: [['schlange', 'sortieren'], 3, ['schlange', 'sortieren', 'wortgruppe', 'falsch']]
+  };
+  function testPlan() {
+    var list = [];
+    Object.keys(TEST_POOL).forEach(function (a) {
+      var p = TEST_POOL[a], core = pick(p[0]);   /* eine Kernaufgabe je Bereich, der Rest bunt gemischt */
+      list = list.concat([core], shuffle(p[2].filter(function (g) { return g !== core; })).slice(0, p[1] - 1));
+    });
+    return shuffle(list);
+  }
   function buildRound(area) {
-    var seen = {}, firstSnake = true;
-    return ROUNDS[area].map(function (g) {
+    var seen = {}, firstSnake = area !== 'test';
+    return (area === 'test' ? testPlan() : ROUNDS[area]).map(function (g) {
       var q, tries = 0;
       do {
         q = g === 'schlange' ? GEN.schlange(firstSnake ? true : undefined) : GEN[g]();
@@ -952,7 +1030,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   }
   function onCard(b) {
     var q = cur(); if (state.done || state.busy || b.classList.contains('wrong')) return;
-    var step = q.steps[state.step], t = b.getAttribute('data-t'), m = q.mons[0];
+    var step = q.steps[state.step], t = b.getAttribute('data-t'), m = q.eat || q.mons[0];
     if (step.ok.indexOf(t) >= 0) {
       fly(b, t, m); eat(m);
       fillGap(t, 'done');
@@ -1385,7 +1463,7 @@ button:focus-visible,a:focus-visible,.mon:focus-visible{outline:4px solid var(--
   /* Zugang für den Durchspiel-Test (tools/spieltests/deutsch-wortmonster.js), nur mit ?test in der Adresse */
   if (/[?&]test\b/.test(location.search)) {
     window.WORTMONSTER = {
-      GEN: GEN, ROUNDS: ROUNDS, build: buildRound, parse: parseSentence, SAETZE: SAETZE, VERBEN: VERBEN, ADJ: ADJ, NOMEN: NOMEN, SCHLANGE: SCHLANGE,
+      GEN: GEN, ROUNDS: ROUNDS, TEST_POOL: TEST_POOL, build: buildRound, parse: parseSentence, SAETZE: SAETZE, VERBEN: VERBEN, ADJ: ADJ, NOMEN: NOMEN, SCHLANGE: SCHLANGE,
       state: function () { return state.screen; },
       task: function () { return cur(); },
       results: function () { return state.results; },
