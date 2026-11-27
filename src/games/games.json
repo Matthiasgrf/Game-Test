@@ -312,5 +312,24 @@
       "pointsIcon": "🎯",
       "rule": "Bestes Ergebnis je Spieler: meiste Punkte aus 15 Würfen (5 Runden à 3 Würfe)."
     }
+  },
+  {
+    "key": "rosetten-kasper",
+    "type": "html",
+    "title": "Der Rosetten-Kasper",
+    "description": "Kasper muss nach Knödeln und Jagertee vom Schönjoch zum Klo an der Talstation Fiss – Tempo oder Zusammenkneifen?",
+    "age": "ab 12 Jahren",
+    "zielgruppe": "erwachsene",
+    "orientation": "any",
+    "status": "live",
+    "emoji": "💨⛷️",
+    "color": "linear-gradient(135deg, #a5d8ff, #b07a4f)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "🏵️",
+      "showTime": true,
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte (Zeit, Knödel, Bonus für knappe Ankunft). Platz 1 trägt die Goldene Rosette."
+    }
   }
 ]
