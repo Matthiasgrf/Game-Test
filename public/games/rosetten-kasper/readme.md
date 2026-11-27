@@ -7,8 +7,8 @@ unten an der Talstation in Fiss. Man muss ihn rechtzeitig runterbringen (2000 m,
 ## Ablauf
 
 Kasper fährt von selbst bergab. Das **Klemm-O-Meter** (links) steigt ständig, bei hohem Tempo schneller.
-Ist es bei 100 %, gibt es ein Malheur: brauner Fleck im Schnee, „Kasper hat's nicht gepackt“, das Spiel ist vorbei
-(ohne Eintrag in die Bestenliste).
+Ist es bei 100 %, gibt es ein Malheur: brauner Fleck im Schnee, „Kasper hat's nicht gepackt“, das Spiel ist vorbei.
+Auch dann gibt es Punkte für die Bestenliste, aber ohne Ankunft, Zeit- und 99-%-Bonus (siehe Punkte).
 
 - **Zusammenkneifen** (gedrückt halten): Druck sinkt um etwa 12 % pro Sekunde, Kasper bremst stark auf 6 m/s
   (normal 21 m/s). Das ist der Kern: Tempo gegen Kontrolle.
@@ -42,6 +42,10 @@ Die Strecke ist für alle gleich (fester Zufalls-Startwert), damit die Bestenlis
 | Sprünge | je 50 |
 | Mit 99 % ins Ziel / 95 % / 90 % | 1500 / 600 / 300 |
 | „nicht nur Luft“ | je −250 |
+| Malheur statt Ankunft | gefahrene Meter ÷ 5 (höchstens 400) + Knödel + Sprünge − Pannen, kein Ankunfts-, Zeit- oder 99-%-Bonus |
+
+Mit gleich vielen Knödeln, Sprüngen und Pannen liegt eine Ankunft immer vor einem Malheur (mindestens 500 statt
+höchstens 400).
 
 Titel: ab 4500 „Anwärter auf die Goldene Rosette“, ab 3200 „Silberne Rosette“, ab 2000 „Bronzene Rosette“,
 sonst „Notfall-Lehrling“. Die **Goldene Rosette** trägt, wer in der Bestenliste der Fisser-Flitzer vorn liegt.
@@ -56,8 +60,8 @@ Piste sieht.
 
 ## Highscore
 
-Gesamtpunkte (mehr ist besser), bei Gleichstand zählt die kürzere Zeit. Nur Fahrten, die an der Talstation
-ankommen, kommen in die Bestenliste.
+Gesamtpunkte (mehr ist besser), bei Gleichstand zählt die kürzere Zeit. Jede Fahrt kommt in die Bestenliste,
+auch eine mit Malheur (dann mit weniger Punkten).
 
 ## Aufbau
 
