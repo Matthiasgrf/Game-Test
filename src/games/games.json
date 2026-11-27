@@ -329,7 +329,7 @@
       "pointsLabel": "Punkte",
       "pointsIcon": "🏵️",
       "showTime": true,
-      "rule": "Bestes Ergebnis je Spieler: meiste Punkte (Zeit, Knödel, Bonus für knappe Ankunft; ein Malheur zählt weniger). Platz 1 trägt die Goldene Rosette."
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte (Zeit, Sammeldinge von 50 bis 300 Punkten, Bonus für knappe Ankunft; ein Malheur zählt weniger). Platz 1 trägt die Goldene Rosette."
     }
   }
 ]

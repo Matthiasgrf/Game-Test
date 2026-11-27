@@ -17,9 +17,21 @@ Auch dann gibt es Punkte für die Bestenliste, aber ohne Ankunft, Zeit- und 99-%
 - **Buckelpiste** (zwei Abschnitte, mit Schild): Druck steigt deutlich schneller, das Bild wackelt.
 - **Schanzen** (2): Sprung +50 Punkte, über Hindernisse hinweg; die Landung gibt +14 % Druck.
 
-| Pick-up / Hindernis | Wirkung |
+**Sammeldinge** – je wertvoller, desto seltener und heikler liegen sie (zusammen 6375 Punkte):
+
+| Sammelding | Anzahl | Punkte | Druck | Wo |
+|---|---|---|---|---|
+| 🥨 Brezel | 23 | 50 | +2 % | in Reihen auf der Piste |
+| 🌼 Edelweiß | 5 | 75 | ± 0 | ganz am Pistenrand |
+| 🥟 Kaspressknödel | 26 | 100 | +5 % | überall, manche an heiklen Stellen |
+| 🥞 Kaiserschmarrn | 5 | 150 | +8 % | knapp vor oder hinter Hindernissen (Dani, Matze, Alex), in der Buckelpiste |
+| 🍚 Germknödel | 3 | 200 | +10 % | im Sprung hinter den Schanzen, neben der Pistenraupe |
+| 🧻 Goldene Klopapierrolle | 3 | 300 | −10 % | im Nebel der Schneekanone, neben dem Dixi-Klo, kurz vor dem Ziel |
+
+Oben links steht, wie viele Punkte man schon gesammelt hat (⭐).
+
+| Hindernis / Pick-up | Wirkung |
 |---|---|
-| 🥟 Kaspressknödel (26 Stück) | +100 Punkte, +5 % Druck |
 | 🥃 Zirbenschnaps (3) | −20 % Druck, 4 s wackelige Steuerung |
 | 🚽 Dixi-Klo am Pistenrand (2) | Besetzt, drinnen sitzt Gabor: kurzer Halt, +8 % Druck |
 | Dani liegt quer im Schnee | Sturz |
@@ -38,16 +50,16 @@ Die Strecke ist für alle gleich (fester Zufalls-Startwert), damit die Bestenlis
 |---|---|
 | Angekommen | 500 |
 | Zeit | (140 s − Fahrzeit) × 30 |
-| Knödel | je 100 |
+| Sammeldinge | 50 bis 300 je Stück (Tabelle oben), eine Zeile je Sorte |
 | Sprünge | je 50 |
 | Mit 99 % ins Ziel / 95 % / 90 % | 1500 / 600 / 300 |
 | „nicht nur Luft“ | je −250 |
-| Malheur statt Ankunft | gefahrene Meter ÷ 5 (höchstens 400) + Knödel + Sprünge − Pannen, kein Ankunfts-, Zeit- oder 99-%-Bonus |
+| Malheur statt Ankunft | gefahrene Meter ÷ 5 (höchstens 400) + Sammeldinge + Sprünge − Pannen, kein Ankunfts-, Zeit- oder 99-%-Bonus |
 
-Mit gleich vielen Knödeln, Sprüngen und Pannen liegt eine Ankunft immer vor einem Malheur (mindestens 500 statt
+Mit gleich vielen Sammeldingen, Sprüngen und Pannen liegt eine Ankunft immer vor einem Malheur (mindestens 500 statt
 höchstens 400).
 
-Titel: ab 4500 „Anwärter auf die Goldene Rosette“, ab 3200 „Silberne Rosette“, ab 2000 „Bronzene Rosette“,
+Titel: ab 7000 „Anwärter auf die Goldene Rosette“, ab 5000 „Silberne Rosette“, ab 3000 „Bronzene Rosette“,
 sonst „Notfall-Lehrling“. Die **Goldene Rosette** trägt, wer in der Bestenliste der Fisser-Flitzer vorn liegt.
 
 ## Steuerung

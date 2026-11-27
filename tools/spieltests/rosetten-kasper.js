@@ -84,6 +84,19 @@ export default async function (t) {
 
       let r = await ereignis('knoedel', 0);
       t.check('Kaspressknödel: +1 Knödel, mehr Druck', r.nachher.knoedel === r.vorher.knoedel + 1 && r.nachher.druck > 43, JSON.stringify({ k: r.nachher.knoedel, d: r.nachher.druck }));
+      /* weitere Sammeldinge: jedes mit eigenen Punkten und eigenem Druck */
+      const sammel = await game.evaluate(() => SPIEL.SAMMEL);
+      const punkte = Object.values(sammel).map((d) => d.punkte);
+      t.check('Sammeldinge mit unterschiedlich vielen Punkten', new Set(punkte).size === punkte.length && punkte.length >= 6, JSON.stringify(punkte));
+      for (const [art, d] of Object.entries(sammel)) {
+        if (art === 'knoedel') continue;
+        const anzahl = await game.evaluate((a) => SPIEL.objekte(a).length, art);
+        r = await ereignis(art, 0);
+        const plus = r.nachher.sammelPunkte - r.vorher.sammelPunkte;
+        const dd = r.nachher.druck - r.vorher.druck;
+        t.check(`${d.name} (${anzahl}×): +${d.punkte} Punkte, Druck ${d.druck >= 0 ? '+' : ''}${d.druck}`,
+          plus === d.punkte && Math.abs(dd - d.druck) < 2 && r.nachher.ruf.includes(`+${d.punkte}`), JSON.stringify({ plus, dd: dd.toFixed(1), ruf: r.nachher.ruf }));
+      }
       r = await ereignis('schnaps', 0, 0, 60);
       t.check('Zirbenschnaps: weniger Druck, Steuerung wackelig', r.nachher.druck < 45 && r.nachher.wackel > 3, JSON.stringify({ d: r.nachher.druck, w: r.nachher.wackel }));
       r = await ereignis('dixi', 0);
