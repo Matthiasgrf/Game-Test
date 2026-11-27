@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
+<title>Der Rosetten-Kasper</title>
+<style>
+/* Der Rosetten-Kasper: Abfahrt vom Schönjoch nach Fiss im <canvas> (Piste in Pseudo-3D),
+   Klemm-O-Meter links über der Szene, Anzeigen oben links. Knöpfe und Fenster aus dem Kit. */
+:root {
+  --gt-sky-1: #4b9be0;
+  --gt-sky-2: #d9ecfa;
+  --gt-primary-1: #ffb23f;
+  --gt-primary-2: #e8741a;
+}
+#hud .gt-pill { padding: 6px 12px; }
+
+/* ---------- Klemm-O-Meter: die zentrale Anzeige ---------- */
+#meter {
+  position: fixed; z-index: 52; left: var(--gt-left); top: calc(var(--gt-top) + 60px);
+  width: 66px; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none;
+  background: var(--gt-panel); border-radius: 22px; padding: 8px 6px; box-shadow: var(--gt-shadow);
+}
+#meter .m-face { font-size: 30px; line-height: 1; transition: transform var(--gt-fast); }
+#meter .m-rohr {
+  position: relative; width: 26px; height: min(220px, calc(var(--gt-vh) - 290px)); min-height: 90px;
+  border-radius: 14px; overflow: hidden; background: linear-gradient(90deg, #dfe8f1, #f7fbff 45%, #d3dee9);
+  border: 3px solid #fff; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .25);
+}
+#meter .m-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
+  background: linear-gradient(0deg, #3ac06a 0%, #ffd43b 55%, #ff8c2b 78%, #d9480f 90%, #6b3a17 100%);
+  background-size: 100% var(--rohr, 220px); background-position: bottom;
+  box-shadow: inset 4px 0 6px rgba(255, 255, 255, .45);
+}
+#meter .m-mark { position: absolute; left: 0; right: 0; bottom: 90%; border-top: 2px dashed rgba(22, 50, 79, .55); }
+#meter .m-wert { font-weight: 900; font-size: 17px; }
+#meter .m-label { font-size: 10px; font-weight: 800; letter-spacing: .02em; color: var(--gt-ink-soft); text-align: center; line-height: 1.05; }
+#meter.kritisch { animation: rk-puls .5s ease-in-out infinite alternate; }
+#meter.kritisch .m-face { transform: scale(1.15); }
+@keyframes rk-puls { from { box-shadow: 0 0 0 0 rgba(217, 72, 15, .0), var(--gt-shadow); } to { box-shadow: 0 0 0 7px rgba(217, 72, 15, .55), var(--gt-shadow); } }
+@media (prefers-reduced-motion: reduce) { #meter.kritisch { animation: none; box-shadow: 0 0 0 5px rgba(217, 72, 15, .6); } }
+/* Niedrige Bildschirme (Handy quer): Meter kompakter */
+@media (max-height: 500px) {
+  #meter { top: calc(var(--gt-top) + 54px); padding: 6px 5px; width: 58px; }
+  #meter .m-face { font-size: 24px; }
+  #meter .m-rohr { height: calc(var(--gt-vh) - 250px); min-height: 70px; }
+  #meter .m-label { display: none; }
+}
+/* Touch: Meter endet über den Steuerknöpfen */
+@media (pointer: coarse) {
+  #meter .m-rohr { height: min(220px, calc(var(--gt-vh) - 330px)); }
+}
+@media (pointer: coarse) and (max-height: 500px) {
+  #meter .m-rohr { height: calc(var(--gt-vh) - 262px); min-height: 56px; }
+  #meter { padding: 5px 4px; }
+  #meter .m-wert { font-size: 15px; }
+}
+@media (max-width: 520px) {
+  #hud { max-width: calc(100% - var(--gt-bar-space) - 20px); gap: 6px; }
+  #hud .gt-pill { font-size: 14px; padding: 6px 9px; }
+  #hud-weg { display: none; }   /* Kopfzeile bleibt einzeilig; die Strecke steht als Balken in der Szene */
+}
+
+.gt-ctl.rk-kneifen { font-size: 30px; }
+.gt-ctl.rk-boost { font-size: 30px; }
+
+.regeln { text-align: left; font-size: 15px; line-height: 1.35; margin: 6px auto; max-width: 460px; padding-left: 20px; }
+.regeln li { margin: 2px 0; }
+.abrechnung { width: 100%; max-width: 380px; margin: 6px auto 4px; border-collapse: collapse; font-size: 17px; }
+.abrechnung td { padding: 4px 6px; border-bottom: 1px solid #e3ebf3; text-align: left; }
+.abrechnung td:last-child { text-align: right; font-weight: 800; white-space: nowrap; }
+.abrechnung tr.summe td { border-bottom: 0; font-size: 20px; padding-top: 8px; }
+.titel { font-size: 21px; font-weight: 800; color: #b5530a; margin: 6px 0 2px; }
+@media (max-height: 500px) {
+  .gt-card .gt-emoji { font-size: 36px; }
+  .gt-card h1 { font-size: 24px; margin: 0; }
+  .titel { font-size: 18px; margin: 2px 0; }
+  .abrechnung { font-size: 15px; margin: 2px auto; }
+  .abrechnung td { padding: 2px 6px; }
+  .regeln { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="gt-stage"><canvas id="szene" aria-label="Skipiste vom Schönjoch nach Fiss mit Kasper"></canvas></div>
+
+<!-- Anzeigen über der Szene (oben links; oben rechts liegt die Leiste des Kits) -->
+<div class="gt-hud" id="hud" hidden>
+  <span class="gt-pill" id="hud-knoedel">🥟 0</span>
+  <span class="gt-pill" id="hud-zeit">⏱ 0:00</span>
+  <span class="gt-pill" id="hud-weg">🏁 2000 m</span>
+</div>
+
+<!-- Klemm-O-Meter -->
+<div id="meter" hidden aria-label="Klemm-O-Meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="30">
+  <div class="m-face" aria-hidden="true">😊</div>
+  <div class="m-rohr"><div class="m-fill"></div><div class="m-mark"></div></div>
+  <div class="m-wert">30 %</div>
+  <div class="m-label">Klemm-<br>O-Meter</div>
+</div>
+
+<!-- Steuerung für Touch (am Computer ausgeblendet): links ◀ ▶, rechts 💨 Boost und 🍑 Kneifen -->
+<div class="gt-controls gt-left gt-touch-only" id="steuerung-links" hidden></div>
+<div class="gt-controls gt-right gt-touch-only" id="steuerung-rechts" hidden></div>
+
+<section class="gt-screen" data-screen="start" id="start">
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">⛷️💨🚽</div>
+    <h1>Der Rosetten-Kasper</h1>
+    <p>Kasper hatte auf der Hütte am Schönjoch drei Kaspressknödel, eine Gulaschsuppe und zwei Jagertee.
+      Jetzt grummelt's gewaltig! Das einzige freie Klo ist unten an der Talstation in Fiss. Bring ihn rechtzeitig runter.</p>
+    <ul class="regeln">
+      <li>📈 Das <b>Klemm-O-Meter</b> steigt ständig. Bei 100 % gibt's ein Malheur.</li>
+      <li>🍑 <b>Zusammenkneifen</b> senkt den Druck – bremst aber stark.</li>
+      <li>💨 <b>Rückstoß-Boost</b>: etwas Druck ablassen, kurzer Schub nach vorn. Kleines Risiko …</li>
+      <li>🥟 Knödel: Punkte, aber mehr Druck · 🥃 Zirbenschnaps: weniger Druck, dafür wackelig</li>
+      <li>⛰️ Buckel, Sprünge, Schneekanonen, Stürze: der Druck schnellt hoch.</li>
+      <li>🏵️ Punkte für Zeit, Knödel und „Mit 99 % ins Ziel“.</li>
+    </ul>
+    <p class="gt-small">💻 ← → lenken · Leertaste kneifen · ↑ Boost &nbsp;·&nbsp; 📱 Knöpfe unten</p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="start">▶ Los geht's!</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="ende" id="ende" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🚽🏵️</div>
+    <h1>Gerade noch!</h1>
+    <p class="titel" id="ende-titel"></p>
+    <table class="abrechnung" id="abrechnung"></table>
+    <p class="gt-small" id="rekord"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button></div>
+    <div class="gt-row">
+      <a class="gt-btn gt-alt" href="../../#/highscores" target="_top">🏆 Bestenliste</a>
+      <a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="malheur" id="malheur" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">💩😳</div>
+    <h1>Kasper hat's nicht gepackt</h1>
+    <p id="malheur-text"></p>
+    <p class="gt-small">Tipp: Rechtzeitig zusammenkneifen – auch wenn's Zeit kostet.</p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>
