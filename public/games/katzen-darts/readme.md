@@ -11,6 +11,12 @@ Manchmal fliegt Bier statt Pfeil, und je höher die Promille stehen, desto stär
 genau im Fadenkreuz. Mit zu wenig Kraft landet er tiefer, mit zu viel höher. Der Pfeil fliegt 0,4 s, deshalb muss
 man auf laufende Katzen vorhalten.
 
+**Zeitlimit:** Jeder Wurf hat 5 Sekunden. Der äußere Ring ums Fadenkreuz läuft ab und wird von Grün über Gelb zu
+Rot. Ab 3 Sekunden steht die Zahl daneben, in der letzten Sekunde tickt es und der Ring pulsiert. Das Halten zum
+Kraftaufbau zählt mit. Ist die Zeit um, verfällt der Wurf mit 0 Punkten und ist verbraucht (ein ×2 der Ski-Katze
+und das Pech der schwarzen Katze zählen ihn mit, ein verfallener Bierwurf hebt die Promille nicht).
+Während der Anzeige „Runde X von 5“ läuft die Zeit noch nicht.
+
 | Treffer | Punkte |
 |---|---|
 | Segment 1–20 / Double / Triple | Zahl × 1 / × 2 / × 3 |

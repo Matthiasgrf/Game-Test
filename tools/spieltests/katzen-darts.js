@@ -4,7 +4,7 @@
    Geprüft wird auf Computer, Handy hoch und quer: Start-Bildschirm, Leiste des Kits (Pause, Ton, Alle Spiele),
    Pause-Fenster, echter Wurf mit Maus bzw. Finger (halten = Kraft laden, loslassen = werfen), Wertung der Scheibe
    (Single, Double, Triple, Bull, Bullseye, daneben), alle Katzen mit ihren Punkten und Effekten (×2, Pech,
-   Oma, Hausverbot), Maßkrug (halbe Punkte, Promille) und Bierflasche (Prost-Bonus), 15 Würfe in 5 Runden,
+   Oma, Hausverbot), Zeitlimit 5 s je Wurf (verfällt mit 0 Punkten), Maßkrug (halbe Punkte, Promille) und Bierflasche (Prost-Bonus), 15 Würfe in 5 Runden,
    Abrechnung mit Titel, gespeichertes Ergebnis, „Nochmal spielen“ – und die laufende Szene als Screenshot. */
 export default async function (t) {
   for (const [size, options] of [['computer', t.DESK], ['handy', t.PHONE], ['handy-quer', t.PHONE_QUER]]) {
@@ -39,6 +39,11 @@ export default async function (t) {
     await game.click('[data-gt="weiter"]');
     t.check(`${size}: weiter nach der Pause`, await game.locator('[data-gt="pause"]').isHidden());
     await game.waitForFunction(() => SPIEL.state().wurfPhase === 'zielen');
+
+    /* Zeitlimit: Countdown läuft ab 5 s herunter */
+    const z0 = await game.evaluate(() => SPIEL.state().zeitlimit);
+    await game.waitForFunction(() => SPIEL.state().zeitRest < SPIEL.state().zeitlimit - 0.2);
+    t.check(`${size}: Countdown 5 s je Wurf läuft`, z0 === 5);
 
     /* Echter Wurf: halten lädt die Kraft, loslassen wirft */
     await game.evaluate(() => SPIEL.art('pfeil'));
@@ -78,12 +83,19 @@ export default async function (t) {
       { art: 'pfeil', katze: 'pummel', erwartet: { plus: 10 }, name: 'Pummel +10' },
       { art: 'pfeil', feld: ['wand'], erwartet: { scheibe: 0 }, name: 'daneben 0' },
       { art: 'pfeil', feld: ['double', 20], erwartet: { scheibe: 40 }, name: 'Double 20' },
-      { art: 'pfeil', feld: ['single', 20], erwartet: { scheibe: 20 }, name: 'Single 20' },
+      { art: 'krug', verfallen: true, erwartet: { scheibe: 0, plus: 0, minus: 0, verfallen: true }, name: 'nach 5 s Zeit um: Wurf verfällt mit 0 Punkten (auch beim Halten)' },
     ];
     let summe = basis;
     for (const [i, w] of wuerfe.entries()) {
       const r = await game.evaluate(async ({ w, nr }) => {
         SPIEL.art(w.art);
+        if (w.verfallen) {
+          const vorher = SPIEL.state().bier;
+          SPIEL.halten();
+          await new Promise((ok) => { const f = () => (SPIEL.state().wurf > nr ? ok() : setTimeout(f, 20)); f(); });
+          const s = SPIEL.state();
+          return { s, rufe: SPIEL.rufe(), extra: !s.laden && s.bier === vorher };
+        }
         let ziel;
         if (w.katze) ziel = SPIEL.katze(w.katze);
         else {
@@ -96,7 +108,7 @@ export default async function (t) {
       }, { w, nr: i + 1 });
       const l = r.s.letzte;
       const ok = Object.entries(w.erwartet).every(([k, v]) => (k === 'multi' || k === 'pech' ? r.s[k] === v : l[k] === v))
-        && (!w.katze || l.katzen.includes(w.katze)) && (!w.ruf || r.rufe.some((x) => x.includes(w.ruf)));
+        && (!w.katze || l.katzen.includes(w.katze)) && (!w.verfallen || r.extra) && (!w.ruf || r.rufe.some((x) => x.includes(w.ruf)));
       t.check(`${size}: ${w.name}`, ok, JSON.stringify({ letzte: l, rufe: r.rufe, pech: r.s.pech, multi: r.s.multi }));
       summe += l.scheibe + l.plus + l.minus;
       if (w.art === 'krug' && touch) await t.shot(page, `bier-${size}`);
