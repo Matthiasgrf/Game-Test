@@ -30,7 +30,16 @@ const MALHEUR_MAX = 400;         // Malheur: gefahrene Meter ÷ 5, höchstens 40
 const ZEIT_REFERENZ = 140;        // Zeitbonus: (140 s − Fahrzeit) × 30
 const ZEIT_FAKTOR = 30;
 const BONUS_99 = [[99, 1500, 'Mit 99 % ins Ziel!'], [95, 600, 'Mit 95 % ins Ziel'], [90, 300, 'Mit 90 % ins Ziel']];
-const TITEL = [[4500, '🏵️ Anwärter auf die Goldene Rosette'], [3200, '🥈 Silberne Rosette'], [2000, '🥉 Bronzene Rosette'], [0, '🧻 Notfall-Lehrling']];
+const TITEL = [[7000, '🏵️ Anwärter auf die Goldene Rosette'], [5000, '🥈 Silberne Rosette'], [3000, '🥉 Bronzene Rosette'], [0, '🧻 Notfall-Lehrling']];
+/* Sammeldinge: Punkte und Druck (+ mehr, − weniger). Je wertvoller, desto seltener und heikler die Stelle. */
+const SAMMEL = {
+  brezel: { emoji: '🥨', name: 'Brezel', mehr: 'Brezeln', punkte: 50, druck: 2 },
+  edelweiss: { emoji: '🌼', name: 'Edelweiß', mehr: 'Edelweiß', punkte: 75, druck: 0 },
+  knoedel: { emoji: '🥟', name: 'Kaspressknödel', mehr: 'Knödel', punkte: 100, druck: 5 },
+  schmarrn: { emoji: '🥞', name: 'Kaiserschmarrn', mehr: 'Kaiserschmarrn', punkte: 150, druck: 8 },
+  germknoedel: { emoji: '🍚', name: 'Germknödel', mehr: 'Germknödel', punkte: 200, druck: 10 },
+  klopapier: { emoji: '🧻', name: 'Goldene Klopapierrolle', mehr: 'Goldene Klopapierrollen', punkte: 300, druck: -10 },
+};
 
 /* ---------- Kit ---------- */
 const kit = startKit({
@@ -57,6 +66,11 @@ const imBuckel = (z) => BUCKEL.some(([a, b]) => z >= a && z <= b);
 /* Hindernisse und Pick-ups. r = halbe Breite für Zusammenstöße (m). */
 const ART = {
   knoedel: { r: 0.95, pickup: true },
+  brezel: { r: 0.95, pickup: true },
+  edelweiss: { r: 0.95, pickup: true },
+  schmarrn: { r: 1, pickup: true },
+  germknoedel: { r: 1, pickup: true },
+  klopapier: { r: 1, pickup: true },
   schnaps: { r: 0.95, pickup: true },
   dixi: { r: 1.4 },
   dani: { r: 2.1, name: 'Dani', text: 'Dani liegt quer: „Hoppala, i lieg nur kurz!“' },
@@ -81,6 +95,20 @@ function baueStrecke() {
     [680, 0], [720, 3], [760, -2], [852, 0], [868, 0], [1010, 6], [1100, -4], [1228, 3.2],
     [1300, 0], [1420, 4], [1590, -3], [1650, 2], [1742, 3], [1800, -1], [1850, 5], [1900, 0], [1950, -3],
   ]) add('knoedel', z, x);
+  /* Brezeln in Reihen (50) */
+  for (const [z0, x, n] of [[60, -3, 3], [200, 3, 3], [410, -6, 2], [580, 4, 3], [940, -2, 2], [1130, -2, 2], [1340, -5, 3], [1480, 2, 2], [1875, -6, 3]]) {
+    for (let i = 0; i < n; i++) add('brezel', z0 + i * 12, x);
+  }
+  /* Edelweiß ganz am Pistenrand (75) */
+  for (const [z, s] of [[180, -1], [650, 1], [1050, -1], [1520, 1], [1725, -1]]) add('edelweiss', z, s * (breite(z) - 1));
+  /* Kaiserschmarrn knapp hinter oder vor Hindernissen (150) */
+  for (const [z, x] of [[346, -3], [700, -4], [1238, -3.2], [1612, 1.5], [1960, 4]]) add('schmarrn', z, x);
+  /* Germknödel nur im Sprung oder neben der Pistenraupe (200) */
+  for (const [z, x] of [[876, 0], [1452, 4.5], [1714, 3]]) add('germknoedel', z, x);
+  /* Goldene Klopapierrolle (300, senkt den Druck): im Kanonen-Nebel, neben dem Dixi, kurz vor dem Ziel */
+  add('klopapier', 1000, breite(1000) - 4);
+  add('klopapier', 1476, -(breite(1476) - 1.6));
+  add('klopapier', 1985, 0);
   for (const [z, x] of [[560, -7], [1150, 6], [1680, -6]]) add('schnaps', z, x);
   add('dixi', 520, breite(520) - 1.4);
   add('dixi', 1460, -(breite(1460) - 1.4));
@@ -127,7 +155,7 @@ const S = {
   z: 0, x: 0, v: 0, vx: 0,
   luft: 0, vy: 0,           // Sprung: Höhe über dem Schnee
   druck: DRUCK_START,
-  knoedel: 0, pannen: 0, spruenge: 0, stuerze: 0,
+  knoedel: 0, pannen: 0, spruenge: 0, stuerze: 0, gesammelt: {},
   sturz: 0, halt: 0, boost: 0, boostPause: 0, wackel: 0, kneift: false,
   kanone: false, buckel: false, wackler: 0,
   t: 0,                     // Fahrzeit (s, ohne Pause)
@@ -146,7 +174,7 @@ const cam = { hor: 0, feet: 0, K: 1, f: 1, back: 7, h: 4, x: 0, y: 0, z: 0, shak
 function neueRunde() {
   baueStrecke();
   Object.assign(S, {
-    z: 0, x: 0, v: 8, vx: 0, luft: 0, vy: 0, druck: DRUCK_START, knoedel: 0, pannen: 0, spruenge: 0, stuerze: 0,
+    z: 0, x: 0, v: 8, vx: 0, luft: 0, vy: 0, druck: DRUCK_START, knoedel: 0, gesammelt: {}, pannen: 0, spruenge: 0, stuerze: 0,
     sturz: 0, halt: 0, boost: 0, boostPause: 0, wackel: 0, kneift: false, kanone: false, buckel: false,
     t: 0, start: performance.now(), realPause: 0, ende: 0, ruf: null, grummel: 2, ergebnis: null, flecken: [],
   });
@@ -275,11 +303,14 @@ function update(dt) {
 function treffen(o, a) {
   if (a.pickup) {
     o.weg = true;
-    if (o.art === 'knoedel') {
-      S.knoedel++;
-      S.druck += 5;
-      sound.melody([[660, 0.06], [990, 0.09]], 'triangle', 0.13);
-      ruf(`Kaspressknödel! +${PUNKTE.knoedel}`, 1.2);
+    const d = SAMMEL[o.art];
+    if (d) {
+      S.gesammelt[o.art] = (S.gesammelt[o.art] || 0) + 1;
+      if (o.art === 'knoedel') S.knoedel++;
+      S.druck = Math.max(0, S.druck + d.druck);
+      const hoch = d.punkte >= 200;
+      sound.melody(hoch ? [[660, 0.06], [880, 0.06], [1175, 0.06], [1568, 0.14]] : [[660, 0.06], [660 + d.punkte * 3, 0.09]], 'triangle', 0.13);
+      ruf(`${d.emoji} ${d.name}! +${d.punkte}${d.druck < 0 ? ' · Druck runter' : ''}`, hoch ? 1.8 : 1.2);
     } else {
       S.druck = Math.max(0, S.druck - 20);
       S.wackel = 4;
@@ -354,7 +385,7 @@ function malheurWertung() {
   const meter = Math.floor(clamp(S.z, 0, LAENGE));
   const zeilen = [
     [`⛷️ ${meter} m geschafft`, Math.min(MALHEUR_MAX, Math.floor(meter / 5))],
-    [`🥟 ${S.knoedel} Knödel`, S.knoedel * PUNKTE.knoedel],
+    ...sammelZeilen(),
   ];
   if (S.spruenge) zeilen.push([`🎿 ${S.spruenge} ${S.spruenge === 1 ? 'Sprung' : 'Sprünge'}`, S.spruenge * PUNKTE.sprung]);
   if (S.pannen) zeilen.push([`💩 ${S.pannen}× nicht nur Luft`, S.pannen * PUNKTE.panne]);
@@ -382,7 +413,7 @@ function wertung() {
   const zeilen = [
     ['🚽 Angekommen', PUNKTE.ankunft],
     [`⏱ Zeit ${fmtZeit(S.t)}`, zeitBonus],
-    [`🥟 ${S.knoedel} Knödel`, S.knoedel * PUNKTE.knoedel],
+    ...sammelZeilen(),
   ];
   if (S.spruenge) zeilen.push([`🎿 ${S.spruenge} ${S.spruenge === 1 ? 'Sprung' : 'Sprünge'}`, S.spruenge * PUNKTE.sprung]);
   zeilen.push([`🍑 ${b ? b[2] : `Mit ${druck} % ins Ziel`}`, b ? b[1] : 0]);
@@ -390,6 +421,15 @@ function wertung() {
   const gesamt = Math.max(0, zeilen.reduce((s, [, p]) => s + p, 0));
   return { zeilen, gesamt, sekunden, sekundenSpeichern: Math.min(sekunden, real), druck, titel: TITEL.find(([ab]) => gesamt >= ab)[1] };
 }
+
+/* eine Zeile je gesammelter Sorte, Knödel immer */
+function sammelZeilen() {
+  return Object.entries(SAMMEL).filter(([art]) => art === 'knoedel' || S.gesammelt[art]).map(([art, d]) => {
+    const n = S.gesammelt[art] || 0;
+    return [`${d.emoji} ${n} ${n === 1 ? d.name : d.mehr}`, n * d.punkte];
+  });
+}
+const sammelPunkte = () => Object.entries(S.gesammelt).reduce((sum, [art, n]) => sum + n * SAMMEL[art].punkte, 0);
 
 const fmtZeit = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -614,6 +654,21 @@ function zeichneSprite(sp, clip) {
   ctx.restore();
 }
 
+function leuchten(x, y, r, rgb, a) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
+/* kleine Sterne, die um wertvolle Dinge kreisen */
+function funkeln(x, y, r) {
+  ctx.fillStyle = '#fffbe0';
+  for (let k = 0; k < 4; k++) {
+    const a = S.zeit * 2 + k * 1.57, f = 0.5 + 0.5 * Math.sin(S.zeit * 6 + k * 2);
+    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * 0.6, g = Math.max(1.5, r * 0.12 * f);
+    ctx.beginPath(); ctx.moveTo(px, py - g * 2); ctx.lineTo(px + g * 0.5, py); ctx.lineTo(px, py + g * 2); ctx.lineTo(px - g * 0.5, py); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(px - g * 2, py); ctx.lineTo(px, py + g * 0.5); ctx.lineTo(px + g * 2, py); ctx.lineTo(px, py - g * 0.5); ctx.closePath(); ctx.fill();
+  }
+}
 const schatten = (x, y, w, s, a = 0.22) => { ctx.fillStyle = `rgba(40,70,110,${a})`; ctx.beginPath(); ctx.ellipse(x, y, w * s, w * s * 0.28, 0, 0, Math.PI * 2); ctx.fill(); };
 
 function blase(x, y, text, s, farbe = '#fff') {
@@ -721,6 +776,101 @@ const ZEICHNE = {
     for (const [dx, dy] of [[-0.4, -0.1], [0.2, 0.25], [0.45, -0.3], [-0.1, 0.4]]) { ctx.beginPath(); ctx.arc(x + dx * r, cy + dy * r, r * 0.08, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = 'rgba(255,255,255,.65)';
     ctx.beginPath(); ctx.ellipse(x - r * 0.4, cy - r * 0.4, r * 0.25, r * 0.13, -0.5, 0, Math.PI * 2); ctx.fill();
+  },
+  brezel(x, y, s) {
+    const cy = y - (0.9 + Math.sin(S.zeit * 4 + x * 0.02) * 0.1) * s, r = 0.42 * s;
+    schatten(x, y, 0.4, s, 0.22);
+    leuchten(x, cy, r * 1.9, '255,190,110', 0.45);
+    ctx.save(); ctx.translate(x, cy); ctx.rotate(Math.sin(S.zeit * 2 + x) * 0.15);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const pfad = () => {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.9, r * 0.55);
+      ctx.bezierCurveTo(-r * 1.25, -r * 0.2, -r * 0.7, -r * 0.95, 0, -r * 0.25);
+      ctx.bezierCurveTo(r * 0.7, -r * 0.95, r * 1.25, -r * 0.2, r * 0.9, r * 0.55);
+      ctx.moveTo(-r * 0.9, r * 0.55); ctx.lineTo(r * 0.35, -r * 0.05);
+      ctx.moveTo(r * 0.9, r * 0.55); ctx.lineTo(-r * 0.35, -r * 0.05);
+    };
+    pfad(); ctx.strokeStyle = '#6e3a12'; ctx.lineWidth = r * 0.42; ctx.stroke();
+    pfad(); ctx.strokeStyle = '#b8682a'; ctx.lineWidth = r * 0.3; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,170,.55)'; ctx.lineWidth = r * 0.08;
+    ctx.beginPath(); ctx.moveTo(-r * 0.85, -r * 0.1); ctx.bezierCurveTo(-r * 0.75, -r * 0.6, -r * 0.4, -r * 0.7, -r * 0.15, -r * 0.45); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    for (const [dx, dy] of [[-0.8, 0.1], [-0.45, -0.6], [0.5, -0.62], [0.85, 0.05], [0, -0.22], [-0.55, 0.45], [0.6, 0.42]]) ctx.fillRect(dx * r, dy * r, r * 0.09, r * 0.09);
+    ctx.restore();
+  },
+  edelweiss(x, y, s) {
+    const cy = y - (0.85 + Math.sin(S.zeit * 3 + x * 0.02) * 0.1) * s, r = 0.45 * s;
+    schatten(x, y, 0.35, s, 0.2);
+    leuchten(x, cy, r * 2, '255,255,220', 0.55);
+    ctx.save(); ctx.translate(x, cy); ctx.rotate(S.zeit * 0.6);
+    for (let k = 0; k < 8; k++) {
+      ctx.rotate(Math.PI / 4);
+      const g = ctx.createLinearGradient(0, 0, 0, -r);
+      g.addColorStop(0, '#e9f1e4'); g.addColorStop(1, '#ffffff');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(0, -r * 0.55, r * 0.2, r * 0.48, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,150,110,.5)'; ctx.lineWidth = Math.max(0.5, r * 0.03); ctx.stroke();
+    }
+    ctx.fillStyle = '#f2c94c';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d9a52b';
+    for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.13, Math.sin(a) * r * 0.13, r * 0.06, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  },
+  schmarrn(x, y, s) {
+    const cy = y - (0.9 + Math.sin(S.zeit * 3.6 + x * 0.02) * 0.1) * s, r = 0.6 * s;
+    schatten(x, y, 0.55, s, 0.25);
+    leuchten(x, cy, r * 1.8, '255,200,90', 0.5);
+    /* Teller */
+    ctx.fillStyle = '#c9d6e3'; ctx.beginPath(); ctx.ellipse(x, cy + r * 0.12, r, r * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(x, cy + r * 0.05, r * 0.96, r * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+    /* Schmarrn-Stücke */
+    for (const [dx, dy, w] of [[-0.4, -0.12, 0.3], [0.05, -0.2, 0.34], [0.42, -0.08, 0.28], [-0.15, 0.02, 0.3], [0.25, 0.04, 0.26], [0, -0.38, 0.24]]) {
+      const g = ctx.createLinearGradient(0, cy + (dy - w * 0.4) * r, 0, cy + (dy + w * 0.4) * r);
+      g.addColorStop(0, '#f3c46b'); g.addColorStop(1, '#a8621f');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(x + dx * r, cy + dy * r, w * r * 0.6, w * r * 0.38, dx, 0, Math.PI * 2); ctx.fill();
+    }
+    /* Puderzucker und Zwetschgenröster */
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    for (const [dx, dy] of [[-0.35, -0.22], [0.1, -0.3], [0.4, -0.16], [-0.05, -0.05], [0.25, -0.02], [0, -0.45]]) { ctx.beginPath(); ctx.arc(x + dx * r, cy + dy * r, r * 0.05, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#7b1d4a'; ctx.beginPath(); ctx.ellipse(x + r * 0.62, cy + r * 0.08, r * 0.16, r * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  },
+  germknoedel(x, y, s) {
+    const cy = y - (1 + Math.sin(S.zeit * 3.2 + x * 0.02) * 0.12) * s, r = 0.55 * s;
+    schatten(x, y, 0.55, s, 0.25);
+    leuchten(x, cy, r * 2.4, '255,230,120', 0.7);
+    /* Vanillesoße */
+    ctx.fillStyle = '#f7d774'; ctx.beginPath(); ctx.ellipse(x, cy + r * 0.62, r * 1.15, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.35, cy - r * 0.4, r * 0.1, x, cy, r * 1.05);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.7, '#efe7dc'); g.addColorStop(1, '#c9bba8');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.fill();
+    /* Mohn und Butter */
+    ctx.fillStyle = '#3b3b4a';
+    for (let k = 0; k < 18; k++) { const a = k * 2.4, d = 0.15 + (k % 4) * 0.12; ctx.beginPath(); ctx.arc(x + Math.cos(a) * d * r, cy - r * 0.45 + Math.sin(a) * d * r * 0.5, r * 0.045, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#ffe58a'; ctx.beginPath(); ctx.ellipse(x + r * 0.1, cy - r * 0.62, r * 0.28, r * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    funkeln(x, cy, r * 1.4);
+  },
+  klopapier(x, y, s) {
+    const cy = y - (1.1 + Math.sin(S.zeit * 3 + x * 0.02) * 0.15) * s, r = 0.45 * s, h = 0.8 * s;
+    schatten(x, y, 0.5, s, 0.25);
+    leuchten(x, cy, s * 1.6, '255,215,60', 0.85);
+    ctx.save(); ctx.translate(x, cy); ctx.rotate(Math.sin(S.zeit * 2.2) * 0.2);
+    const g = ctx.createLinearGradient(-r, 0, r, 0);
+    g.addColorStop(0, '#b8860b'); g.addColorStop(0.35, '#ffe680'); g.addColorStop(0.6, '#f5c542'); g.addColorStop(1, '#9a6b00');
+    ctx.fillStyle = g;
+    ctx.fillRect(-r, -h / 2, r * 2, h);
+    ctx.beginPath(); ctx.ellipse(0, h / 2, r, r * 0.35, 0, 0, Math.PI); ctx.fill();
+    /* Blatt hängt herunter */
+    ctx.fillStyle = '#ffd84d'; ctx.fillRect(r * 0.2, -h * 0.1, r * 0.75, h * 0.95);
+    ctx.strokeStyle = 'rgba(150,100,0,.5)'; ctx.lineWidth = Math.max(0.5, r * 0.04);
+    ctx.beginPath(); ctx.moveTo(r * 0.2, h * 0.4); ctx.lineTo(r * 0.95, h * 0.4); ctx.stroke();
+    /* Oberseite mit Loch */
+    ctx.fillStyle = '#fff2b3'; ctx.beginPath(); ctx.ellipse(0, -h / 2, r, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8a5a00'; ctx.beginPath(); ctx.ellipse(0, -h / 2, r * 0.32, r * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    funkeln(x, cy, s * 0.9);
   },
   schnaps(x, y, s) {
     const cy = y - (1 + Math.sin(S.zeit * 3.5) * 0.1) * s;
@@ -1119,7 +1269,7 @@ function setText(id, text) { if (hudAlt[id] !== text) { hudAlt[id] = text; $(id)
 const meter = $('meter');
 const meterFill = meter.querySelector('.m-fill');
 function zeigeHud(sofort) {
-  setText('hud-knoedel', `🥟 ${S.knoedel}`);
+  setText('hud-knoedel', `⭐ ${sammelPunkte()}`);
   setText('hud-zeit', `⏱ ${fmtZeit(S.t)}`);
   setText('hud-weg', `🏁 ${Math.max(0, Math.ceil(LAENGE - S.z))} m`);
   const d = Math.floor(S.druck);
@@ -1238,9 +1388,10 @@ window.SPIEL = {
   loop,
   LAENGE,
   PUNKTE,
+  SAMMEL,
   MALHEUR_MAX,
   state: () => ({
-    phase: S.phase, vorbei: S.vorbei, z: S.z, x: S.x, v: S.v, druck: S.druck, knoedel: S.knoedel, pannen: S.pannen,
+    phase: S.phase, vorbei: S.vorbei, z: S.z, x: S.x, v: S.v, druck: S.druck, knoedel: S.knoedel, gesammelt: { ...S.gesammelt }, sammelPunkte: sammelPunkte(), pannen: S.pannen,
     spruenge: S.spruenge, stuerze: S.stuerze, sturz: S.sturz, halt: S.halt, boost: S.boost, wackel: S.wackel, luft: S.luft,
     kneift: S.kneift, kanone: S.kanone, buckel: S.buckel, t: S.t, ruf: S.ruf && S.ruf.text, ergebnis: S.ergebnis,
   }),
