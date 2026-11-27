@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/zoom-schutz.js"></script>
+<script src="../shared/game-test.js"></script>
+<link rel="stylesheet" href="../shared/kit/theme.css">
+<title>Katzen-Darts</title>
+<style>
+/* Katzen-Darts: Szene im <canvas> (Hütten-Holzwand, Dartscheibe, Katzen), Anzeigen darüber.
+   Aussehen der Knöpfe und Fenster aus dem Kit, nur die Farben warm wie in einer Hütte. */
+:root {
+  --gt-sky-1: #7a4524;
+  --gt-sky-2: #3b1f10;
+  --gt-backdrop: rgba(35, 16, 6, .55);
+  --gt-primary-1: #ffc14d;
+  --gt-primary-2: #f08a12;
+}
+.gt-stage { cursor: crosshair; }
+#hud .gt-pill { padding: 6px 12px; }
+#wurfinfo {
+  position: fixed; z-index: 50; left: 50%; transform: translateX(-50%);
+  bottom: var(--gt-bottom); pointer-events: none; font-size: 15px; padding: 6px 14px;
+}
+#wurfinfo.bier { background: #fff4c2; }
+@media (max-width: 520px) {
+  #hud { max-width: calc(100% - var(--gt-bar-space) - 20px); gap: 6px; }
+  #hud .gt-pill { font-size: 14px; padding: 6px 9px; }
+  #wurfinfo { font-size: 14px; }
+  #hud-promille { display: none; }   /* Promille stehen dann unten im Wurf-Hinweis: Kopfzeile bleibt einzeilig */
+}
+@media (max-height: 500px) {
+  #ende .gt-emoji { font-size: 36px; }
+  #ende h1 { font-size: 24px; margin: 0; }
+  .titel { font-size: 18px; margin: 2px 0; }
+  .abrechnung { font-size: 15px; margin: 2px auto; }
+  .abrechnung td { padding: 2px 6px; }
+  .abrechnung tr.summe td { font-size: 17px; padding-top: 4px; }
+}
+.abrechnung { width: 100%; max-width: 360px; margin: 6px auto 4px; border-collapse: collapse; font-size: 17px; }
+.abrechnung td { padding: 4px 6px; border-bottom: 1px solid #eadfcf; text-align: left; }
+.abrechnung td:last-child { text-align: right; font-weight: 800; white-space: nowrap; }
+.abrechnung tr.summe td { border-bottom: 0; font-size: 20px; padding-top: 8px; }
+.titel { font-size: 21px; font-weight: 800; color: #b5530a; margin: 6px 0 2px; }
+.regeln { text-align: left; font-size: 15px; line-height: 1.35; margin: 6px auto; max-width: 440px; padding-left: 20px; }
+.regeln li { margin: 2px 0; }
+</style>
+</head>
+<body>
+<div class="gt-stage"><canvas id="szene" aria-label="Hüttenwand mit Dartscheibe und Katzen"></canvas></div>
+
+<!-- Anzeigen über der Szene (oben links; oben rechts liegt die Leiste des Kits) -->
+<div class="gt-hud" id="hud" hidden>
+  <span class="gt-pill" id="hud-runde">1/5 ○○○</span>
+  <span class="gt-pill" id="hud-punkte">⭐ 0</span>
+  <span class="gt-pill" id="hud-promille">🍻 0,0‰</span>
+</div>
+<div class="gt-pill" id="wurfinfo" hidden>🎯 Pfeil</div>
+
+<section class="gt-screen" data-screen="start" id="start">
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true">🎯🐈🍺</div>
+    <h1>Katzen-Darts</h1>
+    <p>Après-Ski in der Hütte in Fiss: Wirf auf die Dartscheibe – oder auf die Katzen! 5 Runden mit je 3 Würfen.</p>
+    <ul class="regeln">
+      <li>🎯 <b>Halten</b> lädt die Kraft, <b>Loslassen</b> wirft. Im grünen Bereich fliegt der Pfeil genau.</li>
+      <li>🐈 Tiger-Kater +30 · Pummel +10 · Ski-Katze +40 und ×2 · Goldkatze +100</li>
+      <li>🐈‍⬛ Schwarze Katze −25 (Pech!) · Omas Perserkatze 0 · Wirts-Katze −50</li>
+      <li>🍺 Manchmal fliegt Bier statt Pfeil – dann wackelt's mehr.</li>
+    </ul>
+    <p class="gt-small">💻 Maus zielen, Taste halten · ⌨️ Pfeiltasten + Leertaste · 📱 Finger halten, ziehen, loslassen</p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="start">▶ Los geht's!</button></div>
+    <div class="gt-row"><a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a></div>
+  </div>
+</section>
+
+<section class="gt-screen" data-screen="ende" id="ende" hidden>
+  <div class="gt-card">
+    <div class="gt-emoji" aria-hidden="true" id="ende-emoji">🏆</div>
+    <h1>Abrechnung</h1>
+    <p class="titel" id="ende-titel"></p>
+    <table class="abrechnung" id="abrechnung"></table>
+    <p class="gt-small" id="rekord"></p>
+    <div class="gt-row"><button type="button" class="gt-btn" data-action="nochmal">🔄 Nochmal spielen</button></div>
+    <div class="gt-row">
+      <a class="gt-btn gt-alt" href="../../#/highscores" target="_top">🏆 Bestenliste</a>
+      <a class="gt-btn gt-alt" href="../../#/" target="_top">🏠 Alle Spiele</a>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>

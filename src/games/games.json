@@ -294,5 +294,23 @@
       "showTime": true,
       "rule": "Bestes Ergebnis je Spieler: meiste Punkte (Münzen, Herzen, Quallen, Einhörner, Memory und Labyrinth), bei Gleichstand die schnellste Zeit."
     }
+  },
+  {
+    "key": "katzen-darts",
+    "type": "html",
+    "title": "Katzen-Darts",
+    "description": "Après-Ski-Darts in der Hütte: Triff Scheibe und Katzen – je mehr Bier fliegt, desto wackliger wird es!",
+    "age": "ab 12 Jahren",
+    "zielgruppe": "erwachsene",
+    "orientation": "any",
+    "status": "live",
+    "emoji": "🎯🐈",
+    "color": "linear-gradient(135deg, #e8b273, #8a4b22)",
+    "highscore": {
+      "better": "high",
+      "pointsLabel": "Punkte",
+      "pointsIcon": "🎯",
+      "rule": "Bestes Ergebnis je Spieler: meiste Punkte aus 15 Würfen (5 Runden à 3 Würfe)."
+    }
   }
 ]
