@@ -36,6 +36,7 @@ const THEKE_MIX = [['ski', 40], ['tiger', 20], ['pummel', 20], ['schwarz', 20]];
 /* Dartscheibe: Zahlen im Uhrzeigersinn ab oben, Ringe als Anteil des Radius (etwas großzügiger als echt) */
 const ZAHLEN = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const RING = { bull: 0.05, outer: 0.11, t0: 0.55, t1: 0.62, d0: 0.92, d1: 1 };
+const ZEITLIMIT = 5;        // Sekunden je Wurf (Halten zum Kraftaufbau zählt mit)
 const SWEET = [0.6, 0.8]; // Kraft-Bereich, in dem der Wurf genau dort landet, wo das Fadenkreuz ist
 
 const $ = (id) => document.getElementById(id);
@@ -59,6 +60,7 @@ const { input, sound, storage } = kit;
 const S = {
   phase: 'menu',        // menu | play | ende
   wurfPhase: 'zielen',  // zielen | flug | warten
+  zeitRest: ZEITLIMIT,  // Countdown des aktuellen Wurfs
   runde: 1, wurf: 0,    // wurf = Würfe insgesamt (0…15)
   folge: [],            // Art jedes Wurfs
   scheibe: 0, katzenPlus: 0, abzuege: 0, bier: 0, promille: 0,
@@ -330,6 +332,24 @@ function nachWurf() {
     S.banner = { text: `Runde ${S.runde} von ${RUNDEN}`, t: 0, dauer: 1.2 };
   }
   S.wurfPhase = 'zielen';
+  S.zeitRest = ZEITLIMIT;
+  zeigeHud();
+}
+
+/* Zeit um: der Wurf verfällt mit 0 Punkten und ist verbraucht (×2 und Pech zählen ihn mit) */
+function verfallen() {
+  const art = S.folge[S.wurf];
+  S.laden = false;
+  S.tasteGesperrt = true;   // gehaltene Taste wirft nicht gleich den nächsten Wurf
+  S.multi = false;
+  if (S.pech > 0) S.pech--;
+  const f = fadenkreuz();
+  text(f.x, f.y - L.u * 2.6, '⏰ Zeit um! 0 Punkte', '#ffa8a8', 1.2);
+  sound.melody([[392, 0.12], [262, 0.28]], 'square', 0.08);
+  S.letzte = { art, x: f.x, y: f.y, scheibe: 0, plus: 0, minus: 0, katzen: [], doppelt: false, verfallen: true };
+  S.wurf++;
+  S.wurfPhase = 'warten';
+  S.warte = 0.9;
   zeigeHud();
 }
 
@@ -398,6 +418,15 @@ function update(dt) {
     S.kraft += S.kraftDir * dt * 1.05;
     if (S.kraft >= 1) { S.kraft = 1; S.kraftDir = -1; }
     if (S.kraft <= 0) { S.kraft = 0; S.kraftDir = 1; }
+  }
+
+  /* Zeitlimit: läuft beim Zielen und Halten, nicht während der Runden-Anzeige */
+  if (S.wurfPhase === 'zielen' && !S.banner) {
+    const vorher = S.zeitRest;
+    S.zeitRest = Math.max(0, S.zeitRest - dt);
+    /* Tick in der letzten Sekunde, alle Viertelsekunde */
+    if (S.zeitRest > 0 && S.zeitRest < 1 && Math.floor(vorher * 4) !== Math.floor(S.zeitRest * 4)) sound.beep(S.zeitRest < 0.5 ? 1500 : 1200, 0.03, 'square', 0.07);
+    if (S.zeitRest <= 0) verfallen();
   }
 
   for (const p of S.flieger) { p.t += dt; if (p.t >= p.dauer) { p.fertig = true; landen(p); } }
@@ -541,6 +570,25 @@ function zielkreuz() {
     ctx.strokeStyle = gut ? '#b2f2bb' : '#ffd43b';
     ctx.lineWidth = u * 0.2;
     ctx.beginPath(); ctx.arc(x, y, R2, a0, a0 + S.kraft * Math.PI * 2); ctx.stroke();
+  }
+  /* Countdown-Ring außen: Grün → Gelb → Rot, in der letzten Sekunde pulsierend */
+  const rest = clamp(S.zeitRest / ZEITLIMIT, 0, 1);
+  const R3 = u * 2.75;
+  const hue = rest > 0.5 ? 50 + (rest - 0.5) * 2 * 75 : rest * 2 * 50; // 125 grün … 50 gelb … 0 rot
+  const puls = S.zeitRest < 1 ? 1 + 0.25 * Math.abs(Math.sin(S.zeitRest * Math.PI * 4)) : 1;
+  ctx.lineWidth = u * 0.3 * puls;
+  ctx.strokeStyle = 'rgba(30,15,5,.5)';
+  ctx.beginPath(); ctx.arc(x, y, R3, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = u * 0.2 * puls;
+  ctx.strokeStyle = `hsl(${hue}, 85%, 55%)`;
+  ctx.beginPath(); ctx.arc(x, y, R3, a0, a0 + rest * Math.PI * 2); ctx.stroke();
+  if (S.zeitRest < 3) {
+    ctx.font = `900 ${Math.round(u * 0.85)}px ${getComputedStyle(document.documentElement).getPropertyValue('--gt-font')}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = u * 0.18; ctx.strokeStyle = 'rgba(30,15,5,.85)';
+    const t = String(Math.ceil(S.zeitRest));
+    ctx.strokeText(t, x + R3 * 0.78, y - R3 * 0.78);
+    ctx.fillStyle = `hsl(${hue}, 90%, 62%)`; ctx.fillText(t, x + R3 * 0.78, y - R3 * 0.78);
   }
   ctx.lineCap = 'butt';
 }
@@ -1183,7 +1231,7 @@ function setPhase(phase) {
 function starten() {
   Object.assign(S, {
     runde: 1, wurf: 0, folge: folgeWuerfeln(), scheibe: 0, katzenPlus: 0, abzuege: 0, bier: 0, promille: 0,
-    multi: false, pech: 0, laden: false, kraft: 0, wurfPhase: 'zielen', flieger: [], pfeile: [], texte: [], rufe: [],
+    multi: false, pech: 0, laden: false, kraft: 0, wurfPhase: 'zielen', zeitRest: ZEITLIMIT, flieger: [], pfeile: [], texte: [], rufe: [],
     teilchen: [], flecken: [], spielzeit: 0, letzte: null, ziel: { x: L.cx / L.W, y: L.cy / L.H },
     banner: { text: `Runde 1 von ${RUNDEN}`, t: 0, dauer: 1.2 }, tasteGesperrt: true,
   });
@@ -1295,6 +1343,7 @@ window.SPIEL = {
   state: () => ({
     phase: S.phase, wurfPhase: S.wurfPhase, runde: S.runde, wurf: S.wurf, art: S.folge[S.wurf] || null,
     scheibe: S.scheibe, katzenPlus: S.katzenPlus, abzuege: S.abzuege, gesamt: S.scheibe + S.katzenPlus + S.abzuege,
+    zeitRest: S.zeitRest, zeitlimit: ZEITLIMIT,
     bier: S.bier, promille: S.promille, multi: S.multi, pech: S.pech, laden: S.laden, kraft: S.kraft, letzte: S.letzte,
     wackel: Math.hypot(S.wackel.x, S.wackel.y), wackelStaerke: L ? wackelStaerke() : 0,
   }),
@@ -1305,6 +1354,8 @@ window.SPIEL = {
   /* genau auf (x, y) werfen, ohne Wackeln und Kraft (Pixel der Szene) */
   wurf: (x, y) => werfen(x, y, 0.7, true),
   rufe: () => S.rufe.map((r) => r.text),
+  /* Kraft laden wie mit gedrücktem Finger (ohne Loslassen) */
+  halten: () => ladenStart('test'),
   /* Katze hinsetzen, die stillhält (für den Test), gibt ihren Mittelpunkt zurück */
   katze(typ) {
     S.katzen = S.katzen.filter((c) => c.fest && c.typ !== typ);
