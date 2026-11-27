@@ -26,6 +26,7 @@ const TEMPO_KNEIFEN = 6;
 const TEMPO_BOOST = 34;
 const DRUCK_START = 30;
 const PUNKTE = { ankunft: 500, knoedel: 100, sprung: 50, panne: -250 };
+const MALHEUR_MAX = 400;         // Malheur: gefahrene Meter ÷ 5, höchstens 400 (weniger als die Ankunft)
 const ZEIT_REFERENZ = 140;        // Zeitbonus: (140 s − Fahrzeit) × 30
 const ZEIT_FAKTOR = 30;
 const BONUS_99 = [[99, 1500, 'Mit 99 % ins Ziel!'], [95, 600, 'Mit 95 % ins Ziel'], [90, 300, 'Mit 90 % ins Ziel']];
@@ -341,6 +342,24 @@ function malheur() {
   S.kneift = false;
   sound.melody([[392, 0.18], [370, 0.18], [349, 0.18], [330, 0.5]], 'sawtooth', 0.1);
   steuerung(false);
+  /* Auch ein Malheur kommt in die Bestenliste – ohne Ankunft, Zeit- und 99-%-Bonus,
+     darum liegt jede Ankunft vor einem Malheur mit gleich vielen Knödeln */
+  S.ergebnis = malheurWertung();
+  storage.saveScore({ points: S.ergebnis.gesamt, seconds: S.ergebnis.sekundenSpeichern });
+}
+
+function malheurWertung() {
+  const sekunden = Math.round(S.t);
+  const real = Math.max(1, Math.round((performance.now() - S.start - S.realPause) / 1000));
+  const meter = Math.floor(clamp(S.z, 0, LAENGE));
+  const zeilen = [
+    [`⛷️ ${meter} m geschafft`, Math.min(MALHEUR_MAX, Math.floor(meter / 5))],
+    [`🥟 ${S.knoedel} Knödel`, S.knoedel * PUNKTE.knoedel],
+  ];
+  if (S.spruenge) zeilen.push([`🎿 ${S.spruenge} ${S.spruenge === 1 ? 'Sprung' : 'Sprünge'}`, S.spruenge * PUNKTE.sprung]);
+  if (S.pannen) zeilen.push([`💩 ${S.pannen}× nicht nur Luft`, S.pannen * PUNKTE.panne]);
+  const gesamt = Math.max(0, zeilen.reduce((sum, [, pkt]) => sum + pkt, 0));
+  return { zeilen, gesamt, sekunden, sekundenSpeichern: Math.min(sekunden, real), meter, malheur: true };
 }
 
 function insZiel() {
@@ -365,7 +384,7 @@ function wertung() {
     [`⏱ Zeit ${fmtZeit(S.t)}`, zeitBonus],
     [`🥟 ${S.knoedel} Knödel`, S.knoedel * PUNKTE.knoedel],
   ];
-  if (S.spruenge) zeilen.push([`🎿 ${S.spruenge} Sprünge`, S.spruenge * PUNKTE.sprung]);
+  if (S.spruenge) zeilen.push([`🎿 ${S.spruenge} ${S.spruenge === 1 ? 'Sprung' : 'Sprünge'}`, S.spruenge * PUNKTE.sprung]);
   zeilen.push([`🍑 ${b ? b[2] : `Mit ${druck} % ins Ziel`}`, b ? b[1] : 0]);
   if (S.pannen) zeilen.push([`💩 ${S.pannen}× nicht nur Luft`, S.pannen * PUNKTE.panne]);
   const gesamt = Math.max(0, zeilen.reduce((s, [, p]) => s + p, 0));
@@ -1139,10 +1158,35 @@ function starten() {
 function zeigeMalheur() {
   if (S.phase !== 'malheur') return;
   $('malheur-text').textContent = `Nur noch ${Math.max(0, Math.ceil(LAENGE - S.z))} m bis zur Talstation in Fiss. Jetzt ist ein brauner Fleck im Schnee.`;
+  const e = S.ergebnis;
+  const tab = $('malheur-abrechnung');
+  tab.innerHTML = '';
+  for (const [text, punkte] of e.zeilen) {
+    const tr = tab.insertRow();
+    tr.insertCell().textContent = text;
+    tr.insertCell().textContent = punkte > 0 ? `+${punkte}` : String(punkte);
+  }
+  const sum = tab.insertRow();
+  sum.className = 'summe';
+  sum.insertCell().textContent = '🏵️ Gesamt';
+  const c = sum.insertCell();
+  c.id = 'malheur-gesamt';
+  c.textContent = String(e.gesamt);
   setPhase('ende');
   S.phase = 'ende';
   S.vorbei = 'malheur';
   kit.show('malheur');
+  zeigeRekord(e.gesamt, 'malheur-rekord', 'Gespeichert. Mit Ankunft gibt\'s Zeit- und 99-%-Bonus!');
+}
+
+async function zeigeRekord(gesamt, id, sonst) {
+  $(id).textContent = sonst || '';
+  try {
+    const alle = await storage.getScores();
+    const best = Math.max(gesamt, ...alle.map((x) => x.points));
+    const rekord = gesamt >= best && !sonst ? '🏆 Dein Rekord! Platz 1 der Fisser-Flitzer trägt die Goldene Rosette.' : `Dein Rekord: ${best} Punkte`;
+    $(id).textContent = sonst ? `${sonst} ${rekord}` : rekord;
+  } catch { /* ohne Rekord-Anzeige */ }
 }
 
 async function zeigeEnde() {
@@ -1165,12 +1209,7 @@ async function zeigeEnde() {
   setPhase('ende');
   S.vorbei = 'ziel';
   kit.show('ende');
-  $('rekord').textContent = '';
-  try {
-    const alle = await storage.getScores();
-    const best = Math.max(e.gesamt, ...alle.map((s) => s.points));
-    $('rekord').textContent = e.gesamt >= best ? '🏆 Dein Rekord! Platz 1 der Fisser-Flitzer trägt die Goldene Rosette.' : `Dein Rekord: ${best} Punkte`;
-  } catch { /* ohne Rekord-Anzeige */ }
+  zeigeRekord(e.gesamt, 'rekord');
 }
 
 /* ---------- Eingaben ---------- */
@@ -1199,6 +1238,7 @@ window.SPIEL = {
   loop,
   LAENGE,
   PUNKTE,
+  MALHEUR_MAX,
   state: () => ({
     phase: S.phase, vorbei: S.vorbei, z: S.z, x: S.x, v: S.v, druck: S.druck, knoedel: S.knoedel, pannen: S.pannen,
     spruenge: S.spruenge, stuerze: S.stuerze, sturz: S.sturz, halt: S.halt, boost: S.boost, wackel: S.wackel, luft: S.luft,

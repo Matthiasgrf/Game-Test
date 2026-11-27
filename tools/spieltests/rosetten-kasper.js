@@ -4,7 +4,7 @@
    Geprüft wird auf Computer, Handy hoch und quer: Start-Bildschirm, Leiste des Kits (Pause, Ton, Alle Spiele),
    Pause-Fenster, Lenken und Zusammenkneifen (Tasten bzw. Touch-Knöpfe ≥ 48 px), Boost (mit und ohne „nicht nur
    Luft“), Knödel, Zirbenschnaps, Dixi-Klo mit Gabor, Dani, Alex, Matze, Skischule, Pistenraupe, Schanze,
-   Buckelpiste, Schneekanone, Malheur bei 100 % (ohne Ergebnis), Zieleinlauf mit Abrechnung und 99-%-Bonus,
+   Buckelpiste, Schneekanone, Malheur bei 100 % (Ergebnis ohne Bonus), Zieleinlauf mit Abrechnung und 99-%-Bonus,
    gespeichertes Ergebnis, „Nochmal spielen“ – und die laufende Szene als Screenshot. */
 export default async function (t) {
   for (const [size, options] of [['computer', t.DESK], ['handy', t.PHONE], ['handy-quer', t.PHONE_QUER]]) {
@@ -135,7 +135,13 @@ export default async function (t) {
       t.check('Malheur bei 100 %: „Kasper hat\'s nicht gepackt“', (await game.textContent('[data-screen="malheur"] h1')).includes("Kasper hat's nicht gepackt"));
       t.check('Malheur-Fenster mit „🏠 Alle Spiele“', await game.locator('[data-screen="malheur"] a[href="../../#/"]').isVisible());
       await t.shot(page, 'malheur-computer');
-      t.check('Malheur: kein Ergebnis gespeichert', page.scores.length === 0, JSON.stringify(page.scores));
+      const m = (await st()).ergebnis;
+      const mGesamt = Number(await game.textContent('#malheur-gesamt'));
+      t.check('Malheur: Punkte ohne Ankunfts-, Zeit- und 99-%-Bonus', m.malheur && mGesamt === m.gesamt
+        && m.zeilen[0][1] === Math.min(400, Math.floor(m.meter / 5)) && !m.zeilen.some(([text]) => /Angekommen|Zeit|%/.test(text)), JSON.stringify(m.zeilen));
+      await page.waitForSelector('.html-game-toast');
+      t.check('Malheur: Ergebnis gespeichert', page.scores.length === 1 && page.scores[0].points === mGesamt, JSON.stringify(page.scores));
+      page.scores.length = 0;
       await game.click('[data-screen="malheur"] [data-action="nochmal"]');
       t.check('„Nochmal spielen“ nach dem Malheur', await game.evaluate(() => SPIEL.state().phase === 'play' && SPIEL.state().z < 5 && SPIEL.state().druck < 35));
       await game.evaluate(() => { for (const n of [0, 1]) { const o = SPIEL.objekte('knoedel')[n]; SPIEL.setze(o.z - 1, o.x); } });
@@ -153,6 +159,7 @@ export default async function (t) {
     t.check(`${size}: Titel angezeigt`, (await game.textContent('#ende-titel')).length > 3);
     t.check(`${size}: Ende mit „🏠 Alle Spiele“`, await game.locator('[data-screen="ende"] a[href="../../#/"]').isVisible());
     await page.waitForSelector('.html-game-toast');
+    for (let i = 0; i < 100 && !page.scores.length; i++) await page.waitForTimeout(50);   // auf das Ergebnis warten
     t.check(`${size}: Ergebnis gespeichert`, page.scores.length === 1 && page.scores[0].game_key === t.game.key && page.scores[0].points === gesamt, JSON.stringify(page.scores));
     await t.shot(page, `ende-${size}`);
 
